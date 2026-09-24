@@ -10,6 +10,7 @@ import {
 	makeLocale,
 	makeSettingsScope,
 	makeSettingsScopeService,
+	makeConfigFormsService,
 	makeSlots,
 	textOf,
 } from "./harness.js";
@@ -32,21 +33,27 @@ async function setup(sources = []) {
 		},
 	};
 	const slots = makeSlots();
-	const { ctx, recorded } = makeCtx(locale, { settingsScope: makeSettingsScopeService(scope), slots, connection });
+	const installs = [];
+	const remote = {
+		pluginManager: {
+			async inspect(spec) { return { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null }; },
+			async installBundle(spec, options) { installs.push({ spec, options }); return { changed: true }; },
+		},
+	};
+	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection, remote });
 	exports.apply(ctx);
-	const section = recorded.find((row) => row.options.name === "settings.plugins.tab");
+	const section = recorded.find((row) => row.options.name === "plugins.bundle.config");
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("plugin-market"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, section, render, restore };
+	return { exports, locale, scope, calls, installs, section, render, restore };
 }
 
-test("registers native Plugin Sources settings section and Connection dependency", async () => {
+test("registers marketplace inside the native DSH plugin manager", async () => {
 	const fixture = await setup();
 	try {
-		assert.equal(fixture.section.options.id, "sources");
-		assert.equal(fixture.section.options.label(), "Plugin Sources");
-		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "settingsScope", "connection"]);
+		assert.equal(fixture.section.options.key, "@stolyarovmn/dsh-client-ui-plugin-market");
+		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "configForms", "connection", "remote", "remote.pluginManager"]);
 		assert.equal(fixture.locale.bind("plugin-market")("tab.browse"), "Browse");
 	} finally { fixture.restore(); }
 });
@@ -72,6 +79,7 @@ test("adds a typed source through the durable settings scope", async () => {
 			enabled: true,
 		});
 		assert.equal(byClass(tree, "pm-source").length, 1);
+		assert.equal(byClass(tree, "pm-source-list").length, 1);
 	} finally { fixture.restore(); }
 });
 
@@ -92,7 +100,7 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /dsh-demo/);
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
 		assert.equal(byClass(tree, "pm-tag").length, 2);
-		assert.equal(byClass(tree, "pm-icon-btn").length, 1);
+		assert.ok(byClass(tree, "pm-icon-btn").length >= 1);
 		assert.equal(byClass(tree, "pm-notice").filter((node) => textOf(node).includes("Review the package")).length, 1);
 		const links = byTag(tree, "a");
 		assert.ok(links.some((link) => link.props.href === "https://www.npmjs.com/package/dsh-demo" && link.props.target === "_blank" && link.props.rel === "noopener noreferrer"));
@@ -100,8 +108,32 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /schedule/);
 		assert.match(textOf(tree), /stable/);
 		assert.match(textOf(tree), /42/);
-		assert.match(textOf(tree), /1\.2K/);
+		assert.match(textOf(tree), /1\.2K \/ 30d total/);
 		assert.match(textOf(tree), /4\.8/);
 		assert.ok(byTag(tree, "select").some((select) => select.props.value === "relevance"));
+	} finally { fixture.restore(); }
+});
+
+
+test("Install uses the native DSH plugin-manager remote and keeps the command fallback", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+	try {
+		let tree = fixture.render();
+		const browse = byTag(tree, "button").find((button) => textOf(button) === "Browse");
+		browse.props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+		const install = byTag(tree, "button").find((button) => textOf(button) === "Install");
+		assert.ok(install);
+		install.props.onClick();
+		tree = fixture.render();
+		const confirm = byTag(tree, "button").find((button) => textOf(button) === "Install?");
+		assert.ok(confirm);
+		await confirm.props.onClick();
+		await settle();
+		assert.deepEqual(fixture.installs, [{ spec: "dsh-demo@1.0.0", options: { activate: false } }]);
+		assert.match(textOf(fixture.render()), /dsh plugin add dsh-demo@1\.0\.0/);
 	} finally { fixture.restore(); }
 });
