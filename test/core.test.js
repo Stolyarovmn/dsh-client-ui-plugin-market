@@ -275,7 +275,7 @@ test("paginates before optional npm evidence enrichment", async () => {
 
 test("sorts GitHub star evidence globally before slicing a page", async () => {
 	const githubSource = { id: "github", name: "GitHub", type: "github", enabled: true };
-	const result = await browseSources([githubSource], "market", {
+	const result = await browseSources([githubSource], "", {
 		resolveHost: publicDns,
 		fetchImpl: async () => jsonResponse({ items: [
 			{ id: 1, name: "one", html_url: "https://github.com/acme/one", stargazers_count: 5, topics: ["dsh-plugin"] },
