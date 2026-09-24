@@ -258,6 +258,18 @@ export async function loadBundle({ resolver } = {}) {
 		Button: (props) => ({ type: "button", props, children: childrenOf(props) }),
 		Modal: (props) => ({ type: "div", props: { ...props, role: "dialog" }, children: childrenOf(props) }),
 		Switch: (props) => ({ type: "button", props: { ...props, role: "switch", "aria-checked": props.checked }, children: [] }),
+		Menu: (props) => ({
+			type: "span",
+			props: { className: "mock-menu" },
+			children: [
+				props.anchor,
+				...(props.open ? (props.items ?? []).map((item) => ({
+					type: "button",
+					props: { role: "menuitem", "data-menu-id": item.id, onClick: () => props.onSelect?.(item.id) },
+					children: [item.label],
+				})) : []),
+			],
+		}),
 		IconPlusOutlineRegular: Icon,
 		IconRefreshOutlineRegular: Icon,
 		IconChevronDownOutlineRegular: Icon,
