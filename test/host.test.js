@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { apply, NAMESPACE, RPC_CHANNEL, RPC_PREFIX } from "../lib/index.js";
+import { apply, DEFAULT_SOURCES, NAMESPACE, RPC_CHANNEL, RPC_PREFIX } from "../lib/index.js";
 
 function hostFixture(sources = []) {
 	const routes = new Map();
@@ -61,6 +61,13 @@ function hostFixture(sources = []) {
 	}
 	return { call, routes, settingsConfigured };
 }
+
+test("defaults to npm plus GitHub so Browse can merge download and star evidence", () => {
+	assert.deepEqual(DEFAULT_SOURCES.map(({ id, type, enabled }) => ({ id, type, enabled })), [
+		{ id: "npm", type: "npm", enabled: true },
+		{ id: "github", type: "github", enabled: true },
+	]);
+});
 
 test("exposes source config through the plugin entry and exact authenticated API routes", () => {
 	const fixture = hostFixture();
