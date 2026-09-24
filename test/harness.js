@@ -247,9 +247,14 @@ export async function loadBundle({ resolver } = {}) {
 		document,
 		__PM_RESOLVER__: resolver,
 	};
+	const primitives = {
+		Button: (props) => ({ type: "button", props, children: childrenOf(props) }),
+		Modal: (props) => ({ type: "div", props: { ...props, role: "dialog" }, children: childrenOf(props) }),
+	};
 	const modules = {
 		react: makeReact(),
 		"react/jsx-runtime": makeJsxRuntime(),
+		"@deepseek-ai/dsh-client-ui-primitives": primitives,
 	};
 	const require = (spec) => {
 		if (!(spec in modules)) throw new Error(`harness: unmocked module request '${spec}'`);
