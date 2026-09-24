@@ -7,6 +7,7 @@ import {
 	fetchJson,
 	normalizePlugin,
 	searchPlugins,
+	releaseChannel,
 } from "../lib/core.js";
 
 const publicDns = async () => ["93.184.216.34"];
@@ -54,6 +55,32 @@ test("normalizes display tags from explicit catalog, npm, and GitHub metadata", 
 		normalizePlugin({ name: "Schedule UI", package: "@acme/schedule", tags: ["integration", "tool"] }, source({ id: "other", name: "Other" })),
 	]);
 	assert.deepEqual(merged[0].tags, ["ui", "schedule", "theme", "provider", "workflow", "integration", "tool"]);
+});
+
+test("classifies stable and prerelease versions", () => {
+	assert.equal(releaseChannel("1.2.3"), "stable");
+	assert.equal(releaseChannel("1.2.3+build.5"), "stable");
+	assert.equal(releaseChannel("1.2.3-alpha.1"), "alpha");
+	assert.equal(releaseChannel("1.2.3-beta.2"), "beta");
+	assert.equal(releaseChannel("1.2.3-rc.4"), "rc");
+	assert.equal(releaseChannel("1.2.3-next.1"), "prerelease");
+	assert.equal(releaseChannel("dev"), undefined);
+});
+
+test("preserves source ratings and derives release channel", () => {
+	const plugin = normalizePlugin({
+		name: "Rated",
+		package: "@acme/rated",
+		version: "2.0.0-beta.1",
+		evidence: { rating: 4.7, ratingCount: 23, stars: 42, downloads30d: 900 },
+	}, source());
+	assert.deepEqual(plugin.evidence, {
+		stars: 42,
+		downloads30d: 900,
+		rating: 4.7,
+		ratingCount: 23,
+		releaseChannel: "beta",
+	});
 });
 
 test("rejects command-like install specs instead of exposing unsafe copy commands", () => {
@@ -174,6 +201,31 @@ test("rejects cross-origin redirects when Host auth is attached", async () => {
 		resolveHost: publicDns,
 		fetchImpl: async () => new Response(null, { status: 302, headers: { location: "https://attacker.example/x" } }),
 	}), /cannot redirect to another origin/);
+});
+
+test("browse enriches npm packages with last-month download counts without failing the catalog", async () => {
+	const npmSource = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const result = await browseSources([npmSource], "schedule", {
+		resolveHost: publicDns,
+		maxPlugins: 10,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			if (value.includes("api.npmjs.org/downloads/point/last-month/")) {
+				return jsonResponse({ downloads: 1234, package: "@acme/dsh-schedule", start: "2026-08-25", end: "2026-09-23" });
+			}
+			return jsonResponse({ objects: [{
+				package: {
+					name: "@acme/dsh-schedule",
+					version: "1.0.0",
+					description: "Schedule",
+					keywords: ["dsh-plugin", "schedule"],
+				},
+			}] });
+		},
+	});
+	assert.equal(result.plugins.length, 1);
+	assert.equal(result.plugins[0].evidence.releaseChannel, "stable");
+	assert.equal(result.plugins[0].evidence.downloads30d, 1234);
 });
 
 test("caps source count and aggregate plugin results", async () => {
