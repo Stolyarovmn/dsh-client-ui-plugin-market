@@ -1,6 +1,6 @@
 # Marketplace for DeepSeek Harness
 
-A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives entirely inside the native **Plugins** page. npm is connected by default. After enabling the bundle, Harness offers an **Open marketplace** action that takes you straight to **Sources / Browse**.
+A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives entirely inside the native **Plugins** page. npm and GitHub are connected by default so package downloads and repository-star evidence can be merged immediately. After enabling the bundle, Harness offers an **Open marketplace** action that takes you straight to **Sources / Browse**.
 
 - **Sources** — connect, enable, disable, share, remove, and health-check catalog sources.
 - **Browse** — search enabled sources as one normalized, deduplicated index, compare release/popularity evidence, keep the `dsh plugin add …` fallback command, or install through the native DSH Plugin Manager Host API.
@@ -43,7 +43,7 @@ After the npm package exists, the short package name works too:
 dsh plugin --profile web add @stolyarovmn/dsh-client-ui-plugin-market
 ```
 
-Enable the bundle. Harness then shows **Open marketplace**; alternatively open **Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market**. npm discovery is available immediately, while **Sources** lets you add GitHub or other catalogs.
+Enable the bundle. Harness then shows **Open marketplace**; alternatively open **Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market**. npm and GitHub discovery are available immediately, while **Sources** lets you disable them or add other catalogs.
 
 The 0.3.x line targets DSH `>=0.1.7-rc.1 <0.2.0`. Source settings use the shared `configForms` service and the UI registers into the native `plugins.bundle.config` slot. Installation uses DSH's own `remote.pluginManager` Host API; the copied `dsh plugin add …` command remains available as a fallback.
 
@@ -153,7 +153,7 @@ MIT
 
 ## Popularity and release signals
 
-Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Browse displays zero for missing star/download counters so cards remain visually comparable; source-native ratings stay absent when no source provides one.
+Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Scoped npm packages are queried individually because npm's bulk download-count endpoint does not support scoped package names. Browse displays zero for missing star/download counters so cards remain visually comparable; source-native ratings stay absent when no source provides one.
 
 
 ## Compatibility
