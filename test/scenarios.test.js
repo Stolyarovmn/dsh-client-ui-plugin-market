@@ -89,6 +89,19 @@ test("adds a typed source through the durable settings scope", async () => {
 	} finally { fixture.restore(); }
 });
 
+test("source cards keep copy URL and move the only destructive action into the header", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+	try {
+		fixture.render();
+		await settle();
+		const tree = fixture.render();
+		assert.equal(byClass(tree, "pm-source-delete").length, 1);
+		assert.equal(byClass(tree, "pm-source-action").length, 0);
+		assert.equal(byClass(tree, "pm-copy-url").length, 1);
+		assert.equal(byTag(tree, "button").some((button) => button.props["aria-label"] === "Share"), false);
+	} finally { fixture.restore(); }
+});
+
 test("Sources health uses the Browse transport to avoid a stale dedicated health route", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
@@ -129,6 +142,7 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /released/);
 		assert.match(textOf(tree), /Check DSH compatibility/);
 		assert.match(textOf(byId(tree, "pm-page-size")), /20/);
+		assert.equal(byId(tree, "pm-page-size").props["aria-haspopup"], "menu");
 		assert.match(textOf(tree), /41 results/);
 		assert.ok(byClass(tree, "pm-page-button").some((button) => textOf(button) === "1" && button.props["data-current"] === true));
 		assert.equal(byClass(tree, "pm-sort-criterion").length, 4);
@@ -221,7 +235,11 @@ test("Install starts immediately through the native DSH plugin-manager remote an
 		await settle();
 
 		assert.deepEqual(fixture.inspections, [{ spec: "dsh-demo@1.0.0", options: { registry: null } }]);
-		assert.deepEqual(fixture.installs, [{ spec: "dsh-demo@1.0.0", options: { enabled: false, registry: null } }]);
+		assert.equal(fixture.installs.length, 1);
+		assert.equal(fixture.installs[0].spec, "dsh-demo@1.0.0");
+		assert.equal(fixture.installs[0].options.enabled, true);
+		assert.equal(fixture.installs[0].options.registry, null);
+		assert.equal(typeof fixture.installs[0].options.requestId, "string");
 		tree = fixture.render();
 		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
@@ -253,19 +271,28 @@ test("Browse sends page size and page changes to Host RPC", async () => {
 		await settle();
 		tree = fixture.render();
 		byId(tree, "pm-page-size").props.onClick();
+		tree = fixture.render();
+		const fifty = byTag(tree, "button").find((button) => button.props["data-menu-id"] === "50");
+		assert.ok(fifty);
+		fifty.props.onClick();
 		fixture.render();
 		await settle(260);
 		await settle();
 		tree = fixture.render();
-		const next = byTag(tree, "button").find((button) => button.props["aria-label"] === "Next");
-		assert.ok(next);
-		next.props.onClick();
+
+		// The picker remains a real choice, not a 20→50→100 cycle: reopen and pick 20 directly.
+		byId(tree, "pm-page-size").props.onClick();
+		tree = fixture.render();
+		const twenty = byTag(tree, "button").find((button) => button.props["data-menu-id"] === "20");
+		assert.ok(twenty);
+		twenty.props.onClick();
 		fixture.render();
 		await settle(260);
 		await settle();
+
 		const browseCalls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/browse");
 		assert.ok(browseCalls.some((call) => call.payload.pageSize === 50));
-		assert.ok(browseCalls.some((call) => call.payload.page === 2 && call.payload.pageSize === 50));
+		assert.ok(browseCalls.some((call) => call.payload.pageSize === 20));
 	} finally { fixture.restore(); }
 });
 
