@@ -330,6 +330,25 @@ test("captures npm freshness, monthly downloads, and maintenance evidence from s
 	assert.equal(plugin.evidence.releasedAt, "2026-09-21T12:00:00.000Z");
 });
 
+test("reuses discovery rows across pagination and invalidates only on refresh revision", async () => {
+	let calls = 0;
+	const cachedSource = source({ id: "cache-performance", url: "https://catalog.example/cache-performance.json" });
+	const fetchImpl = async () => {
+		calls += 1;
+		return jsonResponse({ plugins: Array.from({ length: 45 }, (_, index) => ({ name: `plugin-${index}`, package: `plugin-${index}`, version: "1.0.0" })) });
+	};
+	const options = { fetchImpl, resolveHost: publicDns, cacheDiscovery: true, enrichDownloads: false, pageSize: 20 };
+
+	const first = await browseSources([cachedSource], "", { ...options, page: 1, refreshRevision: 0 });
+	const second = await browseSources([cachedSource], "", { ...options, page: 2, refreshRevision: 0 });
+	assert.equal(first.plugins.length, 20);
+	assert.equal(second.plugins.length, 20);
+	assert.equal(calls, 1);
+
+	await browseSources([cachedSource], "", { ...options, page: 2, refreshRevision: 1 });
+	assert.equal(calls, 2);
+});
+
 test("supports ordered multi-criteria ranking with independent directions", async () => {
 	const rows = [
 		{ name: "fresh-popular", package: "fresh-popular", version: "1.0.0", evidence: { downloads30d: 800, stars: 50, releasedAt: "2026-09-20T00:00:00Z" } },
