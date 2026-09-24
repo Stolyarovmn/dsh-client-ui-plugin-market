@@ -228,6 +228,33 @@ test("browse enriches npm packages with last-month download counts without faili
 	assert.equal(result.plugins[0].evidence.downloads30d, 1234);
 });
 
+test("queries scoped npm download counts individually because npm bulk point queries do not support scopes", async () => {
+	const npmSource = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const downloadUrls = [];
+	const result = await browseSources([npmSource], "scoped-evidence", {
+		resolveHost: publicDns,
+		maxPlugins: 10,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			if (value.includes("api.npmjs.org/downloads/point/last-month/")) {
+				downloadUrls.push(value);
+				if (value.endsWith("@acme/dsh-one")) return jsonResponse({ downloads: 11, package: "@acme/dsh-one" });
+				if (value.endsWith("@acme/dsh-two")) return jsonResponse({ downloads: 22, package: "@acme/dsh-two" });
+				throw new Error(`unexpected downloads URL ${value}`);
+			}
+			return jsonResponse({ objects: [
+				{ package: { name: "@acme/dsh-one", version: "1.0.0", description: "scoped-evidence", keywords: ["dsh-plugin"] } },
+				{ package: { name: "@acme/dsh-two", version: "1.0.0", description: "scoped-evidence", keywords: ["dsh-plugin"] } },
+			] });
+		},
+	});
+	assert.equal(downloadUrls.length, 2);
+	assert.ok(downloadUrls.every((url) => !url.includes(",")), "scoped packages must not be combined into a bulk downloads request");
+	const counts = new Map(result.plugins.map((plugin) => [plugin.identity.package, plugin.evidence?.downloads30d]));
+	assert.equal(counts.get("@acme/dsh-one"), 11);
+	assert.equal(counts.get("@acme/dsh-two"), 22);
+});
+
 test("caps source count and aggregate plugin results", async () => {
 	await assert.rejects(() => browseSources([source(), source({ id: "two" })], "", { maxSources: 1 }), /at most 1/);
 	const result = await browseSources([source()], "", {
