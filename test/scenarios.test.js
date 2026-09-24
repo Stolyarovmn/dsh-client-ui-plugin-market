@@ -93,6 +93,9 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
 		assert.equal(byClass(tree, "pm-tag").length, 2);
 		assert.equal(byClass(tree, "pm-icon-btn").length, 1);
+		assert.equal(byClass(tree, "pm-notice").filter((node) => textOf(node).includes("Review the package")).length, 1);
+		const links = byTag(tree, "a");
+		assert.ok(links.some((link) => link.props.href === "https://www.npmjs.com/package/dsh-demo" && link.props.target === "_blank" && link.props.rel === "noopener noreferrer"));
 		assert.match(textOf(tree), /ui/);
 		assert.match(textOf(tree), /schedule/);
 	} finally { fixture.restore(); }
