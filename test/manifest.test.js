@@ -37,7 +37,8 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /settingsScope\?\.bind\?\.\(\{ namespace: NS \}\)/);
 	assert.match(client, /settings\.plugins\.tab/);
 	assert.doesNotMatch(client, /configForms|settings\.section/);
-	assert.match(host, /connection\.rpc\.handle\(RPC_CHANNEL/);
+	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
+	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
 	assert.doesNotMatch(client, /sampleCatalog|__PM_RESOLVER__/);
 	assert.doesNotMatch(client, /tokenEnv|allowPrivateNetwork/);

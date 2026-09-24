@@ -12,7 +12,7 @@ This package is not another standalone marketplace. Marketplaces, registries, re
 ```text
 Settings → Built-in plugins → Plugin Sources
   ├─ ctx.settingsScope → durable source configuration only
-  └─ authenticated Connection RPC (/plugin-sources)
+  └─ authenticated Connection RPC (/api/plugin-sources/*)
        └─ Host adapters → external catalogs
             └─ normalize → deduplicate → search → source attribution
 ```

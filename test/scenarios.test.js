@@ -25,8 +25,8 @@ async function setup(sources = []) {
 		rpc: {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
-				if (endpoint === "health") return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
-				if (endpoint === "browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin", version: "1.0.0", install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], sources: [] } };
+				if (endpoint === "plugin-sources/health") return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
+				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin", version: "1.0.0", install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], sources: [] } };
 				return { ok: false, error: { message: "unknown" } };
 			},
 		},
@@ -87,7 +87,7 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		await settle(260);
 		await settle();
 		tree = fixture.render();
-		assert.ok(fixture.calls.some((call) => call.channel === "/plugin-sources" && call.endpoint === "browse"));
+		assert.ok(fixture.calls.some((call) => call.channel === "/api" && call.endpoint === "plugin-sources/browse"));
 		assert.equal(byClass(tree, "pm-card").length, 1);
 		assert.match(textOf(tree), /dsh-demo/);
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
