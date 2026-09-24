@@ -74,6 +74,28 @@ test("npm adapter searches canonical and compatibility discovery keywords then d
 	}
 });
 
+test("npm raw text fallback finds scoped packages but filters non-DSH results", async () => {
+	const queries = [];
+	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
+		fetchImpl: async (url) => {
+			const decoded = decodeURIComponent(String(url));
+			queries.push(decoded);
+			if (/text=stolyarovmn(?:&|$)/.test(decoded) && !decoded.includes("keywords:")) {
+				return jsonResponse({ objects: [
+					{ package: { name: "@stolyarovmn/dsh-client-ui-schedule-tab", version: "0.4.1", description: "Schedule", keywords: ["dsh-plugin", "deepseek-harness"] } },
+					{ package: { name: "@stolyarovmn/unrelated", version: "1.0.0", description: "Not DSH", keywords: ["utility"] } },
+				] });
+			}
+			return jsonResponse({ objects: [] });
+		},
+		resolveHost: publicDns,
+	});
+	const plugins = await adapter.search("stolyarovmn");
+	assert.equal(plugins.length, 1);
+	assert.equal(plugins[0].identity.package, "@stolyarovmn/dsh-client-ui-schedule-tab");
+	assert.ok(queries.some((query) => /text=stolyarovmn(?:&|$)/.test(query) && !query.includes("keywords:")));
+});
+
 test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
