@@ -1,6 +1,6 @@
 # Plugin Sources for DeepSeek Harness
 
-A federated plugin-catalog hub for DeepSeek Harness. It adds **Settings → Plugin Sources** with two views:
+A federated plugin-catalog hub for DeepSeek Harness. It contributes **Plugin Sources** to **Settings → Built-in plugins**, with two internal views:
 
 - **Sources** — connect, enable, disable, remove, and check catalog sources.
 - **Browse** — search all enabled sources as one normalized, deduplicated index and copy a `dsh plugin add …` command.
@@ -10,8 +10,8 @@ This package is not another standalone marketplace. Marketplaces, registries, re
 ## Architecture
 
 ```text
-Settings UI
-  ├─ remote.settings → durable source configuration only
+Settings → Built-in plugins → Plugin Sources
+  ├─ ctx.configForms → durable source configuration only
   └─ authenticated Connection RPC (/plugin-sources)
        └─ Host adapters → external catalogs
             └─ normalize → deduplicate → search → source attribution
@@ -25,9 +25,9 @@ The browser never fetches arbitrary catalog URLs. The Host registers the public 
 dsh plugin add @stolyarovmn/dsh-client-ui-plugin-market
 ```
 
-Restart or refresh the Web profile as required by your DSH installation, then open **Settings → Plugin Sources**.
+Restart or refresh the Web profile as required by your DSH installation, then open **Settings → Built-in plugins → Plugin Sources**.
 
-For profile development, add the package to both `dependencies` and `dsh.profile.bundles`. Its `cordis.patch.yml` activates the Host and Web faces.
+For profile development, add the package to both `dependencies` and `dsh.profile.bundles`. Its `cordis.patch.yml` activates the Host and Web faces. The client follows the current `ctx.configForms` settings contract and registers through the standard `settings.plugins.tab` slot rather than creating another top-level Settings page.
 
 ## Source types
 
@@ -118,6 +118,8 @@ npm install
 npm test
 npm run test:pack
 ```
+
+The package advertises the `dsh-plugin` keyword and `dsh.catalog` metadata so community catalogs can discover it without inventing a separate manifest format.
 
 The tests cover manifest wiring, client registration and scenarios, adapters, malformed/unavailable sources, SSRF boundaries, size limits, normalization, identity precedence, deduplication, search, and absence of production sample fallback.
 
