@@ -1,6 +1,6 @@
 {
 	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
-	"description": "Federated Plugin Sources hub for DeepSeek Harness: host-side catalogs, health, normalized search, deduplication, and install specs in Settings",
+	"description": "Federated marketplace discovery for DeepSeek Harness: browse trusted plugin sources, compare metadata, and install through the native Plugin Manager.",
 	"version": "0.3.0",
 	"author": {
 		"name": "Stolyarovmn",
@@ -22,7 +22,8 @@
 		"lib/*.js",
 		"cordis.patch.yml",
 		"README.md",
-		"LICENSE"
+		"LICENSE",
+		"icon.svg"
 	],
 	"keywords": [
 		"dsh",
@@ -39,9 +40,7 @@
 		"@deepseek-ai/dsh-client-connection": "0.1.7-rc.1",
 		"@deepseek-ai/schemastery": "^3.18.2",
 		"ipaddr.js": "^2.2.0",
-		"undici": "^7.16.0",
-		"@deepseek-ai/dsh-api-remotes": "0.1.7-rc.1",
-		"@deepseek-ai/dsh-client-ui-settings": "0.1.7-rc.1"
+		"undici": "^7.16.0"
 	},
 	"dsh": {
 		"bundle": {
@@ -60,13 +59,14 @@
 		"catalog": {
 			"category": "ui",
 			"summary": {
-				"en": "Federated marketplace discovery for DeepSeek Harness 0.1.7+: browse trusted sources and install through the native Plugin Manager.",
+				"en": "Federated marketplace discovery for DeepSeek Harness 0.1.7+: browse trusted sources, compare plugin evidence, and install through the native Plugin Manager.",
 				"zh": "DeepSeek Harness 0.1.7+ 联合插件市场发现层：浏览可信来源，并通过原生 Plugin Manager 安装。"
 			},
 			"capabilities": [
 				"slots",
 				"settings",
-				"network"
+				"network",
+				"plugin-manager"
 			]
 		}
 	},
@@ -76,5 +76,6 @@
 	},
 	"peerDependencies": {
 		"@deepseek-ai/dsh": ">=0.1.7-rc.1 <0.2.0"
-	}
+	},
+	"icon": "./icon.svg"
 }
