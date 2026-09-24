@@ -10,8 +10,8 @@
  *    across re-renders, dependency comparison, and cleanup tracking
  *  - a locale face whose active language the tests can switch
  *  - a slot ctx mock recording every registration apply() makes
- *  - a configForms mock exposing one mutable namespace form (sources),
- *    mirroring the real `ctx.configForms.get` contract
+ *  - a settingsScope mock bound to one mutable namespace form (sources),
+ *    mirroring the DSH 0.1.5-rc.3 `ctx.settingsScope.bind` contract
  *
  * The bundle's catalog resolver is overridable via `window.__PM_RESOLVER__`.
  */
@@ -193,7 +193,7 @@ export function makeSlots() {
 	return slots;
 }
 
-// ── configForms mock (mirrors ctx.configForms.get) ───────────────────────────
+// ── settingsScope mock (mirrors ctx.settingsScope.bind) ───────────────────────
 export function makeSettingsScope({ sources = [], writable = true, status = "ready" } = {}) {
 	const section = { sources: sources.map((s) => ({ ...s })) };
 	const listeners = new Set();
@@ -215,18 +215,18 @@ export function makeSettingsScope({ sources = [], writable = true, status = "rea
 	};
 }
 
-export function makeConfigFormsService(scope) {
-	return { get: (_entryId) => scope, describe: () => scope.getSnapshot() };
+export function makeSettingsScopeService(scope) {
+	return { bind: (_spec) => scope, describe: () => scope.getSnapshot() };
 }
 
 // ── ctx factory ───────────────────────────────────────────────────────────────
-export function makeCtx(locale, { configForms, slots, connection } = {}) {
+export function makeCtx(locale, { settingsScope, slots, connection } = {}) {
 	const slotMock = slots ?? makeSlots();
 	const ctx = {
 		effect(fn, _label) { fn(); return () => {}; },
 		locale,
 		slots: slotMock,
-		...(configForms !== undefined ? { configForms } : {}),
+		...(settingsScope !== undefined ? { settingsScope } : {}),
 		...(connection !== undefined ? { connection } : {}),
 	};
 	return { ctx, recorded: slotMock.recorded, slots: slotMock };
