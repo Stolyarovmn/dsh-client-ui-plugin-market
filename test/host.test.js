@@ -4,16 +4,27 @@ import { apply, NAMESPACE, RPC_CHANNEL, RPC_PREFIX } from "../lib/index.js";
 
 function hostFixture(sources = []) {
 	const routes = new Map();
-	let registeredNamespace;
-	let schema;
-	const scope = { get: () => ({ sources }) };
+	let settingsConfigured = false;
+	const config = {
+		sources: { get: () => sources },
+		timeoutMs: 500,
+		maxResponseBytes: 4096,
+		maxPlugins: 10,
+		maxSources: 5,
+		maxTotalPlugins: 20,
+		maxRpcBytes: 65536,
+		concurrency: 2,
+		privateSourceIds: [],
+		auth: [],
+	};
 	const ctx = {
+		fiber: { id: "plugin-market" },
 		settings: {
-			register(namespace, nextSchema, options) {
-				registeredNamespace = namespace;
-				schema = nextSchema;
-				assert.deepEqual(options.base, { sources: [] });
-				return scope;
+			configure(options, owner) {
+				assert.deepEqual(options, { auto: false });
+				assert.equal(owner, ctx.fiber);
+				settingsConfigured = true;
+				return () => {};
 			},
 		},
 		connection: {
@@ -24,16 +35,17 @@ function hostFixture(sources = []) {
 				},
 			},
 		},
+		effect(effect) { return effect(); },
 		inject(dependencies, callback) {
 			assert.ok(
 				JSON.stringify(dependencies) === JSON.stringify(["settings"])
-				|| JSON.stringify(dependencies) === JSON.stringify(["connection"]),
+					|| JSON.stringify(dependencies) === JSON.stringify(["connection"]),
 				`unexpected dependency set ${JSON.stringify(dependencies)}`,
 			);
 			callback(this);
 		},
 	};
-	apply(ctx, { timeoutMs: 500, maxResponseBytes: 4096, maxPlugins: 10, maxSources: 5, maxTotalPlugins: 20, maxRpcBytes: 65536, concurrency: 2, privateSourceIds: [], auth: [] });
+	apply(ctx, config);
 
 	async function call(endpoint, payload = {}) {
 		const method = `${RPC_PREFIX}/${endpoint}`;
@@ -47,13 +59,13 @@ function hostFixture(sources = []) {
 		assert.equal(response.status, 200);
 		return (await response.json()).result;
 	}
-	return { call, routes, registeredNamespace, schema };
+	return { call, routes, settingsConfigured };
 }
 
-test("registers durable source config and exact authenticated API routes", () => {
+test("exposes source config through the plugin entry and exact authenticated API routes", () => {
 	const fixture = hostFixture();
-	assert.equal(fixture.registeredNamespace, NAMESPACE);
-	assert.equal(typeof fixture.schema.toJSON, "function");
+	assert.equal(NAMESPACE, "plugin-market");
+	assert.equal(fixture.settingsConfigured, true);
 	assert.ok(fixture.routes.has("/api/plugin-sources/health"));
 	assert.ok(fixture.routes.has("/api/plugin-sources/browse"));
 });

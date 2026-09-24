@@ -1,7 +1,7 @@
 {
 	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
 	"description": "Federated marketplace discovery for DeepSeek Harness: browse trusted plugin sources, compare metadata, and install through the native Plugin Manager.",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"
