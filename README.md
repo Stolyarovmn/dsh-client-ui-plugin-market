@@ -175,3 +175,15 @@ Browse can sort by Stars, Downloads, Freshest release, Name, or two equal-weight
 npm search already returns monthly download, update, and maintenance evidence, so large result sets are ranked from source-native metadata rather than by issuing thousands of extra requests. Secondary npm download lookups are limited to the visible page.
 
 The card shows compact release/repository age. Clicking the **DSH ?** badge fetches that exact npm version's manifest and shows `peerDependencies["@deepseek-ai/dsh"]` when the publisher declared it. If the package does not declare a root DSH range but does declare peers such as `@deepseek-ai/dsh-settings`, the UI labels them as **DSH API peers** rather than pretending they are a full Harness compatibility guarantee.
+
+
+### Combinable filters
+
+Browse filters are applied together before pagination, so a narrow result really means the intersection of the selected criteria:
+
+- **Stable only** — excludes alpha/beta/rc/prerelease versions.
+- **Freshness** — any age, up to 30 days, 90 days, or one year. It uses the npm release timestamp when available and GitHub repository activity as a fallback.
+- **Category** — `ui`, `theme`, `provider`, `workflow`, `integration`, `tool`, `automation`, `schedule`, `scheduler`, `skill`, `bundle`, or `desktop`.
+- **DSH metadata** — any, explicitly declared, or unknown. This filter deliberately uses compatibility metadata already supplied by a source/catalog; it does not issue thousands of npm manifest requests in the background. Exact npm-version compatibility can still be checked from an individual card with **DSH ?**.
+
+Changing any filter resets pagination to page 1. Filtering happens before sort and pagination, so all sort modes continue to operate on the filtered candidate set.
