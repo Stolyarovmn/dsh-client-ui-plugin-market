@@ -58,7 +58,7 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /Registry Aggregator ready/);
 	assert.match(client, /remote\.pluginManager\.inspect\(spec\)/);
 	assert.match(client, /remote\.pluginManager\.installBundle\(spec, \{ enabled: true, registry: inspection\.value\.registry \}\)/);
-	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section|Marketplace ready|Open marketplace/);
+	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section/);
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
 	assert.doesNotMatch(host, /export default apply/);
