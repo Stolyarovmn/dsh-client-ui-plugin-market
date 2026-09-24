@@ -11,7 +11,7 @@ This package is not another standalone marketplace. Marketplaces, registries, re
 
 ```text
 Settings → Built-in plugins → Plugin Sources
-  ├─ ctx.configForms → durable source configuration only
+  ├─ ctx.settingsScope → durable source configuration only
   └─ authenticated Connection RPC (/plugin-sources)
        └─ Host adapters → external catalogs
             └─ normalize → deduplicate → search → source attribution
@@ -27,7 +27,7 @@ dsh plugin add @stolyarovmn/dsh-client-ui-plugin-market
 
 Restart or refresh the Web profile as required by your DSH installation, then open **Settings → Built-in plugins → Plugin Sources**.
 
-For profile development, add the package to both `dependencies` and `dsh.profile.bundles`. Its `cordis.patch.yml` activates the Host and Web faces. The client follows the current `ctx.configForms` settings contract and registers through the standard `settings.plugins.tab` slot rather than creating another top-level Settings page.
+For profile development, add the package to both `dependencies` and `dsh.profile.bundles`. Its `cordis.patch.yml` activates the Host and Web faces. The client targets DSH `0.1.5-rc.3`, where durable settings are exposed through `ctx.settingsScope`, and registers through the standard `settings.plugins.tab` slot rather than creating another top-level Settings page.
 
 ## Source types
 
