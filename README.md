@@ -1,6 +1,6 @@
 # Plugin Sources for DeepSeek Harness
 
-A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives inside the native **Plugins** page as the configuration surface of this installed bundle.
+A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives entirely inside the native **Plugins** page. Open the installed marketplace bundle to use **Sources** and **Browse**; no separate Settings entry is created.
 
 - **Sources** — connect, enable, disable, share, remove, and health-check catalog sources.
 - **Browse** — search enabled sources as one normalized, deduplicated index, compare release/popularity evidence, keep the `dsh plugin add …` fallback command, or install through the native DSH Plugin Manager Host API.
@@ -10,7 +10,7 @@ This package is not another standalone plugin manager. Marketplaces, registries,
 ## Architecture
 
 \`\`\`text
-Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market
+Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market → Sources / Browse
   ├─ plugins.bundle.config (native DSH Plugin Manager detail page)
   ├─ ctx.configForms → durable source configuration
   ├─ authenticated Connection RPC (/api/plugin-sources/*)
