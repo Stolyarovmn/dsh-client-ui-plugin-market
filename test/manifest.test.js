@@ -14,9 +14,14 @@ test("package declares both DSH faces and required client services", async () =>
 	assert.equal(pkg.exports["./core"], "./lib/core.js");
 	assert.equal(pkg.dsh.bundle.patch, "./cordis.patch.yml");
 	assert.equal(pkg.dsh.client.platform, "web");
-	for (const dependency of ["@deepseek-ai/dsh-client-connection", "@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings"]) {
+	for (const dependency of ["@deepseek-ai/dsh-client-connection", "@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings", "@deepseek-ai/dsh-client-ui-settings-plugins"]) {
 		assert.ok(pkg.dsh.client.inject.includes(dependency), `missing client inject ${dependency}`);
 	}
+	assert.ok(pkg.keywords.includes("dsh-plugin"));
+	assert.equal(pkg.dsh.catalog.category, "ui");
+	assert.equal(typeof pkg.dsh.catalog.summary.en, "string");
+	assert.equal(typeof pkg.dsh.catalog.summary.zh, "string");
+	assert.deepEqual(pkg.dsh.catalog.capabilities, ["slots", "settings", "network"]);
 });
 
 test("bundle patch activates this package exactly once", async () => {
@@ -29,6 +34,9 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	const client = await read("lib/client.js");
 	const host = await read("lib/index.js");
 	assert.match(client, /connection\.rpc\.call\(CHANNEL/);
+	assert.match(client, /configForms\?\.get\?\.\(NS\)/);
+	assert.match(client, /settings\.plugins\.tab/);
+	assert.doesNotMatch(client, /settingsScope|settings\.section/);
 	assert.match(host, /connection\.rpc\.handle\(RPC_CHANNEL/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
 	assert.doesNotMatch(client, /sampleCatalog|__PM_RESOLVER__/);
