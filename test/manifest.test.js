@@ -26,6 +26,19 @@ test("package declares both DSH faces and required client services", async () =>
 	assert.equal(pkg.icon, "./icon.svg");
 });
 
+test("host entry keeps namespace metadata through the real Cordis Loader export rule", async () => {
+	const host = await import(new URL("../lib/index.js", import.meta.url));
+	assert.equal("default" in host, false, "default export makes Loader.unwrapExports discard Config/inject metadata");
+	assert.equal(typeof host.apply, "function");
+	assert.equal(host.name, "plugin-market");
+	assert.equal(typeof host.Config?.["~standard"]?.validate, "function");
+
+	// Mirror DSH 0.1.7 Loader.unwrapExports: it prefers .default when present.
+	const unwrapped = host.default ?? host;
+	assert.equal(unwrapped, host);
+	assert.equal(unwrapped.Config, host.Config);
+});
+
 test("bundle patch activates this package exactly once", async () => {
 	const patch = await read("cordis.patch.yml");
 	assert.match(patch, /- id: plugin-market/);
@@ -45,6 +58,7 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section/);
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
+	assert.doesNotMatch(host, /export default apply/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
 	assert.doesNotMatch(client, /sampleCatalog|__PM_RESOLVER__/);
 	assert.doesNotMatch(client, /tokenEnv|allowPrivateNetwork/);
