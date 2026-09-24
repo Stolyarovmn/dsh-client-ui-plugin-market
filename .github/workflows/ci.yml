@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:pack
+
+  dsh-install-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install local plugin into isolated DSH profile
+        env:
+          DSH_HOME: ${{ runner.temp }}/dsh-home
+        run: |
+          pnpm dlx @deepseek-ai/dsh plugin --profile smoke add "file:$GITHUB_WORKSPACE"
+          pnpm dlx @deepseek-ai/dsh --profile smoke --dump-config > /tmp/dsh-config.txt
+          grep -F "plugin-market" /tmp/dsh-config.txt
+          grep -F "@stolyarovmn/dsh-client-ui-plugin-market" /tmp/dsh-config.txt
