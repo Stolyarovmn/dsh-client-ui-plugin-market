@@ -247,9 +247,21 @@ export async function loadBundle({ resolver } = {}) {
 		document,
 		__PM_RESOLVER__: resolver,
 	};
+	const Icon = (props) => ({ type: "svg", props, children: [] });
 	const primitives = {
 		Button: (props) => ({ type: "button", props, children: childrenOf(props) }),
 		Modal: (props) => ({ type: "div", props: { ...props, role: "dialog" }, children: childrenOf(props) }),
+		Switch: (props) => ({ type: "button", props: { ...props, role: "switch", "aria-checked": props.checked }, children: [] }),
+		IconPlusOutlineRegular: Icon,
+		IconRefreshOutlineRegular: Icon,
+		IconChevronDownOutlineRegular: Icon,
+		IconCopyOutlineRegular: Icon,
+		IconShareOutlineRegular: Icon,
+		IconTrashOutlineRegular: Icon,
+		IconDatabaseOutlineRegular: Icon,
+		IconCordisPluginOutlineRegular: Icon,
+		IconLinkOutlineRegular: Icon,
+		IconWarningOutlineRegular: Icon,
 	};
 	const modules = {
 		react: makeReact(),
