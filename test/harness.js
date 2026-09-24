@@ -194,8 +194,8 @@ export function makeSlots() {
 }
 
 // ── settingsScope mock (mirrors ctx.settingsScope.bind) ───────────────────────
-export function makeSettingsScope({ sources = [], writable = true, status = "ready" } = {}) {
-	const section = { sources: sources.map((s) => ({ ...s })) };
+export function makeSettingsScope({ sources = [], sourceDefaultsVersion = 1, writable = true, status = "ready" } = {}) {
+	const section = { sources: sources.map((s) => ({ ...s })), sourceDefaultsVersion };
 	const listeners = new Set();
 	let revision = 1;
 	const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
