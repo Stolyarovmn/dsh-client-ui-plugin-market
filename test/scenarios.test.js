@@ -43,16 +43,18 @@ async function setup(sources = []) {
 	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection, remote });
 	exports.apply(ctx);
 	const section = recorded.find((row) => row.options.name === "plugins.bundle.config");
+	const activation = recorded.find((row) => row.options.name === "plugins.bundle.activation");
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("plugin-market"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, section, render, restore };
+	return { exports, locale, scope, calls, installs, section, activation, render, restore };
 }
 
 test("registers marketplace inside the native DSH plugin manager", async () => {
 	const fixture = await setup();
 	try {
 		assert.equal(fixture.section.options.key, "@stolyarovmn/dsh-client-ui-plugin-market");
+		assert.equal(fixture.activation.options.key, "@stolyarovmn/dsh-client-ui-plugin-market");
 		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "configForms", "connection", "remote", "remote.pluginManager"]);
 		assert.equal(fixture.locale.bind("plugin-market")("tab.browse"), "Browse");
 	} finally { fixture.restore(); }
@@ -135,5 +137,37 @@ test("Install uses the native DSH plugin-manager remote and keeps the command fa
 		await settle();
 		assert.deepEqual(fixture.installs, [{ spec: "dsh-demo@1.0.0", options: { activate: false } }]);
 		assert.match(textOf(fixture.render()), /dsh plugin add dsh-demo@1\.0\.0/);
+	} finally { fixture.restore(); }
+});
+
+
+test("activation guidance opens the native marketplace detail page", async () => {
+	const fixture = await setup();
+	try {
+		let opened = 0;
+		let dismissed = 0;
+		const mini = new MiniReact();
+		const restore = mini.installGlobals();
+		try {
+			const tree = mini.render({
+				type: fixture.activation.component,
+				props: {
+					t: fixture.locale.bind("plugin-market"),
+					onOpenDetails: () => { opened += 1; },
+					onDismiss: () => { dismissed += 1; },
+				},
+				children: [],
+			});
+			assert.equal(tree.props.title, "Marketplace ready");
+			const buttons = byTag(tree, "button");
+			const open = buttons.find((button) => textOf(button) === "Open marketplace");
+			const later = buttons.find((button) => textOf(button) === "Later");
+			assert.ok(open);
+			assert.ok(later);
+			open.props.onClick();
+			later.props.onClick();
+			assert.equal(opened, 1);
+			assert.equal(dismissed, 1);
+		} finally { restore(); }
 	} finally { fixture.restore(); }
 });

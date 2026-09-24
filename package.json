@@ -1,7 +1,7 @@
 {
 	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
-	"description": "Federated marketplace discovery for DeepSeek Harness: browse trusted plugin sources, compare metadata, and install through the native Plugin Manager.",
-	"version": "0.3.1",
+	"description": "Plugin marketplace for DeepSeek Harness: enable it, open the installed bundle, then manage Sources and Browse/install plugins through the native Plugin Manager.",
+	"version": "0.3.2",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"
@@ -40,7 +40,8 @@
 		"@deepseek-ai/dsh-client-connection": "0.1.7-rc.1",
 		"@deepseek-ai/schemastery": "^3.18.2",
 		"ipaddr.js": "^2.2.0",
-		"undici": "^7.16.0"
+		"undici": "^7.16.0",
+		"@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.1"
 	},
 	"dsh": {
 		"bundle": {
@@ -53,13 +54,14 @@
 				"@deepseek-ai/dsh-api-remotes",
 				"@deepseek-ai/dsh-client-locale",
 				"@deepseek-ai/dsh-client-ui-settings",
-				"@deepseek-ai/dsh-client-ui-plugin-manager"
+				"@deepseek-ai/dsh-client-ui-plugin-manager",
+				"@deepseek-ai/dsh-client-ui-primitives"
 			]
 		},
 		"catalog": {
 			"category": "ui",
 			"summary": {
-				"en": "Federated marketplace discovery for DeepSeek Harness 0.1.7+: browse trusted sources, compare plugin evidence, and install through the native Plugin Manager.",
+				"en": "Plugin marketplace for DSH 0.1.7+: open the installed bundle, manage Sources, browse plugins, and install through the native Plugin Manager.",
 				"zh": "DeepSeek Harness 0.1.7+ 联合插件市场发现层：浏览可信来源，并通过原生 Plugin Manager 安装。"
 			},
 			"capabilities": [

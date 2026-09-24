@@ -1,6 +1,6 @@
-# Plugin Sources for DeepSeek Harness
+# Marketplace for DeepSeek Harness
 
-A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives entirely inside the native **Plugins** page. Open the installed marketplace bundle to use **Sources** and **Browse**; no separate Settings entry is created.
+A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives entirely inside the native **Plugins** page. npm is connected by default. After enabling the bundle, Harness offers an **Open marketplace** action that takes you straight to **Sources / Browse**.
 
 - **Sources** — connect, enable, disable, share, remove, and health-check catalog sources.
 - **Browse** — search enabled sources as one normalized, deduplicated index, compare release/popularity evidence, keep the `dsh plugin add …` fallback command, or install through the native DSH Plugin Manager Host API.
@@ -25,11 +25,25 @@ The browser never fetches arbitrary catalog URLs. The Host registers the public 
 
 ## Install
 
-```sh
-dsh plugin add @stolyarovmn/dsh-client-ui-plugin-market
+Until the first npm release is published, use the native **Add plugin** dialog and paste the GitHub repository URL:
+
+```text
+https://github.com/Stolyarovmn/dsh-client-ui-plugin-market
 ```
 
-Restart or refresh the Web profile as required by your DSH installation, open **Plugins → Installed**, then open this bundle.
+Or from the CLI:
+
+```sh
+dsh plugin --profile web add https://github.com/Stolyarovmn/dsh-client-ui-plugin-market
+```
+
+After the npm package exists, the short package name works too:
+
+```sh
+dsh plugin --profile web add @stolyarovmn/dsh-client-ui-plugin-market
+```
+
+Enable the bundle. Harness then shows **Open marketplace**; alternatively open **Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market**. npm discovery is available immediately, while **Sources** lets you add GitHub or other catalogs.
 
 The 0.3.x line targets DSH `>=0.1.7-rc.1 <0.2.0`. Source settings use the shared `configForms` service and the UI registers into the native `plugins.bundle.config` slot. Installation uses DSH's own `remote.pluginManager` Host API; the copied `dsh plugin add …` command remains available as a fallback.
 

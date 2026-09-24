@@ -14,7 +14,7 @@ test("package declares both DSH faces and required client services", async () =>
 	assert.equal(pkg.exports["./core"], "./lib/core.js");
 	assert.equal(pkg.dsh.bundle.patch, "./cordis.patch.yml");
 	assert.equal(pkg.dsh.client.platform, "web");
-	for (const dependency of ["@deepseek-ai/dsh-client-connection", "@deepseek-ai/dsh-api-remotes", "@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings", "@deepseek-ai/dsh-client-ui-plugin-manager"]) {
+	for (const dependency of ["@deepseek-ai/dsh-client-connection", "@deepseek-ai/dsh-api-remotes", "@deepseek-ai/dsh-client-locale", "@deepseek-ai/dsh-client-ui-settings", "@deepseek-ai/dsh-client-ui-plugin-manager", "@deepseek-ai/dsh-client-ui-primitives"]) {
 		assert.ok(pkg.dsh.client.inject.includes(dependency), `missing client inject ${dependency}`);
 	}
 	assert.ok(pkg.keywords.includes("dsh-plugin"));
@@ -38,6 +38,8 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /connection\.rpc\.call\(CHANNEL/);
 	assert.match(client, /ctx\.configForms\?\.get\?\.\(NS\)/);
 	assert.match(client, /plugins\.bundle\.config/);
+	assert.match(client, /plugins\.bundle\.activation/);
+	assert.match(client, /Marketplace ready/);
 	assert.match(client, /remote\.pluginManager\.inspect\(spec\)/);
 	assert.match(client, /remote\.pluginManager\.installBundle\(spec, \{ activate: false \}\)/);
 	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section/);
