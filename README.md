@@ -143,7 +143,7 @@ The tests cover manifest wiring, client registration and scenarios, adapters, ma
 
 ## Current scope
 
-Included: source configuration, card-style source management with expandable details, share-to-clipboard, source health, Host-side loading, normalization, deduplication, raw npm text fallback discovery, unified search, source/category tags, package/repository/version details, release-channel badges, GitHub-star evidence, npm 30-day download counts, source ratings when available, zero-value statistics, sorting/filtering, server-side pages of 20/50/100 results, two-line expandable descriptions, direct installation through the native DSH Plugin Manager Host API, and the copy-command fallback.
+Included: source configuration, card-style source management with expandable details, share-to-clipboard, source health, Host-side loading, normalization, deduplication, raw npm text fallback discovery, unified search, source/category tags, package/repository/version details, release-channel badges, GitHub-star evidence, npm 30-day download counts, release/repository freshness, source ratings when available, zero-value statistics, server-side pages of 20/50/100 results, single and composite ranking, on-demand DSH compatibility metadata, two-line expandable descriptions, direct installation through the native DSH Plugin Manager Host API, and the copy-command fallback.
 
 Installed package enable/disable, uninstall, build-script approval, registry selection, and detailed installation diagnostics remain owned by the native DSH Plugins page.
 
@@ -163,3 +163,15 @@ Browse keeps source-provided evidence separate instead of calculating a syntheti
 - Previous `0.2.x` releases target the older `0.1.5-rc.3` settings API.
 
 Compatibility is enforced again by the native DSH Plugin Manager during `inspect()` / installation.
+
+
+### Ranking and maintenance evidence
+
+Browse can sort by Stars, Downloads, Freshest release, Name, or two equal-weight percentile blends:
+
+- **Stars + downloads** — combines GitHub stars and npm monthly download evidence without letting either metric dominate simply because it uses a larger numeric scale.
+- **Downloads + freshness** — combines npm monthly downloads with latest npm release time; repository activity is used as a fallback when a release timestamp is unavailable.
+
+npm search already returns monthly download, update, and maintenance evidence, so large result sets are ranked from source-native metadata rather than by issuing thousands of extra requests. Secondary npm download lookups are limited to the visible page.
+
+The card shows compact release/repository age. Clicking the **DSH ?** badge fetches that exact npm version's manifest and shows `peerDependencies["@deepseek-ai/dsh"]` when the publisher declared it. If the package does not declare a root DSH range but does declare peers such as `@deepseek-ai/dsh-settings`, the UI labels them as **DSH API peers** rather than pretending they are a full Harness compatibility guarantee.
