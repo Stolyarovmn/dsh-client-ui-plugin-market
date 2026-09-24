@@ -1,0 +1,60 @@
+{
+	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
+	"description": "Federated Plugin Sources hub for DeepSeek Harness: host-side catalogs, health, normalized search, deduplication, and install specs in Settings",
+	"version": "0.2.0",
+	"author": {
+		"name": "Stolyarovmn",
+		"url": "https://github.com/Stolyarovmn"
+	},
+	"type": "module",
+	"main": "lib/index.js",
+	"exports": {
+		".": "./lib/index.js",
+		"./client": "./lib/client.js",
+		"./core": "./lib/core.js",
+		"./package.json": "./package.json"
+	},
+	"scripts": {
+		"test": "node --test test/*.test.js",
+		"test:pack": "npm pack --dry-run --json"
+	},
+	"files": [
+		"lib/*.js",
+		"cordis.patch.yml",
+		"README.md",
+		"LICENSE"
+	],
+	"keywords": [
+		"dsh",
+		"deepseek-harness",
+		"plugin",
+		"marketplace",
+		"registry",
+		"plugin-sources",
+		"federated-search",
+		"settings"
+	],
+	"dependencies": {
+		"@deepseek-ai/dsh-client-connection": "0.1.5-rc.3",
+		"@deepseek-ai/schemastery": "^3.18.2",
+		"ipaddr.js": "^2.2.0",
+		"undici": "^7.16.0"
+	},
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		},
+		"client": {
+			"platform": "web",
+			"inject": [
+				"@deepseek-ai/dsh-client-connection",
+				"@deepseek-ai/dsh-client-locale",
+				"@deepseek-ai/dsh-client-ui-settings"
+			]
+		}
+	},
+	"license": "MIT",
+	"publishConfig": {
+		"access": "public"
+	}
+}

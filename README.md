@@ -1,0 +1,132 @@
+# Plugin Sources for DeepSeek Harness
+
+A federated plugin-catalog hub for DeepSeek Harness. It adds **Settings → Plugin Sources** with two views:
+
+- **Sources** — connect, enable, disable, remove, and check catalog sources.
+- **Browse** — search all enabled sources as one normalized, deduplicated index and copy a `dsh plugin add …` command.
+
+This package is not another standalone marketplace. Marketplaces, registries, repositories, and private catalogs are source types behind one Host-side adapter contract.
+
+## Architecture
+
+```text
+Settings UI
+  ├─ remote.settings → durable source configuration only
+  └─ authenticated Connection RPC (/plugin-sources)
+       └─ Host adapters → external catalogs
+            └─ normalize → deduplicate → search → source attribution
+```
+
+The browser never fetches arbitrary catalog URLs. The Host registers the public DSH generic Connection RPC seam, which inherits the platform Host/Origin fence and browser-session authentication. Catalog results and health are transient RPC values and are not written to `settings.yaml`.
+
+## Install
+
+```sh
+dsh plugin add @stolyarovmn/dsh-client-ui-plugin-market
+```
+
+Restart or refresh the Web profile as required by your DSH installation, then open **Settings → Plugin Sources**.
+
+For profile development, add the package to both `dependencies` and `dsh.profile.bundles`. Its `cordis.patch.yml` activates the Host and Web faces.
+
+## Source types
+
+| Type | Behavior |
+| --- | --- |
+| `dsh-plugin-shop` | JSON catalog adapter for a dsh-plugin-shop endpoint supplied in `url`. |
+| `dshplugin-app` | JSON catalog adapter for a dshplugin.app-compatible endpoint supplied in `url`. |
+| `npm` | npm registry search; defaults to `https://registry.npmjs.org/-/v1/search`. |
+| `github` | GitHub repository search; defaults to `https://api.github.com/search/repositories`. |
+| `custom-json` | Public JSON catalog. |
+| `corporate` | JSON catalog intended for explicitly configured private networks and environment-based auth. |
+
+`npm` and `github` may override their API URL. Other JSON-backed adapters require a URL.
+
+### JSON catalog shape
+
+A catalog may be a bare array or an object containing `plugins`, `items`, or `results`:
+
+```json
+{
+  "plugins": [
+    {
+      "id": "pdf-tools",
+      "name": "PDF Tools",
+      "description": "Extract and merge PDF documents.",
+      "version": "1.2.0",
+      "package": "@example/dsh-plugin-pdf",
+      "repository": "https://github.com/example/dsh-plugin-pdf",
+      "install": {
+        "type": "npm",
+        "spec": "@example/dsh-plugin-pdf@1.2.0"
+      },
+      "evidence": {
+        "verified": true,
+        "compatibility": "dsh >=0.1.5"
+      }
+    }
+  ]
+}
+```
+
+Identity precedence is npm package, canonical repository URL, then `source-id:source-specific-id`. Duplicate records retain all source badges and known versions. npm install specs are preferred when merged records offer both npm and git installs.
+
+## Authentication and private registries
+
+Browser-editable settings never select or contain credentials. An operator may map a specific source id to a specific Host environment variable in Cordis config (see below). The Host resolves only that allowlisted mapping and never returns its value to the browser.
+
+Authenticated requests require HTTPS and cannot redirect to another origin. Private, loopback, link-local, multicast, reserved, and other non-global-unicast destinations are blocked by default. An operator must add a trusted source id to Host config `privateSourceIds` before that source may reach a private network; browser settings cannot grant this permission.
+
+Host protections include:
+
+- HTTP(S)-only URLs and no URL-embedded credentials;
+- global-unicast address classification and DNS pinning in the actual connection;
+- destination revalidation for every redirect;
+- one end-to-end deadline covering DNS, redirects, headers, and body;
+- redirect, source, concurrency, response-byte, per-source-result, aggregate-result, and RPC-size limits;
+- malformed JSON and non-success HTTP containment per source;
+- shell-metacharacter filtering and HTTPS-only git install specs.
+
+A copied command still installs third-party code. Review its source and package before running it. A failed source produces health/error data and zero results; no sample or synthetic plugins are injected.
+
+## Host configuration
+
+The Cordis entry accepts optional limits:
+
+```yaml
+- id: plugin-market
+  name: '@stolyarovmn/dsh-client-ui-plugin-market'
+  config:
+    timeoutMs: 10000
+    maxResponseBytes: 2097152
+    maxPlugins: 500
+    maxSources: 20
+    maxTotalPlugins: 1000
+    maxRpcBytes: 4194304
+    concurrency: 4
+    privateSourceIds:
+      - corporate
+    auth:
+      - sourceId: corporate
+        tokenEnv: DSH_CORPORATE_REGISTRY_TOKEN
+```
+
+## Development
+
+```sh
+npm install
+npm test
+npm run test:pack
+```
+
+The tests cover manifest wiring, client registration and scenarios, adapters, malformed/unavailable sources, SSRF boundaries, size limits, normalization, identity precedence, deduplication, search, and absence of production sample fallback.
+
+## MVP scope
+
+Included: source configuration, source health, Host-side loading, normalization, deduplication, unified search, source badges, package/repository/version details, install specs, and copy command.
+
+Deferred: executing installation, updates, removals, signatures, review workflows, and marketplace publishing.
+
+## License
+
+MIT

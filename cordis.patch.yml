@@ -1,0 +1,6 @@
+# Activated when this package is listed in a DSH profile's bundles.
+# The Host registers source settings and authenticated RPC; the Web client adds
+# Settings → Plugin Sources.
+- insert:
+    - id: plugin-market
+      name: '@stolyarovmn/dsh-client-ui-plugin-market'
