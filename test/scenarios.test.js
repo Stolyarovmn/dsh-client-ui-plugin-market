@@ -123,6 +123,33 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 });
 
 
+test("Browse combines freshness, category, and DSH metadata filters in Host requests", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+		assert.equal(byId(tree, "pm-freshness").props.value, 0);
+		assert.equal(byId(tree, "pm-category").props.value, "");
+		assert.equal(byId(tree, "pm-dsh-metadata").props.value, "any");
+
+		byId(tree, "pm-freshness").props.onChange({ target: { value: "90" } });
+		tree = fixture.render();
+		byId(tree, "pm-category").props.onChange({ target: { value: "ui" } });
+		tree = fixture.render();
+		byId(tree, "pm-dsh-metadata").props.onChange({ target: { value: "declared" } });
+		fixture.render();
+		await settle(260);
+		await settle();
+
+		const browseCalls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/browse");
+		assert.ok(browseCalls.some((call) => call.payload.freshnessDays === 90 && call.payload.tag === "ui" && call.payload.dshMetadata === "declared"));
+	} finally { fixture.restore(); }
+});
+
 test("Browse exposes composite sorts and resolves DSH compatibility on demand", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
