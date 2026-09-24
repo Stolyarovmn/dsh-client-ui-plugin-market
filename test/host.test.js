@@ -86,6 +86,9 @@ test("validates paged browse payload", async () => {
 		{ pageSize: 25 },
 		{ sort: "unknown" },
 		{ stableOnly: "yes" },
+		{ freshnessDays: 31 },
+		{ tag: "made-up" },
+		{ dshMetadata: "guessed" },
 	]) {
 		const invalid = await call("browse", payload);
 		assert.equal(invalid.ok, false);

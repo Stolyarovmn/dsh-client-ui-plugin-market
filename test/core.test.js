@@ -351,6 +351,43 @@ test("reads explicit DSH compatibility and DSH API peers from npm version metada
 	assert.deepEqual(peersOnly.dshPeers, [{ dependency: "@deepseek-ai/dsh-settings", range: "^0.1.2-alpha.2" }]);
 });
 
+test("combines stable, freshness, category, and declared-DSH metadata filters", async () => {
+	const rows = [
+		{ name: "fresh-ui", package: "fresh-ui", version: "1.0.0", tags: ["ui"], evidence: { releasedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(), dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } },
+		{ name: "fresh-tool", package: "fresh-tool", version: "1.0.0", tags: ["tool"], evidence: { releasedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(), dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } },
+		{ name: "old-ui", package: "old-ui", version: "1.0.0", tags: ["ui"], evidence: { releasedAt: new Date(Date.now() - 500 * 86_400_000).toISOString(), dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } },
+		{ name: "fresh-ui-unknown", package: "fresh-ui-unknown", version: "1.0.0", tags: ["ui"], evidence: { releasedAt: new Date(Date.now() - 5 * 86_400_000).toISOString() } },
+		{ name: "fresh-ui-beta", package: "fresh-ui-beta", version: "1.0.0-beta.1", tags: ["ui"], evidence: { releasedAt: new Date(Date.now() - 5 * 86_400_000).toISOString(), dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } },
+	];
+	const result = await browseSources([source()], "", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse(rows),
+		enrichDownloads: false,
+		pageSize: 20,
+		stableOnly: true,
+		freshnessDays: 30,
+		tag: "ui",
+		dshMetadata: "declared",
+	});
+	assert.deepEqual(result.plugins.map((plugin) => plugin.name), ["fresh-ui"]);
+	assert.equal(result.total, 1);
+});
+
+test("can filter unknown DSH metadata without probing npm manifests", async () => {
+	const rows = [
+		{ name: "declared", package: "declared", version: "1.0.0", evidence: { dshCompatibility: ">=0.1.7-rc.1" } },
+		{ name: "unknown", package: "unknown", version: "1.0.0" },
+	];
+	const result = await browseSources([source()], "", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse(rows),
+		enrichDownloads: false,
+		pageSize: 20,
+		dshMetadata: "unknown",
+	});
+	assert.deepEqual(result.plugins.map((plugin) => plugin.name), ["unknown"]);
+});
+
 test("caps source count and aggregate plugin results", async () => {
 	await assert.rejects(() => browseSources([source(), source({ id: "two" })], "", { maxSources: 1 }), /at most 1/);
 	const result = await browseSources([source()], "", {
