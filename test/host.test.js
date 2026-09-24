@@ -84,6 +84,8 @@ test("validates paged browse payload", async () => {
 		{ query: 42 },
 		{ page: 0 },
 		{ pageSize: 25 },
+		{ healthOnly: "yes" },
+		{ refreshRevision: -1 },
 		{ sort: "unknown" },
 		{ sorts: "stars" },
 		{ sorts: [{ key: "unknown", direction: "desc" }] },
@@ -98,6 +100,13 @@ test("validates paged browse payload", async () => {
 		assert.equal(invalid.ok, false);
 		assert.equal(invalid.error.code, "plugin-sources/invalid-request");
 	}
+});
+
+test("serves source health through the Browse route", async () => {
+	const { call } = hostFixture([{ id: "npm", name: "npm", type: "npm", enabled: false }]);
+	const result = await call("browse", { healthOnly: true });
+	assert.equal(result.ok, true);
+	assert.deepEqual(result.value.sources[0].health, { ok: false, disabled: true });
 });
 
 test("validates plugin detail requests before npm metadata lookup", async () => {
