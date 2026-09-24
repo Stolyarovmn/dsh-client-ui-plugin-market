@@ -35,7 +35,7 @@ For profile development, add the package to both `dependencies` and `dsh.profile
 | --- | --- |
 | `dsh-plugin-shop` | JSON catalog adapter for a dsh-plugin-shop endpoint supplied in `url`. |
 | `dshplugin-app` | JSON catalog adapter for a dshplugin.app-compatible endpoint supplied in `url`. |
-| `npm` | npm registry discovery across `dsh-plugin`, `deepseek-harness`, `deepseek-harness-plugin`, and `dsh-plugins`; defaults to `https://registry.npmjs.org/-/v1/search`. |
+| `npm` | npm registry discovery across `dsh-plugin`, `deepseek-harness`, `deepseek-harness-plugin`, and `dsh-plugins`, plus a raw text fallback filtered back to those DSH keywords; defaults to `https://registry.npmjs.org/-/v1/search`. |
 | `github` | GitHub topic discovery across `dsh-plugin`, `deepseek-harness-plugin`, and `dsh-plugins`; defaults to `https://api.github.com/search/repositories`. |
 | `custom-json` | Public JSON catalog. |
 | `corporate` | JSON catalog intended for explicitly configured private networks and environment-based auth. |
