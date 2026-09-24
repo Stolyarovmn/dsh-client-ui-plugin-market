@@ -26,7 +26,7 @@ async function setup(sources = []) {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
 				if (endpoint === "plugin-sources/health") return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
-				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin", version: "1.0.0", tags: ["ui", "schedule"], install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], sources: [] } };
+				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12 }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], sources: [] } };
 				return { ok: false, error: { message: "unknown" } };
 			},
 		},
@@ -98,5 +98,10 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.ok(links.some((link) => link.props.href === "https://www.npmjs.com/package/dsh-demo" && link.props.target === "_blank" && link.props.rel === "noopener noreferrer"));
 		assert.match(textOf(tree), /ui/);
 		assert.match(textOf(tree), /schedule/);
+		assert.match(textOf(tree), /stable/);
+		assert.match(textOf(tree), /42/);
+		assert.match(textOf(tree), /1\.2K/);
+		assert.match(textOf(tree), /4\.8/);
+		assert.ok(byTag(tree, "select").some((select) => select.props.value === "relevance"));
 	} finally { fixture.restore(); }
 });
