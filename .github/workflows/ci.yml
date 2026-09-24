@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm ci
+      - run: npm install --package-lock=false
       - run: npm test
       - run: npm run test:pack
 
@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 11
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -34,7 +34,7 @@ jobs:
         env:
           DSH_HOME: ${{ runner.temp }}/dsh-home
         run: |
-          pnpm dlx @deepseek-ai/dsh@0.1.5-rc.3 plugin --profile smoke add "file:$GITHUB_WORKSPACE"
-          pnpm dlx @deepseek-ai/dsh@0.1.5-rc.3 --profile smoke --dump-config > /tmp/dsh-config.txt
+          pnpm dlx @deepseek-ai/dsh@0.1.7-rc.1 plugin --profile smoke add "file:$GITHUB_WORKSPACE"
+          pnpm dlx @deepseek-ai/dsh@0.1.7-rc.1 --profile smoke --dump-config > /tmp/dsh-config.txt
           grep -F "plugin-market" /tmp/dsh-config.txt
           grep -F "@stolyarovmn/dsh-client-ui-plugin-market" /tmp/dsh-config.txt
