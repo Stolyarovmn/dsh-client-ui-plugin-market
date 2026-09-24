@@ -1,7 +1,7 @@
 {
 	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
 	"description": "Plugin marketplace for DeepSeek Harness: enable it, open the installed bundle, then manage Sources and Browse/install plugins through the native Plugin Manager.",
-	"version": "0.3.8",
+	"version": "0.3.1",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"

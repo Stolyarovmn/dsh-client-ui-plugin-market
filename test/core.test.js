@@ -118,6 +118,23 @@ test("npm adapter searches canonical and compatibility discovery keywords then d
 	}
 });
 
+test("GitHub health uses one lightweight search and reports total_count", async () => {
+	const queries = [];
+	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
+		fetchImpl: async (url) => {
+			queries.push(decodeURIComponent(String(url)));
+			return jsonResponse({ total_count: 269, items: [{ id: 1, name: "demo", html_url: "https://github.com/acme/demo" }] });
+		},
+		resolveHost: publicDns,
+	});
+	const health = await adapter.health();
+	assert.equal(health.ok, true);
+	assert.equal(health.count, 269);
+	assert.equal(queries.length, 1);
+	assert.match(queries[0], /topic:dsh-plugin/);
+	assert.match(queries[0], /per_page=1/);
+});
+
 test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
