@@ -9,7 +9,7 @@ import {
 	makeCtx,
 	makeLocale,
 	makeSettingsScope,
-	makeConfigFormsService,
+	makeSettingsScopeService,
 	makeSlots,
 	textOf,
 } from "./harness.js";
@@ -32,7 +32,7 @@ async function setup(sources = []) {
 		},
 	};
 	const slots = makeSlots();
-	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection });
+	const { ctx, recorded } = makeCtx(locale, { settingsScope: makeSettingsScopeService(scope), slots, connection });
 	exports.apply(ctx);
 	const section = recorded.find((row) => row.options.name === "settings.plugins.tab");
 	const mini = new MiniReact({ document });
@@ -46,7 +46,7 @@ test("registers native Plugin Sources settings section and Connection dependency
 	try {
 		assert.equal(fixture.section.options.id, "sources");
 		assert.equal(fixture.section.options.label(), "Plugin Sources");
-		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "configForms", "connection"]);
+		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "settingsScope", "connection"]);
 		assert.equal(fixture.locale.bind("plugin-market")("tab.browse"), "Browse");
 	} finally { fixture.restore(); }
 });

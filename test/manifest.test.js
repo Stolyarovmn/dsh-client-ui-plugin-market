@@ -34,9 +34,9 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	const client = await read("lib/client.js");
 	const host = await read("lib/index.js");
 	assert.match(client, /connection\.rpc\.call\(CHANNEL/);
-	assert.match(client, /configForms\?\.get\?\.\(NS\)/);
+	assert.match(client, /settingsScope\?\.bind\?\.\(\{ namespace: NS \}\)/);
 	assert.match(client, /settings\.plugins\.tab/);
-	assert.doesNotMatch(client, /settingsScope|settings\.section/);
+	assert.doesNotMatch(client, /configForms|settings\.section/);
 	assert.match(host, /connection\.rpc\.handle\(RPC_CHANNEL/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
 	assert.doesNotMatch(client, /sampleCatalog|__PM_RESOLVER__/);

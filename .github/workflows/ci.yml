@@ -34,7 +34,7 @@ jobs:
         env:
           DSH_HOME: ${{ runner.temp }}/dsh-home
         run: |
-          pnpm dlx @deepseek-ai/dsh plugin --profile smoke add "file:$GITHUB_WORKSPACE"
-          pnpm dlx @deepseek-ai/dsh --profile smoke --dump-config > /tmp/dsh-config.txt
+          pnpm dlx @deepseek-ai/dsh@0.1.5-rc.3 plugin --profile smoke add "file:$GITHUB_WORKSPACE"
+          pnpm dlx @deepseek-ai/dsh@0.1.5-rc.3 --profile smoke --dump-config > /tmp/dsh-config.txt
           grep -F "plugin-market" /tmp/dsh-config.txt
           grep -F "@stolyarovmn/dsh-client-ui-plugin-market" /tmp/dsh-config.txt

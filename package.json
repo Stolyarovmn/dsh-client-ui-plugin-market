@@ -1,7 +1,7 @@
 {
 	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
 	"description": "Federated Plugin Sources hub for DeepSeek Harness: host-side catalogs, health, normalized search, deduplication, and install specs in Settings",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"
