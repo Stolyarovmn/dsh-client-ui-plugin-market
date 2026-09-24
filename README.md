@@ -35,12 +35,12 @@ For profile development, add the package to both `dependencies` and `dsh.profile
 | --- | --- |
 | `dsh-plugin-shop` | JSON catalog adapter for a dsh-plugin-shop endpoint supplied in `url`. |
 | `dshplugin-app` | JSON catalog adapter for a dshplugin.app-compatible endpoint supplied in `url`. |
-| `npm` | npm registry search; defaults to `https://registry.npmjs.org/-/v1/search`. |
-| `github` | GitHub repository search; defaults to `https://api.github.com/search/repositories`. |
+| `npm` | npm registry discovery across `dsh-plugin`, `deepseek-harness`, `deepseek-harness-plugin`, and `dsh-plugins`; defaults to `https://registry.npmjs.org/-/v1/search`. |
+| `github` | GitHub topic discovery across `dsh-plugin`, `deepseek-harness-plugin`, and `dsh-plugins`; defaults to `https://api.github.com/search/repositories`. |
 | `custom-json` | Public JSON catalog. |
 | `corporate` | JSON catalog intended for explicitly configured private networks and environment-based auth. |
 
-`npm` and `github` may override their API URL. Other JSON-backed adapters require a URL.
+`npm` and `github` may override their API URL. Discovery aliases are queried independently and deduplicated by package/repository identity. Category-specific topics such as `dsh-plugin-market` or `dsh-plugin-theme` are intentionally not hardcoded as primary discovery signals; plugin repositories should also advertise a general plugin topic. Other JSON-backed adapters require a URL.
 
 ### JSON catalog shape
 

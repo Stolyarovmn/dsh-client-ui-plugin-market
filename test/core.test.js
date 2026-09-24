@@ -56,17 +56,39 @@ test("custom JSON adapter accepts plugins envelope and applies result cap", asyn
 	assert.equal(plugins[0].identity.package, "one");
 });
 
-test("npm adapter creates normalized package and install spec", async () => {
+test("npm adapter searches canonical and compatibility discovery keywords then deduplicates", async () => {
+	const queries = [];
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
 		fetchImpl: async (url) => {
-			assert.match(String(url), /keywords%3Adeepseek-harness-plugin/);
-			return jsonResponse({ objects: [{ package: { name: "dsh-demo", version: "2.0.0", description: "Demo", links: { repository: "https://github.com/acme/demo" } } }] });
+			queries.push(decodeURIComponent(String(url)));
+			return jsonResponse({ objects: [{ package: { name: "@stolyarovmn/dsh-client-ui-schedule-tab", version: "0.4.1", description: "Schedule", links: { repository: "https://github.com/Stolyarovmn/dsh-schedule-tab" } } }] });
 		},
 		resolveHost: publicDns,
 	});
-	const [plugin] = await adapter.search("demo");
-	assert.equal(plugin.identity.package, "dsh-demo");
-	assert.deepEqual(plugin.install, { type: "npm", spec: "dsh-demo@2.0.0" });
+	const plugins = await adapter.search("schedule");
+	assert.equal(plugins.length, 1);
+	assert.equal(plugins[0].identity.package, "@stolyarovmn/dsh-client-ui-schedule-tab");
+	assert.deepEqual(plugins[0].install, { type: "npm", spec: "@stolyarovmn/dsh-client-ui-schedule-tab@0.4.1" });
+	for (const keyword of ["dsh-plugin", "deepseek-harness", "deepseek-harness-plugin", "dsh-plugins"]) {
+		assert.ok(queries.some((query) => query.includes(`keywords:${keyword}`)), `missing npm discovery keyword ${keyword}`);
+	}
+});
+
+test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
+	const queries = [];
+	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
+		fetchImpl: async (url) => {
+			queries.push(decodeURIComponent(String(url)));
+			return jsonResponse({ items: [{ id: 1, name: "dsh-schedule-tab", description: "Schedule", html_url: "https://github.com/Stolyarovmn/dsh-schedule-tab", stargazers_count: 1 }] });
+		},
+		resolveHost: publicDns,
+	});
+	const plugins = await adapter.search("schedule");
+	assert.equal(plugins.length, 1);
+	assert.equal(plugins[0].identity.repository, "https://github.com/stolyarovmn/dsh-schedule-tab");
+	for (const topic of ["dsh-plugin", "deepseek-harness-plugin", "dsh-plugins"]) {
+		assert.ok(queries.some((query) => query.includes(`topic:${topic}`)), `missing GitHub discovery topic ${topic}`);
+	}
 });
 
 test("blocks private destinations and redirects before the next request", async () => {
