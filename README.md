@@ -69,7 +69,7 @@ A catalog may be a bare array or an object containing `plugins`, `items`, or `re
 }
 ```
 
-Identity precedence is npm package, canonical repository URL, then `source-id:source-specific-id`. Duplicate records retain all source badges and known versions. npm install specs are preferred when merged records offer both npm and git installs.
+Identity precedence is npm package, canonical repository URL, then `source-id:source-specific-id`. Duplicate records retain all source badges, known versions, and normalized category tags. Browse tags are derived only from explicit catalog metadata such as npm keywords, GitHub topics, or catalog category fields; descriptions are not guessed. npm install specs are preferred when merged records offer both npm and git installs.
 
 ## Authentication and private registries
 
@@ -125,7 +125,7 @@ The tests cover manifest wiring, client registration and scenarios, adapters, ma
 
 ## MVP scope
 
-Included: source configuration, source health, Host-side loading, normalization, deduplication, unified search, source badges, package/repository/version details, install specs, and copy command.
+Included: source configuration, source health, Host-side loading, normalization, deduplication, unified search, source badges, category tags, package/repository/version details, install specs, and inline copy-command action.
 
 Deferred: executing installation, updates, removals, signatures, review workflows, and marketplace publishing.
 
