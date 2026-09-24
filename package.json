@@ -1,7 +1,7 @@
 {
-	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
-	"description": "Plugin marketplace for DeepSeek Harness: enable it, open the installed bundle, then manage Sources and Browse/install plugins through the native Plugin Manager.",
-	"version": "0.3.4",
+	"name": "@stolyarovmn/dsh-ui-registry-aggregator",
+	"description": "Federated plugin registry aggregator for DeepSeek Harness: combine trusted sources, search one index, and install through the native Plugin Manager.",
+	"version": "0.4.0",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"
@@ -30,11 +30,12 @@
 		"deepseek-harness",
 		"dsh-plugin",
 		"plugin",
-		"marketplace",
 		"registry",
+		"aggregator",
+		"registry-aggregator",
+		"plugin-registry",
 		"plugin-sources",
-		"federated-search",
-		"settings"
+		"federated-search"
 	],
 	"dependencies": {
 		"@deepseek-ai/dsh-client-connection": "0.1.7-rc.1",
@@ -61,8 +62,8 @@
 		"catalog": {
 			"category": "ui",
 			"summary": {
-				"en": "Plugin marketplace for DSH 0.1.7+: open the installed bundle, manage Sources, browse plugins, and install through the native Plugin Manager.",
-				"zh": "DeepSeek Harness 0.1.7+ 联合插件市场发现层：浏览可信来源，并通过原生 Plugin Manager 安装。"
+				"en": "Registry Aggregator for DSH 0.1.7+: combine trusted plugin sources, search them as one index, and install through the native Plugin Manager.",
+				"zh": "DeepSeek Harness 0.1.7+ 插件注册源聚合器：聚合可信来源、统一搜索，并通过原生 Plugin Manager 安装。"
 			},
 			"capabilities": [
 				"slots",
@@ -79,5 +80,13 @@
 	"peerDependencies": {
 		"@deepseek-ai/dsh": ">=0.1.7-rc.1 <0.2.0"
 	},
-	"icon": "./icon.svg"
+	"icon": "./icon.svg",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Stolyarovmn/dsh-ui-registry-aggregator.git"
+	},
+	"homepage": "https://github.com/Stolyarovmn/dsh-ui-registry-aggregator#readme",
+	"bugs": {
+		"url": "https://github.com/Stolyarovmn/dsh-ui-registry-aggregator/issues"
+	}
 }
