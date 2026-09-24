@@ -32,6 +32,7 @@ test("host entry keeps namespace metadata through the real Cordis Loader export 
 	assert.equal(typeof host.apply, "function");
 	assert.equal(host.name, "plugin-market");
 	assert.equal(typeof host.Config?.["~standard"]?.validate, "function");
+	assert.equal(host.Config?.dict?.sources?.meta?.volatile, true, "sources must be projected by DSH configForms");
 
 	// Mirror DSH 0.1.7 Loader.unwrapExports: it prefers .default when present.
 	const unwrapped = host.default ?? host;
