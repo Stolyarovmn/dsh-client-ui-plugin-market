@@ -1,7 +1,7 @@
 {
 	"name": "@stolyarovmn/dsh-client-ui-plugin-market",
 	"description": "Federated Plugin Sources hub for DeepSeek Harness: host-side catalogs, health, normalized search, deduplication, and install specs in Settings",
-	"version": "0.2.6",
+	"version": "0.3.0",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"
@@ -36,10 +36,12 @@
 		"settings"
 	],
 	"dependencies": {
-		"@deepseek-ai/dsh-client-connection": "0.1.5-rc.3",
+		"@deepseek-ai/dsh-client-connection": "0.1.7-rc.1",
 		"@deepseek-ai/schemastery": "^3.18.2",
 		"ipaddr.js": "^2.2.0",
-		"undici": "^7.16.0"
+		"undici": "^7.16.0",
+		"@deepseek-ai/dsh-api-remotes": "0.1.7-rc.1",
+		"@deepseek-ai/dsh-client-ui-settings": "0.1.7-rc.1"
 	},
 	"dsh": {
 		"bundle": {
@@ -49,16 +51,17 @@
 			"platform": "web",
 			"inject": [
 				"@deepseek-ai/dsh-client-connection",
+				"@deepseek-ai/dsh-api-remotes",
 				"@deepseek-ai/dsh-client-locale",
 				"@deepseek-ai/dsh-client-ui-settings",
-				"@deepseek-ai/dsh-client-ui-settings-plugins"
+				"@deepseek-ai/dsh-client-ui-plugin-manager"
 			]
 		},
 		"catalog": {
 			"category": "ui",
 			"summary": {
-				"en": "Federated Plugin Sources hub for DeepSeek Harness with Host-side catalogs, health checks, deduplication, and unified search.",
-				"zh": "DeepSeek Harness 联合插件源中心：Host 端目录、健康检查、去重和统一搜索。"
+				"en": "Federated marketplace discovery for DeepSeek Harness 0.1.7+: browse trusted sources and install through the native Plugin Manager.",
+				"zh": "DeepSeek Harness 0.1.7+ 联合插件市场发现层：浏览可信来源，并通过原生 Plugin Manager 安装。"
 			},
 			"capabilities": [
 				"slots",
@@ -70,5 +73,8 @@
 	"license": "MIT",
 	"publishConfig": {
 		"access": "public"
+	},
+	"peerDependencies": {
+		"@deepseek-ai/dsh": ">=0.1.7-rc.1 <0.2.0"
 	}
 }
