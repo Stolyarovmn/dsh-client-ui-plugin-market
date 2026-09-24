@@ -1,0 +1,47 @@
+name: Publish to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Configure npm registry without token auth
+        run: npm config set registry https://registry.npmjs.org/
+
+      - name: Update npm for trusted publishing
+        run: npm install --global npm@latest
+
+      - name: Verify release tag matches package version
+        if: github.event_name == 'release'
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          test "${{ github.event.release.tag_name }}" = "v$VERSION"
+
+      - name: Install test dependencies
+        run: npm install --package-lock=false --legacy-peer-deps
+
+      - name: Test package
+        run: npm test
+
+      - name: Verify package contents
+        run: npm run test:pack
+
+      - name: Publish
+        run: npm publish --access public --provenance
