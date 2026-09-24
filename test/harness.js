@@ -1,5 +1,5 @@
 /*
- * Test harness for the plugin-market client bundle.
+ * Test harness for the Registry Aggregator client bundle.
  *
  * Executes the REAL lib/client.js bundle (the exact file the browser runs)
  * against a minimal React-compatible runtime plus a mock window/document, so
@@ -71,6 +71,11 @@ function bindHooks(hookArr, effectFn) {
 		useEffect(fn, deps) {
 			const i = idx++;
 			effectFn(fn, deps, i);
+		},
+		useRef(initial) {
+			const i = idx++;
+			if (!(i in hookArr)) hookArr[i] = { current: initial };
+			return hookArr[i];
 		},
 		useMemo(fn, deps) {
 			const i = idx++;
@@ -159,6 +164,7 @@ export const makeJsxRuntime = () => ({
 export const makeReact = () => ({
 	useState: (initial) => active.hooks.useState(initial),
 	useEffect: (fn, deps) => active.hooks.useEffect(fn, deps),
+	useRef: (initial) => active.hooks.useRef(initial),
 	useMemo: (fn, deps) => active.hooks.useMemo(fn, deps),
 });
 
@@ -264,6 +270,13 @@ export async function loadBundle({ resolver } = {}) {
 		IconWarningOutlineRegular: Icon,
 		IconSearchOutlineRegular: Icon,
 		IconClockOutlineRegular: Icon,
+		IconDownloadOutlineRegular: Icon,
+		IconCheckOutlineRegular: Icon,
+		IconChevronUpOutlineRegular: Icon,
+		IconChevronLeftOutlineRegular: Icon,
+		IconChevronRightOutlineRegular: Icon,
+		IconChevronsUpDownOutlineRegular: Icon,
+		IconFlatListOutlineRegular: Icon,
 	};
 	const modules = {
 		react: makeReact(),

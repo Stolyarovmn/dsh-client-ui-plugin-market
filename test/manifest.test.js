@@ -8,6 +8,8 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 
 test("package declares both DSH faces and required client services", async () => {
 	const pkg = JSON.parse(await read("package.json"));
+	assert.equal(pkg.name, "@stolyarovmn/dsh-ui-registry-aggregator");
+	assert.equal(pkg.version, "0.4.0");
 	assert.equal(pkg.type, "module");
 	assert.equal(pkg.main, "lib/index.js");
 	assert.equal(pkg.exports["./client"], "./lib/client.js");
@@ -30,7 +32,7 @@ test("host entry keeps namespace metadata through the real Cordis Loader export 
 	const host = await import(new URL("../lib/index.js", import.meta.url));
 	assert.equal("default" in host, false, "default export makes Loader.unwrapExports discard Config/inject metadata");
 	assert.equal(typeof host.apply, "function");
-	assert.equal(host.name, "plugin-market");
+	assert.equal(host.name, "registry-aggregator");
 	assert.equal(typeof host.Config?.["~standard"]?.validate, "function");
 	assert.equal(host.Config?.dict?.sources?.meta?.volatile, true, "sources must be projected by DSH configForms");
 
@@ -42,8 +44,8 @@ test("host entry keeps namespace metadata through the real Cordis Loader export 
 
 test("bundle patch activates this package exactly once", async () => {
 	const patch = await read("cordis.patch.yml");
-	assert.match(patch, /- id: plugin-market/);
-	assert.equal((patch.match(/@stolyarovmn\/dsh-client-ui-plugin-market/g) ?? []).length, 1);
+	assert.match(patch, /- id: registry-aggregator/);
+	assert.equal((patch.match(/@stolyarovmn\/dsh-ui-registry-aggregator/g) ?? []).length, 1);
 });
 
 test("production client uses Connection RPC and contains no arbitrary remote fetch or sample fallback", async () => {
@@ -53,9 +55,9 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /ctx\.configForms\?\.get\?\.\(NS\)/);
 	assert.match(client, /plugins\.bundle\.config/);
 	assert.match(client, /plugins\.bundle\.activation/);
-	assert.match(client, /Marketplace ready/);
+	assert.match(client, /Registry Aggregator ready/);
 	assert.match(client, /remote\.pluginManager\.inspect\(spec\)/);
-	assert.match(client, /remote\.pluginManager\.installBundle\(spec, \{ activate: false \}\)/);
+	assert.match(client, /remote\.pluginManager\.installBundle\(spec, \{ enabled: true, registry: inspection\.value\.registry \}\)/);
 	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section/);
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);

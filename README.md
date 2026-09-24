@@ -1,68 +1,70 @@
-# Marketplace for DeepSeek Harness
+# Registry Aggregator for DeepSeek Harness
 
-A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives entirely inside the native **Plugins** page. npm and GitHub are connected by default so package downloads and repository-star evidence can be merged immediately. After enabling the bundle, Harness offers an **Open marketplace** action that takes you straight to **Sources / Browse**.
+Registry Aggregator is a federated plugin-discovery layer for DeepSeek Harness. It combines multiple plugin registries, repositories, and JSON catalogs into one normalized index while leaving installation, enable/disable, and removal to the native DSH Plugin Manager.
 
-- **Sources** — connect, enable, disable, share, remove, and health-check catalog sources.
-- **Browse** — search enabled sources as one normalized, deduplicated index, compare release/popularity evidence, keep the `dsh plugin add …` fallback command, or install through the native DSH Plugin Manager Host API.
+## Features
 
-This package is not another standalone plugin manager. Marketplaces, registries, repositories, and private catalogs are source types behind one Host-side adapter contract.
+- **Sources** — connect, enable, disable, share, remove, and health-check plugin sources.
+- **Browse** — search all enabled sources as one deduplicated index.
+- **Evidence** — display release channel, GitHub stars, npm 30-day downloads, freshness, source ratings, and declared DSH compatibility when available.
+- **Filters** — stable releases, age, category, and DSH metadata.
+- **Multi-sort** — combine Stars, Downloads, Freshness, and Name; each criterion can be ascending or descending, and activation order defines priority.
+- **Pagination** — 20, 50, or 100 items per page with numbered navigation above and below results.
+- **Install** — one-click installation through the native DSH Plugin Manager Host API.
+- **Fallback command** — every installable result keeps its `dsh plugin add …` command for manual use.
 
 ## Architecture
 
-\`\`\`text
-Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market → Sources / Browse
-  ├─ plugins.bundle.config (native DSH Plugin Manager detail page)
-  ├─ ctx.configForms → durable source configuration
+```text
+Plugins → Installed → @stolyarovmn/dsh-ui-registry-aggregator
+  ├─ Sources / Browse UI
+  ├─ ctx.configForms → source configuration
   ├─ authenticated Connection RPC (/api/plugin-sources/*)
-  │    └─ Host adapters → external catalogs
-  │         └─ normalize → deduplicate → search → source attribution
+  │    └─ Host adapters
+  │         └─ normalize → deduplicate → filter → sort → paginate
   └─ ctx.remote.pluginManager
        ├─ inspect(spec)
-       └─ installBundle(spec, { activate: false })
-\`\`\`
+       └─ installBundle(spec)
+```
 
-The browser never fetches arbitrary catalog URLs. The Host registers the public DSH generic Connection RPC seam, which inherits the platform Host/Origin fence and browser-session authentication. Catalog results and health are transient RPC values and are not written to `settings.yaml`.
+The browser does not fetch arbitrary catalog URLs directly. External source access happens on the Host side through the DSH Connection RPC boundary.
 
 ## Install
 
-Until the first npm release is published, use the native **Add plugin** dialog and paste the GitHub repository URL:
+From GitHub:
+
+```sh
+dsh plugin --profile web add https://github.com/Stolyarovmn/dsh-ui-registry-aggregator
+```
+
+After the npm package is published:
+
+```sh
+dsh plugin --profile web add @stolyarovmn/dsh-ui-registry-aggregator
+```
+
+Enable the bundle, then open:
 
 ```text
-https://github.com/Stolyarovmn/dsh-client-ui-plugin-market
+Plugins → Installed → @stolyarovmn/dsh-ui-registry-aggregator
 ```
 
-Or from the CLI:
-
-```sh
-dsh plugin --profile web add https://github.com/Stolyarovmn/dsh-client-ui-plugin-market
-```
-
-After the npm package exists, the short package name works too:
-
-```sh
-dsh plugin --profile web add @stolyarovmn/dsh-client-ui-plugin-market
-```
-
-Enable the bundle. Harness then shows **Open marketplace**; alternatively open **Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market**. npm and GitHub discovery are available immediately, while **Sources** lets you disable them or add other catalogs.
-
-The 0.3.x line targets DSH `>=0.1.7-rc.1 <0.2.0`. Source settings use the shared `configForms` service and the UI registers into the native `plugins.bundle.config` slot. Installation uses DSH's own `remote.pluginManager` Host API; the copied `dsh plugin add …` command remains available as a fallback.
+npm and GitHub sources are added automatically on first use.
 
 ## Source types
 
 | Type | Behavior |
 | --- | --- |
-| `dsh-plugin-shop` | JSON catalog adapter for a dsh-plugin-shop endpoint supplied in `url`. |
-| `dshplugin-app` | JSON catalog adapter for a dshplugin.app-compatible endpoint supplied in `url`. |
-| `npm` | npm registry discovery across `dsh-plugin`, `deepseek-harness`, `deepseek-harness-plugin`, and `dsh-plugins`; defaults to `https://registry.npmjs.org/-/v1/search`. |
-| `github` | GitHub topic discovery across `dsh-plugin`, `deepseek-harness-plugin`, and `dsh-plugins`; defaults to `https://api.github.com/search/repositories`. |
+| `npm` | npm registry discovery using DSH-related keywords. |
+| `github` | GitHub repository discovery using DSH-related topics. |
+| `dsh-plugin-shop` | JSON catalog adapter for a compatible source endpoint. |
+| `dshplugin-app` | JSON catalog adapter for a dshplugin.app-compatible endpoint. |
 | `custom-json` | Public JSON catalog. |
-| `corporate` | JSON catalog intended for explicitly configured private networks and environment-based auth. |
+| `corporate` | JSON catalog with Host-controlled private-network and credential permissions. |
 
-`npm` and `github` may override their API URL. Discovery aliases are queried independently and deduplicated by package/repository identity. Category-specific topics such as `dsh-plugin-market` or `dsh-plugin-theme` are intentionally not hardcoded as primary discovery signals; plugin repositories should also advertise a general plugin topic. Other JSON-backed adapters require a URL.
+A JSON source may return a bare array or an object containing `plugins`, `items`, or `results`.
 
-### JSON catalog shape
-
-A catalog may be a bare array or an object containing `plugins`, `items`, or `results`:
+Example:
 
 ```json
 {
@@ -77,49 +79,73 @@ A catalog may be a bare array or an object containing `plugins`, `items`, or `re
       "install": {
         "type": "npm",
         "spec": "@example/dsh-plugin-pdf@1.2.0"
-      },
-      "evidence": {
-        "verified": true,
-        "compatibility": "dsh >=0.1.5"
       }
     }
   ]
 }
 ```
 
-Identity precedence is npm package, canonical repository URL, then `source-id:source-specific-id`. Duplicate records retain all source badges, known versions, and normalized category tags. Browse tags are derived only from explicit catalog metadata such as npm keywords, GitHub topics, or catalog category fields; descriptions are not guessed. npm install specs are preferred when merged records offer both npm and git installs.
+Identity precedence is npm package, canonical repository URL, then source-specific id. Duplicate records preserve source attribution, versions, and normalized category tags.
 
-## Authentication and private registries
+## Sorting
 
-Browser-editable settings never select or contain credentials. An operator may map a specific source id to a specific Host environment variable in Cordis config (see below). The Host resolves only that allowlisted mapping and never returns its value to the browser.
+Sorting criteria are independent and composable:
 
-Authenticated requests require HTTPS and cannot redirect to another origin. Private, loopback, link-local, multicast, reserved, and other non-global-unicast destinations are blocked by default. An operator must add a trusted source id to Host config `privateSourceIds` before that source may reach a private network; browser settings cannot grant this permission.
+- **Stars**
+- **Downloads**
+- **Freshness**
+- **Name**
+
+Clicking a criterion cycles:
+
+```text
+off → descending → ascending → off
+```
+
+The order in which criteria are enabled defines their priority. For example:
+
+```text
+1 Freshness ↓
+2 Downloads ↓
+3 Stars ↓
+```
+
+means newest releases first, then higher downloads, then higher stars for ties.
+
+## Compatibility
+
+- DSH: `>=0.1.7-rc.1 <0.2.0`
+- Tested with DSH `0.1.7-rc.1`
+
+Exact package compatibility is read from the package metadata when the publisher declares it. Installation is validated again by the native DSH Plugin Manager.
+
+## Security
+
+Browser-editable source settings never contain credentials.
 
 Host protections include:
 
-- HTTP(S)-only URLs and no URL-embedded credentials;
-- global-unicast address classification and DNS pinning in the actual connection;
-- destination revalidation for every redirect;
-- one end-to-end deadline covering DNS, redirects, headers, and body;
-- redirect, source, concurrency, response-byte, per-source-result, aggregate-result, and RPC-size limits;
-- malformed JSON and non-success HTTP containment per source;
-- shell-metacharacter filtering and HTTPS-only git install specs.
+- HTTP(S)-only source URLs;
+- rejection of URL-embedded credentials;
+- blocking of loopback, link-local, private, multicast, reserved, and other non-global-unicast destinations by default;
+- DNS pinning and redirect destination revalidation;
+- source, response-size, result-count, concurrency, and RPC-size limits;
+- Host-controlled allowlists for private sources and environment-based bearer tokens;
+- install-spec validation before a command is exposed or sent to the Plugin Manager.
 
-The Install action and copied command both install third-party code. Review its source and package before running it. A failed source produces health/error data and zero results; no sample or synthetic plugins are injected.
+The Install action executes third-party code through the native DSH Plugin Manager. Review the source and package before installation.
 
 ## Host configuration
 
-The Cordis entry accepts optional limits:
-
 ```yaml
-- id: plugin-market
-  name: '@stolyarovmn/dsh-client-ui-plugin-market'
+- id: registry-aggregator
+  name: '@stolyarovmn/dsh-ui-registry-aggregator'
   config:
     timeoutMs: 10000
     maxResponseBytes: 2097152
-    maxPlugins: 500
+    maxPlugins: 2000
     maxSources: 20
-    maxTotalPlugins: 1000
+    maxTotalPlugins: 5000
     maxRpcBytes: 4194304
     concurrency: 4
     privateSourceIds:
@@ -137,53 +163,6 @@ npm test
 npm run test:pack
 ```
 
-The package advertises the `dsh-plugin` keyword and `dsh.catalog` metadata so community catalogs can discover it without inventing a separate manifest format.
-
-The tests cover manifest wiring, client registration and scenarios, adapters, malformed/unavailable sources, SSRF boundaries, size limits, normalization, identity precedence, deduplication, search, and absence of production sample fallback.
-
-## Current scope
-
-Included: source configuration, card-style source management with expandable details, share-to-clipboard, source health, Host-side loading, normalization, deduplication, raw npm text fallback discovery, unified search, source/category tags, package/repository/version details, release-channel badges, GitHub-star evidence, npm 30-day download counts, release/repository freshness, source ratings when available, zero-value statistics, server-side pages of 20/50/100 results, single and composite ranking, on-demand DSH compatibility metadata, two-line expandable descriptions, direct installation through the native DSH Plugin Manager Host API, and the copy-command fallback.
-
-Installed package enable/disable, uninstall, build-script approval, registry selection, and detailed installation diagnostics remain owned by the native DSH Plugins page.
-
 ## License
 
 MIT
-
-## Popularity and release signals
-
-Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Scoped npm packages are queried individually because npm's bulk download-count endpoint does not support scoped package names. Browse displays zero for missing star/download counters so cards remain visually comparable; source-native ratings stay absent when no source provides one. Existing npm-only configurations are migrated once to add the GitHub discovery source, so repositories advertising DSH topics can contribute real star counts. Normal browsing enriches npm download counts only for the visible page; choosing Downloads explicitly performs the broader evidence pass needed for correct download ordering.
-
-
-## Compatibility
-
-- DSH: `>=0.1.7-rc.1 <0.2.0`
-- Tested target: DSH `0.1.7-rc.1`
-- Previous `0.2.x` releases target the older `0.1.5-rc.3` settings API.
-
-Compatibility is enforced again by the native DSH Plugin Manager during `inspect()` / installation.
-
-
-### Ranking and maintenance evidence
-
-Browse can sort by Stars, Downloads, Freshest release, Name, or two equal-weight percentile blends:
-
-- **Stars + downloads** — combines GitHub stars and npm monthly download evidence without letting either metric dominate simply because it uses a larger numeric scale.
-- **Downloads + freshness** — combines npm monthly downloads with latest npm release time; repository activity is used as a fallback when a release timestamp is unavailable.
-
-npm search already returns monthly download, update, and maintenance evidence, so large result sets are ranked from source-native metadata rather than by issuing thousands of extra requests. Secondary npm download lookups are limited to the visible page.
-
-The card shows compact release/repository age. Clicking the **DSH ?** badge fetches that exact npm version's manifest and shows `peerDependencies["@deepseek-ai/dsh"]` when the publisher declared it. If the package does not declare a root DSH range but does declare peers such as `@deepseek-ai/dsh-settings`, the UI labels them as **DSH API peers** rather than pretending they are a full Harness compatibility guarantee.
-
-
-### Combinable filters
-
-Browse filters are applied together before pagination, so a narrow result really means the intersection of the selected criteria:
-
-- **Stable only** — excludes alpha/beta/rc/prerelease versions.
-- **Freshness** — any age, up to 30 days, 90 days, or one year. It uses the npm release timestamp when available and GitHub repository activity as a fallback.
-- **Category** — `ui`, `theme`, `provider`, `workflow`, `integration`, `tool`, `automation`, `schedule`, `scheduler`, `skill`, `bundle`, or `desktop`.
-- **DSH metadata** — any, explicitly declared, or unknown. This filter deliberately uses compatibility metadata already supplied by a source/catalog; it does not issue thousands of npm manifest requests in the background. Exact npm-version compatibility can still be checked from an individual card with **DSH ?**.
-
-Changing any filter resets pagination to page 1. Filtering happens before sort and pagination, so all sort modes continue to operate on the filtered candidate set.

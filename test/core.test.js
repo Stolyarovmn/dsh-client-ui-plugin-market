@@ -330,22 +330,35 @@ test("captures npm freshness, monthly downloads, and maintenance evidence from s
 	assert.equal(plugin.evidence.releasedAt, "2026-09-21T12:00:00.000Z");
 });
 
-test("supports freshness and equal-weight composite ranking without rewarding tied zero evidence", async () => {
+test("supports ordered multi-criteria ranking with independent directions", async () => {
 	const rows = [
-		{ name: "old-popular", package: "old-popular", version: "1.0.0", evidence: { downloads30d: 1000, stars: 10, releasedAt: "2025-01-01T00:00:00Z" } },
-		{ name: "fresh-medium", package: "fresh-medium", version: "1.0.0", evidence: { downloads30d: 500, stars: 50, releasedAt: "2026-09-20T00:00:00Z" } },
-		{ name: "fresh-zero", package: "fresh-zero", version: "1.0.0", evidence: { downloads30d: 0, stars: 0, releasedAt: "2026-09-23T00:00:00Z" } },
-		{ name: "old-zero", package: "old-zero", version: "1.0.0", evidence: { downloads30d: 0, stars: 0, releasedAt: "2024-01-01T00:00:00Z" } },
+		{ name: "fresh-popular", package: "fresh-popular", version: "1.0.0", evidence: { downloads30d: 800, stars: 50, releasedAt: "2026-09-20T00:00:00Z" } },
+		{ name: "fresh-more-downloads", package: "fresh-more-downloads", version: "1.0.0", evidence: { downloads30d: 1200, stars: 10, releasedAt: "2026-09-20T00:00:00Z" } },
+		{ name: "newest-low", package: "newest-low", version: "1.0.0", evidence: { downloads30d: 20, stars: 1, releasedAt: "2026-09-23T00:00:00Z" } },
+		{ name: "old-huge", package: "old-huge", version: "1.0.0", evidence: { downloads30d: 5000, stars: 500, releasedAt: "2025-01-01T00:00:00Z" } },
 	];
 	const opts = { resolveHost: publicDns, fetchImpl: async () => jsonResponse(rows), enrichDownloads: false, pageSize: 20 };
-	const fresh = await browseSources([source()], "", { ...opts, sort: "freshness" });
-	assert.equal(fresh.plugins[0].name, "fresh-zero");
-	const popular = await browseSources([source()], "", { ...opts, sort: "stars-downloads" });
-	assert.equal(popular.plugins[0].name, "fresh-medium");
-	const active = await browseSources([source()], "", { ...opts, sort: "downloads-freshness" });
-	assert.equal(active.plugins[0].name, "fresh-medium");
-	const zeroOrder = active.plugins.filter((plugin) => plugin.name.endsWith("zero")).map((plugin) => plugin.name);
-	assert.deepEqual(zeroOrder, ["fresh-zero", "old-zero"]);
+
+	const ranked = await browseSources([source()], "", {
+		...opts,
+		sorts: [
+			{ key: "freshness", direction: "desc" },
+			{ key: "downloads", direction: "desc" },
+			{ key: "stars", direction: "desc" },
+		],
+	});
+	assert.deepEqual(ranked.plugins.map((plugin) => plugin.name), [
+		"newest-low",
+		"fresh-more-downloads",
+		"fresh-popular",
+		"old-huge",
+	]);
+
+	const reverseStars = await browseSources([source()], "", {
+		...opts,
+		sorts: [{ key: "stars", direction: "asc" }],
+	});
+	assert.deepEqual(reverseStars.plugins.map((plugin) => plugin.evidence?.stars), [1, 10, 50, 500]);
 });
 
 test("reads explicit DSH compatibility and DSH API peers from npm version metadata", async () => {

@@ -37,8 +37,8 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 	const installs = [];
 	const remote = {
 		pluginManager: {
-			async inspect(spec) { return { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null }; },
-			async installBundle(spec, options) { installs.push({ spec, options }); return { changed: true }; },
+			async inspect(spec) { return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
+			async installBundle(spec, options) { installs.push({ spec, options }); return { ok: true, value: { changed: true, application: "applied" } }; },
 		},
 	};
 	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection, remote });
@@ -47,17 +47,17 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 	const activation = recorded.find((row) => row.options.name === "plugins.bundle.activation");
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
-	const render = () => mini.render({ type: section.component, props: { t: locale.bind("plugin-market"), close: () => {} }, children: [] });
+	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
 	return { exports, locale, scope, calls, installs, section, activation, render, restore };
 }
 
-test("registers marketplace inside the native DSH plugin manager", async () => {
+test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
 	const fixture = await setup();
 	try {
-		assert.equal(fixture.section.options.key, "@stolyarovmn/dsh-client-ui-plugin-market");
-		assert.equal(fixture.activation.options.key, "@stolyarovmn/dsh-client-ui-plugin-market");
+		assert.equal(fixture.section.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
+		assert.equal(fixture.activation.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
 		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "configForms", "connection", "remote", "remote.pluginManager"]);
-		assert.equal(fixture.locale.bind("plugin-market")("tab.browse"), "Browse");
+		assert.equal(fixture.locale.bind("registry-aggregator")("tab.browse"), "Browse");
 	} finally { fixture.restore(); }
 });
 
@@ -117,10 +117,10 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /4\.8/);
 		assert.match(textOf(tree), /released/);
 		assert.match(textOf(tree), /Check DSH compatibility/);
-		assert.ok(byTag(tree, "select").some((select) => select.props.value === "relevance"));
 		assert.equal(byId(tree, "pm-page-size").props.value, 20);
 		assert.match(textOf(tree), /41 results/);
-		assert.match(textOf(tree), /Page 1 of 3/);
+		assert.ok(byClass(tree, "pm-page-button").some((button) => textOf(button) === "1" && button.props["data-current"] === true));
+		assert.equal(byClass(tree, "pm-sort-criterion").length, 4);
 	} finally { fixture.restore(); }
 });
 
@@ -152,7 +152,7 @@ test("Browse combines freshness, category, and DSH metadata filters in Host requ
 	} finally { fixture.restore(); }
 });
 
-test("Browse exposes composite sorts and resolves DSH compatibility on demand", async () => {
+test("Browse combines independent ordered sort criteria and resolves DSH compatibility on demand", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
 		let tree = fixture.render();
@@ -161,10 +161,29 @@ test("Browse exposes composite sorts and resolves DSH compatibility on demand", 
 		await settle(260);
 		await settle();
 		tree = fixture.render();
-		const options = byTag(tree, "option").map(textOf);
-		assert.ok(options.includes("Freshest release"));
-		assert.ok(options.includes("Stars + downloads"));
-		assert.ok(options.includes("Downloads + freshness"));
+
+		const sortButtons = () => byClass(tree, "pm-sort-criterion");
+		const stars = sortButtons().find((button) => String(button.props["aria-label"]).startsWith("Stars"));
+		const downloads = sortButtons().find((button) => String(button.props["aria-label"]).startsWith("Downloads"));
+		assert.ok(stars);
+		assert.ok(downloads);
+
+		stars.props.onClick(); // Stars desc, priority 1.
+		tree = fixture.render();
+		byClass(tree, "pm-sort-criterion").find((button) => String(button.props["aria-label"]).startsWith("Downloads")).props.onClick(); // Downloads desc, priority 2.
+		tree = fixture.render();
+		byClass(tree, "pm-sort-criterion").find((button) => String(button.props["aria-label"]).startsWith("Stars")).props.onClick(); // Stars asc.
+		fixture.render();
+		await settle(260);
+		await settle();
+
+		const browseCalls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/browse");
+		assert.ok(browseCalls.some((call) => JSON.stringify(call.payload.sorts) === JSON.stringify([
+			{ key: "stars", direction: "asc" },
+			{ key: "downloads", direction: "desc" },
+		])));
+
+		tree = fixture.render();
 		const compat = byTag(tree, "button").find((button) => textOf(button) === "Check DSH compatibility");
 		assert.ok(compat);
 		await compat.props.onClick();
@@ -175,26 +194,25 @@ test("Browse exposes composite sorts and resolves DSH compatibility on demand", 
 	} finally { fixture.restore(); }
 });
 
-test("Install uses the native DSH plugin-manager remote and keeps the command fallback", async () => {
+test("Install starts immediately through the native DSH plugin-manager remote and keeps the command fallback", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
 		let tree = fixture.render();
-		const browse = byTag(tree, "button").find((button) => textOf(button) === "Browse");
-		browse.props.onClick();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
 		fixture.render();
 		await settle(260);
 		await settle();
 		tree = fixture.render();
-		const install = byTag(tree, "button").find((button) => textOf(button) === "Install");
+
+		const install = byTag(tree, "button").find((button) => button.props["aria-label"] === "Install");
 		assert.ok(install);
-		install.props.onClick();
-		tree = fixture.render();
-		const confirm = byTag(tree, "button").find((button) => textOf(button) === "Install?");
-		assert.ok(confirm);
-		await confirm.props.onClick();
+		await install.props.onClick();
 		await settle();
-		assert.deepEqual(fixture.installs, [{ spec: "dsh-demo@1.0.0", options: { activate: false } }]);
-		assert.match(textOf(fixture.render()), /dsh plugin add dsh-demo@1\.0\.0/);
+
+		assert.deepEqual(fixture.installs, [{ spec: "dsh-demo@1.0.0", options: { enabled: true, registry: null } }]);
+		tree = fixture.render();
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
+		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
 	} finally { fixture.restore(); }
 });
 
@@ -227,7 +245,8 @@ test("Browse sends page size and page changes to Host RPC", async () => {
 		await settle(260);
 		await settle();
 		tree = fixture.render();
-		const next = byTag(tree, "button").find((button) => textOf(button) === "Next");
+		const next = byTag(tree, "button").find((button) => button.props["aria-label"] === "Next");
+		assert.ok(next);
 		next.props.onClick();
 		fixture.render();
 		await settle(260);
@@ -238,7 +257,7 @@ test("Browse sends page size and page changes to Host RPC", async () => {
 	} finally { fixture.restore(); }
 });
 
-test("activation guidance opens the native marketplace detail page", async () => {
+test("activation guidance opens the native Registry Aggregator detail page", async () => {
 	const fixture = await setup();
 	try {
 		let opened = 0;
@@ -249,15 +268,15 @@ test("activation guidance opens the native marketplace detail page", async () =>
 			const tree = mini.render({
 				type: fixture.activation.component,
 				props: {
-					t: fixture.locale.bind("plugin-market"),
+					t: fixture.locale.bind("registry-aggregator"),
 					onOpenDetails: () => { opened += 1; },
 					onDismiss: () => { dismissed += 1; },
 				},
 				children: [],
 			});
-			assert.equal(tree.props.title, "Marketplace ready");
+			assert.equal(tree.props.title, "Registry Aggregator ready");
 			const buttons = byTag(tree, "button");
-			const open = buttons.find((button) => textOf(button) === "Open marketplace");
+			const open = buttons.find((button) => textOf(button) === "Open Registry Aggregator");
 			const later = buttons.find((button) => textOf(button) === "Later");
 			assert.ok(open);
 			assert.ok(later);

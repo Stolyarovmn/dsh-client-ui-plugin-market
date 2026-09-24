@@ -18,7 +18,7 @@ function hostFixture(sources = []) {
 		auth: [],
 	};
 	const ctx = {
-		fiber: { id: "plugin-market" },
+		fiber: { id: "registry-aggregator" },
 		settings: {
 			configure(options, owner) {
 				assert.deepEqual(options, { auto: false });
@@ -71,7 +71,7 @@ test("defaults to npm plus GitHub so Browse can merge download and star evidence
 
 test("exposes source config through the plugin entry and exact authenticated API routes", () => {
 	const fixture = hostFixture();
-	assert.equal(NAMESPACE, "plugin-market");
+	assert.equal(NAMESPACE, "registry-aggregator");
 	assert.equal(fixture.settingsConfigured, true);
 	assert.ok(fixture.routes.has("/api/plugin-sources/health"));
 	assert.ok(fixture.routes.has("/api/plugin-sources/browse"));
@@ -85,6 +85,10 @@ test("validates paged browse payload", async () => {
 		{ page: 0 },
 		{ pageSize: 25 },
 		{ sort: "unknown" },
+		{ sorts: "stars" },
+		{ sorts: [{ key: "unknown", direction: "desc" }] },
+		{ sorts: [{ key: "stars", direction: "sideways" }] },
+		{ sorts: [{ key: "stars", direction: "desc" }, { key: "stars", direction: "asc" }] },
 		{ stableOnly: "yes" },
 		{ freshnessDays: 31 },
 		{ tag: "made-up" },
