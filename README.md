@@ -1,21 +1,25 @@
 # Plugin Sources for DeepSeek Harness
 
-A federated plugin-catalog hub for DeepSeek Harness. It contributes **Plugin Sources** to **Settings → Built-in plugins**, with two internal views:
+A federated plugin-discovery layer for DeepSeek Harness. On DSH 0.1.7+ it lives inside the native **Plugins** page as the configuration surface of this installed bundle.
 
-- **Sources** — connect, enable, disable, remove, and check catalog sources.
-- **Browse** — search all enabled sources as one normalized, deduplicated index and copy a `dsh plugin add …` command.
+- **Sources** — connect, enable, disable, share, remove, and health-check catalog sources.
+- **Browse** — search enabled sources as one normalized, deduplicated index, compare release/popularity evidence, keep the `dsh plugin add …` fallback command, or install through the native DSH Plugin Manager Host API.
 
-This package is not another standalone marketplace. Marketplaces, registries, repositories, and private catalogs are source types behind one Host-side adapter contract.
+This package is not another standalone plugin manager. Marketplaces, registries, repositories, and private catalogs are source types behind one Host-side adapter contract.
 
 ## Architecture
 
-```text
-Settings → Built-in plugins → Plugin Sources
-  ├─ ctx.settingsScope → durable source configuration only
-  └─ authenticated Connection RPC (/api/plugin-sources/*)
-       └─ Host adapters → external catalogs
-            └─ normalize → deduplicate → search → source attribution
-```
+\`\`\`text
+Plugins → Installed → @stolyarovmn/dsh-client-ui-plugin-market
+  ├─ plugins.bundle.config (native DSH Plugin Manager detail page)
+  ├─ ctx.configForms → durable source configuration
+  ├─ authenticated Connection RPC (/api/plugin-sources/*)
+  │    └─ Host adapters → external catalogs
+  │         └─ normalize → deduplicate → search → source attribution
+  └─ ctx.remote.pluginManager
+       ├─ inspect(spec)
+       └─ installBundle(spec, { activate: false })
+\`\`\`
 
 The browser never fetches arbitrary catalog URLs. The Host registers the public DSH generic Connection RPC seam, which inherits the platform Host/Origin fence and browser-session authentication. Catalog results and health are transient RPC values and are not written to `settings.yaml`.
 
@@ -25,9 +29,9 @@ The browser never fetches arbitrary catalog URLs. The Host registers the public 
 dsh plugin add @stolyarovmn/dsh-client-ui-plugin-market
 ```
 
-Restart or refresh the Web profile as required by your DSH installation, then open **Settings → Built-in plugins → Plugin Sources**.
+Restart or refresh the Web profile as required by your DSH installation, open **Plugins → Installed**, then open this bundle.
 
-For profile development, add the package to both `dependencies` and `dsh.profile.bundles`. Its `cordis.patch.yml` activates the Host and Web faces. The client targets DSH `0.1.5-rc.3`, where durable settings are exposed through `ctx.settingsScope`, and registers through the standard `settings.plugins.tab` slot rather than creating another top-level Settings page.
+The 0.3.x line targets DSH `>=0.1.7-rc.1 <0.2.0`. Source settings use the shared `configForms` service and the UI registers into the native `plugins.bundle.config` slot. Installation uses DSH's own `remote.pluginManager` Host API; the copied `dsh plugin add …` command remains available as a fallback.
 
 ## Source types
 
@@ -87,7 +91,7 @@ Host protections include:
 - malformed JSON and non-success HTTP containment per source;
 - shell-metacharacter filtering and HTTPS-only git install specs.
 
-A copied command still installs third-party code. Review its source and package before running it. A failed source produces health/error data and zero results; no sample or synthetic plugins are injected.
+The Install action and copied command both install third-party code. Review its source and package before running it. A failed source produces health/error data and zero results; no sample or synthetic plugins are injected.
 
 ## Host configuration
 
@@ -123,11 +127,11 @@ The package advertises the `dsh-plugin` keyword and `dsh.catalog` metadata so co
 
 The tests cover manifest wiring, client registration and scenarios, adapters, malformed/unavailable sources, SSRF boundaries, size limits, normalization, identity precedence, deduplication, search, and absence of production sample fallback.
 
-## MVP scope
+## Current scope
 
-Included: source configuration, source health, Host-side loading, normalization, deduplication, unified search, source badges, category tags, package/repository/version details, release-channel badges, GitHub-star evidence when supplied by a source, npm 30-day download counts, source ratings when available, sorting/filtering, install specs, and inline copy-command action.
+Included: source configuration, card-style source management with expandable details, share-to-clipboard, source health, Host-side loading, normalization, deduplication, raw npm text fallback discovery, unified search, source/category tags, package/repository/version details, release-channel badges, GitHub-star evidence, npm 30-day download counts, source ratings when available, zero-value statistics, sorting/filtering, two-line expandable descriptions, direct installation through the native DSH Plugin Manager Host API, and the copy-command fallback.
 
-Deferred: executing installation, updates, removals, signatures, review workflows, and marketplace publishing.
+Installed package enable/disable, uninstall, build-script approval, registry selection, and detailed installation diagnostics remain owned by the native DSH Plugins page.
 
 ## License
 
@@ -135,4 +139,13 @@ MIT
 
 ## Popularity and release signals
 
-Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Missing evidence is omitted rather than displayed as zero.
+Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Browse displays zero for missing star/download counters so cards remain visually comparable; source-native ratings stay absent when no source provides one.
+
+
+## Compatibility
+
+- DSH: `>=0.1.7-rc.1 <0.2.0`
+- Tested target: DSH `0.1.7-rc.1`
+- Previous `0.2.x` releases target the older `0.1.5-rc.3` settings API.
+
+Compatibility is enforced again by the native DSH Plugin Manager during `inspect()` / installation.
