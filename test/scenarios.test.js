@@ -158,7 +158,7 @@ test("activation guidance opens the native marketplace detail page", async () =>
 				},
 				children: [],
 			});
-			assert.match(textOf(tree), /Marketplace ready/);
+			assert.equal(tree.props.title, "Marketplace ready");
 			const buttons = byTag(tree, "button");
 			const open = buttons.find((button) => textOf(button) === "Open marketplace");
 			const later = buttons.find((button) => textOf(button) === "Later");
