@@ -75,6 +75,7 @@ test("exposes source config through the plugin entry and exact authenticated API
 	assert.equal(fixture.settingsConfigured, true);
 	assert.ok(fixture.routes.has("/api/plugin-sources/health"));
 	assert.ok(fixture.routes.has("/api/plugin-sources/browse"));
+	assert.ok(fixture.routes.has("/api/plugin-sources/details"));
 });
 
 test("validates paged browse payload", async () => {
@@ -87,6 +88,15 @@ test("validates paged browse payload", async () => {
 		{ stableOnly: "yes" },
 	]) {
 		const invalid = await call("browse", payload);
+		assert.equal(invalid.ok, false);
+		assert.equal(invalid.error.code, "plugin-sources/invalid-request");
+	}
+});
+
+test("validates plugin detail requests before npm metadata lookup", async () => {
+	const { call } = hostFixture();
+	for (const payload of [{}, { package: 42, version: "1.0.0" }, { package: "demo", version: 1 }]) {
+		const invalid = await call("details", payload);
 		assert.equal(invalid.ok, false);
 		assert.equal(invalid.error.code, "plugin-sources/invalid-request");
 	}

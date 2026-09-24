@@ -27,7 +27,8 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
 				if (endpoint === "plugin-sources/health") return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
-				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12 }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
+				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
+				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
 				return { ok: false, error: { message: "unknown" } };
 			},
 		},
@@ -112,6 +113,8 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /42/);
 		assert.match(textOf(tree), /1\.2K \/ 30d total/);
 		assert.match(textOf(tree), /4\.8/);
+		assert.match(textOf(tree), /released/);
+		assert.match(textOf(tree), /DSH \?/);
 		assert.ok(byTag(tree, "select").some((select) => select.props.value === "relevance"));
 		assert.equal(byId(tree, "pm-page-size").props.value, 20);
 		assert.match(textOf(tree), /41 results/);
@@ -119,6 +122,29 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 	} finally { fixture.restore(); }
 });
 
+
+test("Browse exposes composite sorts and resolves DSH compatibility on demand", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+		const options = byTag(tree, "option").map(textOf);
+		assert.ok(options.includes("Freshest release"));
+		assert.ok(options.includes("Stars + downloads"));
+		assert.ok(options.includes("Downloads + freshness"));
+		const compat = byTag(tree, "button").find((button) => textOf(button) === "DSH ?");
+		assert.ok(compat);
+		await compat.props.onClick();
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /DSH >=0\.1\.7-rc\.1 <0\.2\.0/);
+		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/details"));
+	} finally { fixture.restore(); }
+});
 
 test("Install uses the native DSH plugin-manager remote and keeps the command fallback", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);

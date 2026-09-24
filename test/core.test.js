@@ -6,6 +6,7 @@ import {
 	dedupePlugins,
 	fetchJson,
 	normalizePlugin,
+	npmPluginDetails,
 	searchPlugins,
 	releaseChannel,
 } from "../lib/core.js";
@@ -288,6 +289,66 @@ test("sorts GitHub star evidence globally before slicing a page", async () => {
 		sort: "stars",
 	});
 	assert.deepEqual(result.plugins.map((plugin) => plugin.evidence?.stars), [50, 20, 5]);
+});
+
+test("captures npm freshness, monthly downloads, and maintenance evidence from search", async () => {
+	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse({ objects: [{
+			downloads: { monthly: 321, weekly: 80 },
+			updated: "2026-09-20T10:00:00.000Z",
+			score: { detail: { maintenance: 0.92 } },
+			package: {
+				name: "@acme/fresh",
+				version: "1.2.3",
+				description: "Fresh plugin",
+				keywords: ["dsh-plugin"],
+				date: "2026-09-21T12:00:00.000Z",
+			},
+		}] }),
+	});
+	const [plugin] = await adapter.search("fresh");
+	assert.equal(plugin.evidence.downloads30d, 321);
+	assert.equal(plugin.evidence.maintenanceScore, 0.92);
+	assert.equal(plugin.evidence.releasedAt, "2026-09-21T12:00:00.000Z");
+});
+
+test("supports freshness and equal-weight composite ranking without rewarding tied zero evidence", async () => {
+	const rows = [
+		{ name: "old-popular", package: "old-popular", version: "1.0.0", evidence: { downloads30d: 1000, stars: 10, releasedAt: "2025-01-01T00:00:00Z" } },
+		{ name: "fresh-medium", package: "fresh-medium", version: "1.0.0", evidence: { downloads30d: 500, stars: 50, releasedAt: "2026-09-20T00:00:00Z" } },
+		{ name: "fresh-zero", package: "fresh-zero", version: "1.0.0", evidence: { downloads30d: 0, stars: 0, releasedAt: "2026-09-23T00:00:00Z" } },
+		{ name: "old-zero", package: "old-zero", version: "1.0.0", evidence: { downloads30d: 0, stars: 0, releasedAt: "2024-01-01T00:00:00Z" } },
+	];
+	const opts = { resolveHost: publicDns, fetchImpl: async () => jsonResponse(rows), enrichDownloads: false, pageSize: 20 };
+	const fresh = await browseSources([source()], "", { ...opts, sort: "freshness" });
+	assert.equal(fresh.plugins[0].name, "fresh-zero");
+	const popular = await browseSources([source()], "", { ...opts, sort: "stars-downloads" });
+	assert.equal(popular.plugins[0].name, "fresh-medium");
+	const active = await browseSources([source()], "", { ...opts, sort: "downloads-freshness" });
+	assert.equal(active.plugins[0].name, "fresh-medium");
+	const zeroOrder = active.plugins.filter((plugin) => plugin.name.endsWith("zero")).map((plugin) => plugin.name);
+	assert.deepEqual(zeroOrder, ["fresh-zero", "old-zero"]);
+});
+
+test("reads explicit DSH compatibility and DSH API peers from npm version metadata", async () => {
+	const explicit = await npmPluginDetails("@acme/explicit", "1.0.0", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse({
+			peerDependencies: { "@deepseek-ai/dsh": ">=0.1.7-rc.1 <0.2.0", "@deepseek-ai/dsh-client-ui-slots": "^0.1.7" },
+		}),
+	});
+	assert.equal(explicit.dshCompatibility, ">=0.1.7-rc.1 <0.2.0");
+	assert.equal(explicit.dshPeers[0].dependency, "@deepseek-ai/dsh-client-ui-slots");
+
+	const peersOnly = await npmPluginDetails("@acme/legacy", "2.0.0", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse({
+			peerDependencies: { "@deepseek-ai/dsh-settings": "^0.1.2-alpha.2", "@deepseek-ai/cordis": "^4.0.1" },
+		}),
+	});
+	assert.equal(peersOnly.dshCompatibility, undefined);
+	assert.deepEqual(peersOnly.dshPeers, [{ dependency: "@deepseek-ai/dsh-settings", range: "^0.1.2-alpha.2" }]);
 });
 
 test("caps source count and aggregate plugin results", async () => {
