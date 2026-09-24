@@ -262,6 +262,8 @@ export async function loadBundle({ resolver } = {}) {
 		IconCordisPluginOutlineRegular: Icon,
 		IconLinkOutlineRegular: Icon,
 		IconWarningOutlineRegular: Icon,
+		IconSearchOutlineRegular: Icon,
+		IconClockOutlineRegular: Icon,
 	};
 	const modules = {
 		react: makeReact(),
