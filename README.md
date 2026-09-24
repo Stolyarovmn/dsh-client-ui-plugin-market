@@ -143,7 +143,7 @@ The tests cover manifest wiring, client registration and scenarios, adapters, ma
 
 ## Current scope
 
-Included: source configuration, card-style source management with expandable details, share-to-clipboard, source health, Host-side loading, normalization, deduplication, raw npm text fallback discovery, unified search, source/category tags, package/repository/version details, release-channel badges, GitHub-star evidence, npm 30-day download counts, source ratings when available, zero-value statistics, sorting/filtering, two-line expandable descriptions, direct installation through the native DSH Plugin Manager Host API, and the copy-command fallback.
+Included: source configuration, card-style source management with expandable details, share-to-clipboard, source health, Host-side loading, normalization, deduplication, raw npm text fallback discovery, unified search, source/category tags, package/repository/version details, release-channel badges, GitHub-star evidence, npm 30-day download counts, source ratings when available, zero-value statistics, sorting/filtering, server-side pages of 20/50/100 results, two-line expandable descriptions, direct installation through the native DSH Plugin Manager Host API, and the copy-command fallback.
 
 Installed package enable/disable, uninstall, build-script approval, registry selection, and detailed installation diagnostics remain owned by the native DSH Plugins page.
 
@@ -153,7 +153,7 @@ MIT
 
 ## Popularity and release signals
 
-Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Scoped npm packages are queried individually because npm's bulk download-count endpoint does not support scoped package names. Browse displays zero for missing star/download counters so cards remain visually comparable; source-native ratings stay absent when no source provides one.
+Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Scoped npm packages are queried individually because npm's bulk download-count endpoint does not support scoped package names. Browse displays zero for missing star/download counters so cards remain visually comparable; source-native ratings stay absent when no source provides one. Existing npm-only configurations are migrated once to add the GitHub discovery source, so repositories advertising DSH topics can contribute real star counts. Normal browsing enriches npm download counts only for the visible page; choosing Downloads explicitly performs the broader evidence pass needed for correct download ordering.
 
 
 ## Compatibility

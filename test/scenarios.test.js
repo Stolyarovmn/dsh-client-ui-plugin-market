@@ -17,17 +17,17 @@ import {
 
 const settle = async (milliseconds = 0) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function setup(sources = []) {
+async function setup(sources = [], sourceDefaultsVersion = 1) {
 	const { exports, document } = await loadBundle();
 	const locale = makeLocale("en");
-	const scope = makeSettingsScope({ sources });
+	const scope = makeSettingsScope({ sources, sourceDefaultsVersion });
 	const calls = [];
 	const connection = {
 		rpc: {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
 				if (endpoint === "plugin-sources/health") return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
-				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12 }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], sources: [] } };
+				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12 }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
 				return { ok: false, error: { message: "unknown" } };
 			},
 		},
@@ -113,6 +113,9 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /1\.2K \/ 30d total/);
 		assert.match(textOf(tree), /4\.8/);
 		assert.ok(byTag(tree, "select").some((select) => select.props.value === "relevance"));
+		assert.equal(byId(tree, "pm-page-size").props.value, 20);
+		assert.match(textOf(tree), /41 results/);
+		assert.match(textOf(tree), /Page 1 of 3/);
 	} finally { fixture.restore(); }
 });
 
@@ -140,6 +143,45 @@ test("Install uses the native DSH plugin-manager remote and keeps the command fa
 	} finally { fixture.restore(); }
 });
 
+
+test("migrates an existing npm-only source config to include GitHub exactly once", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 0);
+	try {
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		assert.ok(fixture.scope.__section.sources.some((source) => source.type === "github"));
+		assert.equal(fixture.scope.__section.sources.filter((source) => source.type === "github").length, 1);
+		assert.equal(fixture.scope.__section.sourceDefaultsVersion, 1);
+	} finally { fixture.restore(); }
+});
+
+test("Browse sends page size and page changes to Host RPC", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }, { id: "github", name: "GitHub", type: "github", enabled: true }]);
+	try {
+		let tree = fixture.render();
+		const browse = byTag(tree, "button").find((button) => textOf(button) === "Browse");
+		browse.props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+		byId(tree, "pm-page-size").props.onChange({ target: { value: "50" } });
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+		const next = byTag(tree, "button").find((button) => textOf(button) === "Next");
+		next.props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		const browseCalls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/browse");
+		assert.ok(browseCalls.some((call) => call.payload.pageSize === 50));
+		assert.ok(browseCalls.some((call) => call.payload.page === 2 && call.payload.pageSize === 50));
+	} finally { fixture.restore(); }
+});
 
 test("activation guidance opens the native marketplace detail page", async () => {
 	const fixture = await setup();

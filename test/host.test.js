@@ -77,11 +77,19 @@ test("exposes source config through the plugin entry and exact authenticated API
 	assert.ok(fixture.routes.has("/api/plugin-sources/browse"));
 });
 
-test("validates browse query payload", async () => {
+test("validates paged browse payload", async () => {
 	const { call } = hostFixture();
-	const invalid = await call("browse", { query: 42 });
-	assert.equal(invalid.ok, false);
-	assert.equal(invalid.error.code, "plugin-sources/invalid-request");
+	for (const payload of [
+		{ query: 42 },
+		{ page: 0 },
+		{ pageSize: 25 },
+		{ sort: "unknown" },
+		{ stableOnly: "yes" },
+	]) {
+		const invalid = await call("browse", payload);
+		assert.equal(invalid.ok, false);
+		assert.equal(invalid.error.code, "plugin-sources/invalid-request");
+	}
 });
 
 test("disabled sources never trigger network and remain visible in health", async () => {

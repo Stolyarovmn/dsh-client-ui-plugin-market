@@ -255,6 +255,41 @@ test("queries scoped npm download counts individually because npm bulk point que
 	assert.equal(counts.get("@acme/dsh-two"), 22);
 });
 
+test("paginates before optional npm evidence enrichment", async () => {
+	const rows = Array.from({ length: 55 }, (_, index) => ({ name: `plugin-${String(index + 1).padStart(2, "0")}`, package: `plugin-${index + 1}`, version: "1.0.0" }));
+	const result = await browseSources([source()], "", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse(rows),
+		enrichDownloads: false,
+		page: 2,
+		pageSize: 20,
+		sort: "name",
+	});
+	assert.equal(result.total, 55);
+	assert.equal(result.page, 2);
+	assert.equal(result.pageSize, 20);
+	assert.equal(result.pageCount, 3);
+	assert.equal(result.plugins.length, 20);
+	assert.equal(result.plugins[0].name, "plugin-21");
+});
+
+test("sorts GitHub star evidence globally before slicing a page", async () => {
+	const githubSource = { id: "github", name: "GitHub", type: "github", enabled: true };
+	const result = await browseSources([githubSource], "", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse({ items: [
+			{ id: 1, name: "one", html_url: "https://github.com/acme/one", stargazers_count: 5, topics: ["dsh-plugin"] },
+			{ id: 2, name: "two", html_url: "https://github.com/acme/two", stargazers_count: 50, topics: ["dsh-plugin"] },
+			{ id: 3, name: "three", html_url: "https://github.com/acme/three", stargazers_count: 20, topics: ["dsh-plugin"] },
+		] }),
+		enrichDownloads: false,
+		page: 1,
+		pageSize: 20,
+		sort: "stars",
+	});
+	assert.deepEqual(result.plugins.map((plugin) => plugin.evidence?.stars), [50, 20, 5]);
+});
+
 test("caps source count and aggregate plugin results", async () => {
 	await assert.rejects(() => browseSources([source(), source({ id: "two" })], "", { maxSources: 1 }), /at most 1/);
 	const result = await browseSources([source()], "", {
