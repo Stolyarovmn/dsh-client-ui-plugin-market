@@ -36,5 +36,5 @@ jobs:
         run: |
           pnpm dlx @deepseek-ai/dsh@0.1.7-rc.1 plugin --profile smoke add "file:$GITHUB_WORKSPACE"
           pnpm dlx @deepseek-ai/dsh@0.1.7-rc.1 --profile smoke --dump-config > /tmp/dsh-config.txt
-          grep -F "plugin-market" /tmp/dsh-config.txt
-          grep -F "@stolyarovmn/dsh-client-ui-plugin-market" /tmp/dsh-config.txt
+          grep -F "registry-aggregator" /tmp/dsh-config.txt
+          grep -F "@stolyarovmn/dsh-client-ui-registry-aggregator" /tmp/dsh-config.txt
