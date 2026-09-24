@@ -277,6 +277,9 @@ export async function loadBundle({ resolver } = {}) {
 		IconChevronRightOutlineRegular: Icon,
 		IconChevronsUpDownOutlineRegular: Icon,
 		IconFlatListOutlineRegular: Icon,
+		IconShieldOutlineRegular: Icon,
+		IconChecklistOutlineRegular: Icon,
+		IconCodeOutlineRegular: Icon,
 	};
 	const modules = {
 		react: makeReact(),

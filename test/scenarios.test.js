@@ -26,7 +26,7 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 		rpc: {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
-				if (endpoint === "plugin-sources/health") return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
+				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
 				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
 				return { ok: false, error: { message: "unknown" } };
@@ -35,9 +35,10 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 	};
 	const slots = makeSlots();
 	const installs = [];
+	const inspections = [];
 	const remote = {
 		pluginManager: {
-			async inspect(spec) { return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
+			async inspect(spec, options) { inspections.push({ spec, options }); return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
 			async installBundle(spec, options) { installs.push({ spec, options }); return { ok: true, value: { changed: true, application: "applied" } }; },
 		},
 	};
@@ -48,7 +49,7 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, section, activation, render, restore };
 }
 
 test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
@@ -88,6 +89,16 @@ test("adds a typed source through the durable settings scope", async () => {
 	} finally { fixture.restore(); }
 });
 
+test("Sources health uses the Browse transport to avoid a stale dedicated health route", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+	try {
+		fixture.render();
+		await settle();
+		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/browse" && call.payload?.healthOnly === true));
+		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/health"), false);
+	} finally { fixture.restore(); }
+});
+
 test("Browse calls Host RPC and renders normalized install metadata", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
@@ -117,7 +128,7 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /4\.8/);
 		assert.match(textOf(tree), /released/);
 		assert.match(textOf(tree), /Check DSH compatibility/);
-		assert.equal(byId(tree, "pm-page-size").props.value, 20);
+		assert.match(textOf(byId(tree, "pm-page-size")), /20/);
 		assert.match(textOf(tree), /41 results/);
 		assert.ok(byClass(tree, "pm-page-button").some((button) => textOf(button) === "1" && button.props["data-current"] === true));
 		assert.equal(byClass(tree, "pm-sort-criterion").length, 4);
@@ -209,7 +220,8 @@ test("Install starts immediately through the native DSH plugin-manager remote an
 		await install.props.onClick();
 		await settle();
 
-		assert.deepEqual(fixture.installs, [{ spec: "dsh-demo@1.0.0", options: { enabled: true, registry: null } }]);
+		assert.deepEqual(fixture.inspections, [{ spec: "dsh-demo@1.0.0", options: { registry: null } }]);
+		assert.deepEqual(fixture.installs, [{ spec: "dsh-demo@1.0.0", options: { enabled: false, registry: null } }]);
 		tree = fixture.render();
 		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
@@ -240,7 +252,7 @@ test("Browse sends page size and page changes to Host RPC", async () => {
 		await settle(260);
 		await settle();
 		tree = fixture.render();
-		byId(tree, "pm-page-size").props.onChange({ target: { value: "50" } });
+		byId(tree, "pm-page-size").props.onClick();
 		fixture.render();
 		await settle(260);
 		await settle();
