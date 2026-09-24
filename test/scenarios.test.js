@@ -77,12 +77,14 @@ test("adds a typed source through the durable settings scope", async () => {
 		assert.deepEqual(fixture.scope.__section.sources[0], {
 			id: "community-catalog",
 			name: "Community Catalog",
-			type: "custom-json",
+			type: "dshplugin-app",
 			url: "https://catalog.example/plugins.json",
 			enabled: true,
 		});
 		assert.equal(byClass(tree, "pm-source").length, 1);
 		assert.equal(byClass(tree, "pm-source-list").length, 1);
+		assert.equal(byClass(tree, "pm-source-switch").length, 1);
+		assert.equal(byId(tree, "pm-type").props.value, "dshplugin-app");
 	} finally { fixture.restore(); }
 });
 
