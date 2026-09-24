@@ -1,6 +1,6 @@
 # Activated when this package is listed in a DSH profile's bundles.
-# The Host registers source settings and authenticated RPC; the Web client adds
-# the native Plugins page.
+# The Host registers source configuration and authenticated RPC; the Web client
+# extends the native Plugins page.
 - insert:
-    - id: plugin-market
-      name: '@stolyarovmn/dsh-client-ui-plugin-market'
+    - id: registry-aggregator
+      name: '@stolyarovmn/dsh-ui-registry-aggregator'
