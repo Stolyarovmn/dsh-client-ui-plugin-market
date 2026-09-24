@@ -40,6 +40,22 @@ test("searches normalized metadata and source badges", () => {
 	assert.equal(searchPlugins([plugin], "missing").length, 0);
 });
 
+test("normalizes display tags from explicit catalog, npm, and GitHub metadata", () => {
+	const plugin = normalizePlugin({
+		name: "Schedule UI",
+		package: "@acme/schedule",
+		keywords: ["client-plugin", "schedule", "deepseek-harness", "dsh-plugin-theme"],
+		topics: ["dsh-plugin-provider", "unrelated"],
+		category: "workflow",
+	}, source());
+	assert.deepEqual(plugin.tags, ["ui", "schedule", "theme", "provider", "workflow"]);
+	const merged = dedupePlugins([
+		plugin,
+		normalizePlugin({ name: "Schedule UI", package: "@acme/schedule", tags: ["integration", "tool"] }, source({ id: "other", name: "Other" })),
+	]);
+	assert.deepEqual(merged[0].tags, ["ui", "schedule", "theme", "provider", "workflow", "integration", "tool"]);
+});
+
 test("rejects command-like install specs instead of exposing unsafe copy commands", () => {
 	const plugin = normalizePlugin({ name: "Bad", id: "bad", install: { type: "npm", spec: "safe; remove-everything" } }, source());
 	assert.equal(plugin.install, undefined);
