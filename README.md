@@ -125,10 +125,14 @@ The tests cover manifest wiring, client registration and scenarios, adapters, ma
 
 ## MVP scope
 
-Included: source configuration, source health, Host-side loading, normalization, deduplication, unified search, source badges, category tags, package/repository/version details, install specs, and inline copy-command action.
+Included: source configuration, source health, Host-side loading, normalization, deduplication, unified search, source badges, category tags, package/repository/version details, release-channel badges, GitHub-star evidence when supplied by a source, npm 30-day download counts, source ratings when available, sorting/filtering, install specs, and inline copy-command action.
 
 Deferred: executing installation, updates, removals, signatures, review workflows, and marketplace publishing.
 
 ## License
 
 MIT
+
+## Popularity and release signals
+
+Browse keeps source-provided evidence separate instead of calculating a synthetic score. Versions are classified locally as `stable`, `rc`, `beta`, `alpha`, or generic `prerelease`. GitHub sources contribute star counts, marketplace/custom catalogs may contribute ratings, and npm-backed results are enriched with the public npm downloads API for the last 30 days. Missing evidence is omitted rather than displayed as zero.
