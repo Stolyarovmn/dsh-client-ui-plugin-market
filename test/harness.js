@@ -219,15 +219,21 @@ export function makeSettingsScopeService(scope) {
 	return { bind: (_spec) => scope, describe: () => scope.getSnapshot() };
 }
 
+export function makeConfigFormsService(scope) {
+	return { get: (_namespace) => scope, describe: () => scope.getSnapshot() };
+}
+
 // ── ctx factory ───────────────────────────────────────────────────────────────
-export function makeCtx(locale, { settingsScope, slots, connection } = {}) {
+export function makeCtx(locale, { settingsScope, configForms, slots, connection, remote } = {}) {
 	const slotMock = slots ?? makeSlots();
 	const ctx = {
 		effect(fn, _label) { fn(); return () => {}; },
 		locale,
 		slots: slotMock,
 		...(settingsScope !== undefined ? { settingsScope } : {}),
+		...(configForms !== undefined ? { configForms } : {}),
 		...(connection !== undefined ? { connection } : {}),
+		...(remote !== undefined ? { remote } : {}),
 	};
 	return { ctx, recorded: slotMock.recorded, slots: slotMock };
 }
