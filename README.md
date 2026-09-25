@@ -93,6 +93,7 @@ Registry Aggregator treats registry search hits as **candidates**, not automatic
 
 - npm candidates are verified against their published `package.json`.
 - Exact npm package-name searches bypass npm's eventually-consistent search index by reading the package's `latest` manifest directly, so newly published scoped packages can be found immediately.
+- Short and partial queries are applied locally to the canonical verified npm/GitHub candidate set, so searches such as `schedule` or `dsh-client-ui-schedule-tab` do not depend on registry search ranking.
 - GitHub candidates are discovered with DeepSeek-Harness-specific topic intersections instead of the broad `dsh-plugin` topic alone.
 - Visible npm/GitHub candidates are verified for a root `dsh.bundle.patch` declaration before the UI exposes **Install** or the `dsh plugin add …` fallback command.
 - Registry candidates that do not declare a valid `dsh.bundle.patch` are discarded before totals, sorting, pagination, and rendering. They never appear in Browse.

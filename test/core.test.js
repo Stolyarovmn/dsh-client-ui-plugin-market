@@ -119,6 +119,71 @@ test("npm adapter searches canonical and compatibility discovery keywords then d
 	}
 });
 
+test("Browse partial search filters the canonical npm plugin set locally instead of trusting npm query ranking", async () => {
+	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const requests = [];
+	const result = await browseSources([npm], "schedule", {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			requests.push(value);
+			if (value.includes("/-/v1/search")) {
+				const textParam = new URL(String(url)).searchParams.get("text") ?? "";
+				// Simulate npm ranking/index behavior: query-specific search misses the
+				// plugin, while normal DSH keyword discovery already knows about it.
+				if (textParam.includes("schedule")) return jsonResponse({ objects: [] });
+				return jsonResponse({ objects: [{
+					package: {
+						name: packageName,
+						version: "0.4.5",
+						description: "Global Schedule tab for DeepSeek Harness",
+						keywords: ["dsh", "dsh-plugin", "deepseek-harness", "schedule"],
+						links: { repository: "https://github.com/Stolyarovmn/dsh-schedule-tab" },
+					},
+				}] });
+			}
+			if (value.includes(packageName + "/0.4.5")) {
+				return jsonResponse({ name: packageName, version: "0.4.5", dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+			}
+			return new Response("not found", { status: 404 });
+		},
+	});
+	assert.deepEqual(result.plugins.map((plugin) => plugin.identity.package), [packageName]);
+	assert.equal(result.total, 1);
+	assert.equal(requests.some((value) => value.includes("keywords:dsh-plugin") && !value.includes(" schedule")), true);
+});
+
+test("Browse matches a scoped npm package by its unscoped name fragment", async () => {
+	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const result = await browseSources([npm], "dsh-client-ui-schedule-tab", {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			if (value.includes("/-/v1/search")) {
+				const textParam = new URL(String(url)).searchParams.get("text") ?? "";
+				if (textParam.includes("dsh-client-ui-schedule-tab")) return jsonResponse({ objects: [] });
+				return jsonResponse({ objects: [{
+					package: {
+						name: packageName,
+						version: "0.4.5",
+						description: "Global Schedule tab",
+						keywords: ["dsh-plugin", "deepseek-harness"],
+					},
+				}] });
+			}
+			if (value.includes(packageName + "/0.4.5")) return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+			return new Response("not found", { status: 404 });
+		},
+	});
+	assert.deepEqual(result.plugins.map((plugin) => plugin.identity.package), [packageName]);
+});
+
 test("exact npm package search bypasses a stale npm search index via the latest manifest endpoint", async () => {
 	const requests = [];
 	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
