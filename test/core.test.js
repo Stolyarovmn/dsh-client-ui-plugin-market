@@ -184,7 +184,7 @@ test("Browse matches a scoped npm package by its unscoped name fragment", async 
 	assert.deepEqual(result.plugins.map((plugin) => plugin.identity.package), [packageName]);
 });
 
-test("exact npm package search bypasses a stale npm search index via the latest manifest endpoint", async () => {
+test("exact npm package search bypasses a stale npm search index via the package packument", async () => {
 	const requests = [];
 	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
@@ -192,15 +192,21 @@ test("exact npm package search bypasses a stale npm search index via the latest 
 			const value = String(url);
 			requests.push(value);
 			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [] });
-			if (decodeURIComponent(value).includes(`${packageName}/latest`)) {
+			if (decodeURIComponent(value).endsWith(packageName)) {
 				return jsonResponse({
 					name: packageName,
-					version: "0.4.5",
-					description: "Global Schedule tab",
-					keywords: ["dsh", "dsh-plugin", "deepseek-harness"],
-					repository: { type: "git", url: "git+https://github.com/Stolyarovmn/dsh-schedule-tab.git" },
-					dsh: { bundle: { patch: "./cordis.patch.yml" } },
-					peerDependencies: { "@deepseek-ai/dsh": ">=0.1.5-rc.3 <0.1.7-rc.2" },
+					"dist-tags": { latest: "0.4.5" },
+					versions: {
+						"0.4.5": {
+							name: packageName,
+							version: "0.4.5",
+							description: "Global Schedule tab",
+							keywords: ["dsh", "dsh-plugin", "deepseek-harness"],
+							repository: { type: "git", url: "git+https://github.com/Stolyarovmn/dsh-schedule-tab.git" },
+							dsh: { bundle: { patch: "./cordis.patch.yml" } },
+							peerDependencies: { "@deepseek-ai/dsh": ">=0.1.5-rc.3 <0.1.7-rc.2" },
+						},
+					},
 				});
 			}
 			return jsonResponse({});
@@ -213,7 +219,74 @@ test("exact npm package search bypasses a stale npm search index via the latest 
 	assert.equal(plugins[0].version, "0.4.5");
 	assert.equal(plugins[0].evidence.installability, "bundle");
 	assert.equal(plugins[0].evidence.dshCompatibility, ">=0.1.5-rc.3 <0.1.7-rc.2");
-	assert.ok(requests.some((url) => decodeURIComponent(url).includes(`${packageName}/latest`)));
+	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(packageName)));
+});
+
+test("Browse merges query-specific GitHub discovery when canonical first-page discovery misses a low-ranked plugin", async () => {
+	const github = { id: "github", name: "GitHub", type: "github", enabled: true };
+	const repoUrl = "https://github.com/Stolyarovmn/dsh-schedule-tab";
+	const queries = [];
+	const result = await browseSources([github], "schedule", {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			if (value.includes("raw.githubusercontent.com")) {
+				return jsonResponse({
+					name: "@stolyarovmn/dsh-client-ui-schedule-tab",
+					version: "0.4.5",
+					dsh: { bundle: { patch: "./cordis.patch.yml" } },
+				});
+			}
+			const q = new URL(value).searchParams.get("q") ?? "";
+			queries.push(q);
+			// Canonical topic discovery misses the low-ranked repo.
+			if (!q.includes("schedule")) return jsonResponse({ total_count: 140, items: [] });
+			// Query-specific discovery narrows GitHub enough to surface it.
+			return jsonResponse({ total_count: 1, items: [{
+				id: 42,
+				name: "dsh-schedule-tab",
+				full_name: "Stolyarovmn/dsh-schedule-tab",
+				description: "DeepSeek Harness Web plugin: a global Schedule tab",
+				html_url: repoUrl,
+				clone_url: repoUrl + ".git",
+				topics: ["deepseek-harness", "dsh-plugin", "schedule"],
+				stargazers_count: 0,
+			}] });
+		},
+	});
+	assert.equal(result.total, 1);
+	assert.equal(result.plugins[0].identity.repository, "https://github.com/stolyarovmn/dsh-schedule-tab");
+	assert.ok(queries.some((q) => q.includes("schedule")));
+});
+
+test("Browse derives GitHub query aliases for DSH package-style names", async () => {
+	const github = { id: "github", name: "GitHub", type: "github", enabled: true };
+	const queries = [];
+	const result = await browseSources([github], "dsh-client-ui-schedule-tab", {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			if (value.includes("raw.githubusercontent.com")) {
+				return jsonResponse({ name: "@stolyarovmn/dsh-client-ui-schedule-tab", version: "0.4.5", dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+			}
+			const q = new URL(value).searchParams.get("q") ?? "";
+			queries.push(q);
+			if (!q.includes("schedule-tab")) return jsonResponse({ items: [] });
+			return jsonResponse({ items: [{
+				id: 43,
+				name: "dsh-schedule-tab",
+				description: "Global Schedule tab",
+				html_url: "https://github.com/Stolyarovmn/dsh-schedule-tab",
+				topics: ["deepseek-harness", "dsh-plugin", "schedule"],
+			}] });
+		},
+	});
+	assert.equal(result.total, 1);
+	assert.ok(queries.some((q) => q.includes("schedule-tab")));
 });
 
 test("GitHub health reports the deduplicated discovery set instead of the raw polluted topic total", async () => {

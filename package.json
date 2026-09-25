@@ -1,7 +1,7 @@
 {
 	"name": "@stolyarovmn/dsh-ui-registry-aggregator",
 	"description": "Federated plugin registry aggregator for DeepSeek Harness: combine trusted sources, search one index, and install through the native Plugin Manager.",
-	"version": "0.4.8",
+	"version": "0.4.9",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"
