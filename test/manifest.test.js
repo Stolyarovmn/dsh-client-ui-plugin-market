@@ -9,7 +9,7 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 test("package declares both DSH faces and required client services", async () => {
 	const pkg = JSON.parse(await read("package.json"));
 	assert.equal(pkg.name, "@stolyarovmn/dsh-ui-registry-aggregator");
-	assert.equal(pkg.version, "0.4.2");
+	assert.equal(pkg.version, "0.4.3");
 	assert.equal(pkg.type, "module");
 	assert.equal(pkg.main, "lib/index.js");
 	assert.equal(pkg.exports["./client"], "./lib/client.js");
@@ -67,6 +67,8 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
 	assert.doesNotMatch(client, /sampleCatalog|__PM_RESOLVER__/);
 	assert.doesNotMatch(client, /tokenEnv|allowPrivateNetwork/);
+	assert.match(client, /children: "\.\.\." \}\) : null/);
+	assert.match(client, /\.pm-desc-more\{[^}]*background:transparent[^}]*font:900/s);
 });
 
 test("all published documentation files exist", async () => {
