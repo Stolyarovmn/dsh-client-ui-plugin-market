@@ -123,7 +123,7 @@ test("GitHub health reports the deduplicated discovery set instead of the raw po
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
 		fetchImpl: async (url) => {
-			queries.push(decodeURIComponent(String(url)));
+			queries.push(new URL(String(url)).searchParams.get("q"));
 			return jsonResponse({
 				total_count: 16083,
 				items: [{ id: 1, name: "demo", html_url: "https://github.com/acme/demo", topics: ["deepseek-harness", "dsh-plugin"] }],
@@ -144,7 +144,7 @@ test("GitHub adapter searches plugin topics and deduplicates the same repository
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
 		fetchImpl: async (url) => {
-			queries.push(decodeURIComponent(String(url)));
+			queries.push(new URL(String(url)).searchParams.get("q"));
 			return jsonResponse({ items: [{ id: 1, name: "dsh-schedule-tab", description: "Schedule", html_url: "https://github.com/Stolyarovmn/dsh-schedule-tab", stargazers_count: 1 }] });
 		},
 		resolveHost: publicDns,
