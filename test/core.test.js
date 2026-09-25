@@ -5,6 +5,7 @@ import {
 	createAdapter,
 	dedupePlugins,
 	fetchJson,
+	githubPluginDetails,
 	normalizePlugin,
 	npmPluginDetails,
 	searchPlugins,
@@ -118,21 +119,25 @@ test("npm adapter searches canonical and compatibility discovery keywords then d
 	}
 });
 
-test("GitHub health uses one lightweight search and reports total_count", async () => {
+test("GitHub health reports the deduplicated discovery set instead of the raw polluted topic total", async () => {
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
 		fetchImpl: async (url) => {
 			queries.push(decodeURIComponent(String(url)));
-			return jsonResponse({ total_count: 269, items: [{ id: 1, name: "demo", html_url: "https://github.com/acme/demo" }] });
+			return jsonResponse({
+				total_count: 16083,
+				items: [{ id: 1, name: "demo", html_url: "https://github.com/acme/demo", topics: ["deepseek-harness", "dsh-plugin"] }],
+			});
 		},
 		resolveHost: publicDns,
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, 269);
-	assert.equal(queries.length, 1);
-	assert.match(queries[0], /topic:dsh-plugin/);
-	assert.match(queries[0], /per_page=1/);
+	assert.equal(health.count, 1);
+	assert.equal(queries.length, 3);
+	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugin")));
+	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness-plugin")));
+	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugins")));
 });
 
 test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
@@ -147,9 +152,9 @@ test("GitHub adapter searches plugin topics and deduplicates the same repository
 	const plugins = await adapter.search("schedule");
 	assert.equal(plugins.length, 1);
 	assert.equal(plugins[0].identity.repository, "https://github.com/stolyarovmn/dsh-schedule-tab");
-	for (const topic of ["dsh-plugin", "deepseek-harness-plugin", "dsh-plugins"]) {
-		assert.ok(queries.some((query) => query.includes(`topic:${topic}`)), `missing GitHub discovery topic ${topic}`);
-	}
+	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugin")));
+	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness-plugin")));
+	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugins")));
 });
 
 test("blocks private destinations and redirects before the next request", async () => {
@@ -378,6 +383,65 @@ test("supports ordered multi-criteria ranking with independent directions", asyn
 		sorts: [{ key: "stars", direction: "asc" }],
 	});
 	assert.deepEqual(reverseStars.plugins.map((plugin) => plugin.evidence?.stars), [1, 10, 50, 500]);
+});
+
+test("npm package details classify only manifests with dsh.bundle.patch as installable bundles", async () => {
+	const bundle = await npmPluginDetails("@acme/bundle", "1.0.0", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } }),
+	});
+	assert.equal(bundle.installability, "bundle");
+	assert.equal(bundle.bundlePatch, "./cordis.patch.yml");
+
+	const related = await npmPluginDetails("@acme/catalog", "1.0.0", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse({ keywords: ["dsh-plugin"] }),
+	});
+	assert.equal(related.installability, "not-bundle");
+});
+
+test("GitHub package details verify the root manifest before treating a repository as an installable bundle", async () => {
+	const urls = [];
+	const bundle = await githubPluginDetails("https://github.com/acme/plugin", {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			urls.push(String(url));
+			return jsonResponse({ name: "@acme/plugin", dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+		},
+	});
+	assert.equal(bundle.installability, "bundle");
+	assert.equal(bundle.bundlePatch, "./cordis.patch.yml");
+	assert.ok(urls.some((url) => url.includes("raw.githubusercontent.com/acme/plugin/HEAD/package.json")));
+
+	const related = await githubPluginDetails("https://github.com/acme/docs-only", {
+		resolveHost: publicDns,
+		fetchImpl: async () => jsonResponse({ name: "docs-only", private: true }),
+	});
+	assert.equal(related.installability, "not-bundle");
+});
+
+test("Browse verifies visible npm and GitHub candidates without turning related projects into installable plugins", async () => {
+	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const result = await browseSources([npm], "", {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			if (value.includes("/-/v1/search")) {
+				return jsonResponse({ objects: [
+					{ package: { name: "real-bundle", version: "1.0.0", keywords: ["dsh-plugin"] } },
+					{ package: { name: "related-catalog", version: "1.0.0", keywords: ["dsh-plugin"] } },
+				] });
+			}
+			if (value.includes("real-bundle/1.0.0")) return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+			if (value.includes("related-catalog/1.0.0")) return jsonResponse({ keywords: ["dsh-plugin"] });
+			return jsonResponse({});
+		},
+	});
+	const byName = Object.fromEntries(result.plugins.map((plugin) => [plugin.name, plugin]));
+	assert.equal(byName["real-bundle"].evidence.installability, "bundle");
+	assert.equal(byName["related-catalog"].evidence.installability, "not-bundle");
 });
 
 test("reads explicit DSH compatibility and DSH API peers from npm version metadata", async () => {
