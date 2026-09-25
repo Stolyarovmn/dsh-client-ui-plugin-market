@@ -140,6 +140,27 @@ test("GitHub health reports the deduplicated discovery set instead of the raw po
 	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugins")));
 });
 
+test("registry source health counts only verified installable DSH bundles when verification is enabled", async () => {
+	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			if (value.includes("/-/v1/search")) {
+				return jsonResponse({ objects: [
+					{ package: { name: "installable", version: "1.0.0", keywords: ["dsh-plugin"] } },
+					{ package: { name: "docs-only", version: "1.0.0", keywords: ["dsh-plugin"] } },
+				] });
+			}
+			if (value.includes("installable/1.0.0")) return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+			return jsonResponse({});
+		},
+	});
+	const health = await adapter.health();
+	assert.equal(health.ok, true);
+	assert.equal(health.count, 1);
+});
+
 test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
@@ -420,7 +441,7 @@ test("GitHub package details verify the root manifest before treating a reposito
 	assert.equal(related.installability, "not-bundle");
 });
 
-test("Browse verifies visible npm and GitHub candidates without turning related projects into installable plugins", async () => {
+test("Browse removes npm candidates that are not real DSH bundles before totals and pagination", async () => {
 	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
 	const result = await browseSources([npm], "", {
 		resolveHost: publicDns,
@@ -439,9 +460,10 @@ test("Browse verifies visible npm and GitHub candidates without turning related 
 			return jsonResponse({});
 		},
 	});
-	const byName = Object.fromEntries(result.plugins.map((plugin) => [plugin.name, plugin]));
-	assert.equal(byName["real-bundle"].evidence.installability, "bundle");
-	assert.equal(byName["related-catalog"].evidence.installability, "not-bundle");
+	assert.deepEqual(result.plugins.map((plugin) => plugin.name), ["real-bundle"]);
+	assert.equal(result.plugins[0].evidence.installability, "bundle");
+	assert.equal(result.total, 1);
+	assert.equal(result.pageCount, 1);
 });
 
 test("reads explicit DSH compatibility and DSH API peers from npm version metadata", async () => {
