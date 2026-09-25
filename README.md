@@ -87,6 +87,16 @@ Example:
 
 Identity precedence is npm package, canonical repository URL, then source-specific id. Duplicate records preserve source attribution, versions, and normalized category tags.
 
+## Discovery quality
+
+Registry Aggregator treats registry search hits as **candidates**, not automatically as installable DSH plugins.
+
+- npm candidates are verified against their published `package.json`.
+- GitHub candidates are discovered with DeepSeek-Harness-specific topic intersections instead of the broad `dsh-plugin` topic alone.
+- Visible npm/GitHub candidates are verified for a root `dsh.bundle.patch` declaration before the UI exposes **Install** or the `dsh plugin add …` fallback command.
+- Related repositories can still appear for context, but are marked as **Related project** and cannot be installed as bundles.
+- GitHub source counts reflect the deduplicated repositories the adapter actually discovers, not GitHub's raw topic cardinality.
+
 ## Sorting
 
 Sorting criteria are independent and composable:

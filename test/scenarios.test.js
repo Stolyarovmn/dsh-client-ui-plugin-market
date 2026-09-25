@@ -27,7 +27,7 @@ async function setup(sources = [], sourceDefaultsVersion = 1, options = {}) {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
 				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
-				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
+				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
 				return { ok: false, error: { message: "unknown" } };
 			},
@@ -105,6 +105,20 @@ test("adds a typed source through the durable settings scope", async () => {
 		assert.equal(byClass(tree, "pm-source-list").length, 1);
 		assert.equal(byClass(tree, "pm-source-switch").length, 1);
 		assert.equal(byId(tree, "pm-type").props.value, "dshplugin-app");
+	} finally { fixture.restore(); }
+});
+
+test("source cards omit redundant Enabled text and label GitHub counts as repositories", async () => {
+	const fixture = await setup([
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	]);
+	try {
+		fixture.render();
+		await settle();
+		const tree = fixture.render();
+		assert.equal(textOf(tree).includes("Enabled"), false);
+		assert.match(textOf(tree), /1 repositories/);
+		assert.equal(byClass(tree, "pm-status").length >= 1, true);
 	} finally { fixture.restore(); }
 });
 
