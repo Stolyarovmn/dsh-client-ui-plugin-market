@@ -17,7 +17,7 @@ import {
 
 const settle = async (milliseconds = 0) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function setup(sources = [], sourceDefaultsVersion = 1) {
+async function setup(sources = [], sourceDefaultsVersion = 1, options = {}) {
 	const { exports, document } = await loadBundle();
 	const locale = makeLocale("en");
 	const scope = makeSettingsScope({ sources, sourceDefaultsVersion });
@@ -36,10 +36,29 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 	const slots = makeSlots();
 	const installs = [];
 	const inspections = [];
+	const remoteListeners = new Map();
+	const emitRemote = (event, payload) => {
+		for (const handler of remoteListeners.get(event) ?? []) handler(payload);
+	};
 	const remote = {
+		$on(event, handler) {
+			const listeners = remoteListeners.get(event) ?? new Set();
+			listeners.add(handler);
+			remoteListeners.set(event, listeners);
+			return () => listeners.delete(handler);
+		},
 		pluginManager: {
 			async inspect(spec, options) { inspections.push({ spec, options }); return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
-			async installBundle(spec, options) { installs.push({ spec, options }); return { ok: true, value: { changed: true, application: "applied" } }; },
+			async installBundle(spec, installOptions) {
+				installs.push({ spec, options: installOptions });
+				if (installOptions?.requestId) {
+					emitRemote("plugin-manager/install-state", { requestId: installOptions.requestId, phase: "installing", attempt: { registry: installOptions.registry ?? null, index: 1, total: 1 } });
+					emitRemote("plugin-manager/install-log", { requestId: installOptions.requestId, jobId: "job-1", argv: ["pnpm", "add", spec], cwd: "/profile", stream: "stdout", text: "Resolving package…" });
+				}
+				if (options.installDelayMs) await settle(options.installDelayMs);
+				if (installOptions?.requestId) emitRemote("plugin-manager/install-state", { requestId: installOptions.requestId, phase: "applying" });
+				return { ok: true, value: { changed: true, application: "applied", bundle: spec } };
+			},
 		},
 	};
 	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection, remote });
@@ -49,7 +68,7 @@ async function setup(sources = [], sourceDefaultsVersion = 1) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, emitRemote, section, activation, render, restore };
 }
 
 test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
@@ -137,6 +156,7 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 		assert.match(textOf(tree), /schedule/);
 		assert.match(textOf(tree), /stable/);
 		assert.match(textOf(tree), /42/);
+		assert.ok(byClass(tree, "pm-star-icon").length >= 1);
 		assert.match(textOf(tree), /1\.2K \/ 30d/);
 		assert.match(textOf(tree), /4\.8/);
 		assert.match(textOf(tree), /released/);
@@ -150,7 +170,7 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 });
 
 
-test("Browse combines freshness, category, and DSH metadata filters in Host requests", async () => {
+test("Browse filter dropdowns use the native DSH Menu and combine selections in Host requests", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
 		let tree = fixture.render();
@@ -159,15 +179,24 @@ test("Browse combines freshness, category, and DSH metadata filters in Host requ
 		await settle(260);
 		await settle();
 		tree = fixture.render();
-		assert.equal(byId(tree, "pm-freshness").props.value, 0);
-		assert.equal(byId(tree, "pm-category").props.value, "");
-		assert.equal(byId(tree, "pm-dsh-metadata").props.value, "any");
 
-		byId(tree, "pm-freshness").props.onChange({ target: { value: "90" } });
+		for (const id of ["pm-freshness", "pm-category", "pm-dsh-metadata"]) {
+			assert.equal(byId(tree, id).props["aria-haspopup"], "menu");
+		}
+
+		byId(tree, "pm-freshness").props.onClick();
 		tree = fixture.render();
-		byId(tree, "pm-category").props.onChange({ target: { value: "ui" } });
+		byTag(tree, "button").find((button) => button.props["data-menu-id"] === "90").props.onClick();
 		tree = fixture.render();
-		byId(tree, "pm-dsh-metadata").props.onChange({ target: { value: "declared" } });
+
+		byId(tree, "pm-category").props.onClick();
+		tree = fixture.render();
+		byTag(tree, "button").find((button) => button.props["data-menu-id"] === "ui").props.onClick();
+		tree = fixture.render();
+
+		byId(tree, "pm-dsh-metadata").props.onClick();
+		tree = fixture.render();
+		byTag(tree, "button").find((button) => button.props["data-menu-id"] === "declared").props.onClick();
 		fixture.render();
 		await settle(260);
 		await settle();
@@ -216,6 +245,34 @@ test("Browse combines independent ordered sort criteria and resolves DSH compati
 		tree = fixture.render();
 		assert.match(textOf(tree), /DSH >=0\.1\.7-rc\.1 <0\.2\.0/);
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/details"));
+	} finally { fixture.restore(); }
+});
+
+test("Install button uses the native DSH ongoing spinner and follows plugin-manager progress events", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 1, { installDelayMs: 35 });
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		const install = byTag(tree, "button").find((button) => button.props["aria-label"] === "Install");
+		assert.ok(install);
+		const pending = install.props.onClick();
+		await settle();
+		tree = fixture.render();
+
+		const running = byClass(tree, "pm-card-install")[0];
+		assert.equal(running.props["data-state"], "installing");
+		assert.match(String(running.props["aria-label"]), /Installing 1\/1/);
+		assert.equal(byClass(tree, "mock-state-dot").length, 1);
+		assert.equal(byClass(tree, "mock-state-dot")[0].props["data-state"], "ongoing");
+
+		await pending;
+		tree = fixture.render();
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
 	} finally { fixture.restore(); }
 });
 
