@@ -9,7 +9,7 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 test("package declares both DSH faces and required client services", async () => {
 	const pkg = JSON.parse(await read("package.json"));
 	assert.equal(pkg.name, "@stolyarovmn/dsh-ui-registry-aggregator");
-	assert.equal(pkg.version, "0.4.5");
+	assert.equal(pkg.version, "0.4.6");
 	assert.equal(pkg.type, "module");
 	assert.equal(pkg.main, "lib/index.js");
 	assert.equal(pkg.exports["./client"], "./lib/client.js");
