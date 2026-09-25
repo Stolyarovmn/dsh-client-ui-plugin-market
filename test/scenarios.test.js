@@ -122,6 +122,29 @@ test("source cards omit redundant Enabled text and label GitHub counts as reposi
 	} finally { fixture.restore(); }
 });
 
+test("source cards expose independent disclosure state without stretching closed cards", async () => {
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	]);
+	try {
+		fixture.render();
+		await settle();
+		let tree = fixture.render();
+		const cards = byClass(tree, "pm-source");
+		assert.equal(cards.length, 2);
+		assert.equal(cards[0].props["data-open"], true);
+		assert.equal(cards[1].props["data-open"], true);
+
+		const disclosures = byClass(tree, "pm-source-disclosure");
+		disclosures[1].props.onClick();
+		tree = fixture.render();
+		const nextCards = byClass(tree, "pm-source");
+		assert.equal(nextCards[0].props["data-open"], true);
+		assert.equal(nextCards[1].props["data-open"], false);
+	} finally { fixture.restore(); }
+});
+
 test("source cards keep copy URL and move the only destructive action into the header", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
