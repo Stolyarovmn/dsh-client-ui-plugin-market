@@ -109,9 +109,9 @@ test("serves source health through the Browse route", async () => {
 	assert.deepEqual(result.value.sources[0].health, { ok: false, disabled: true });
 });
 
-test("validates plugin detail requests before npm metadata lookup", async () => {
+test("validates npm and GitHub plugin detail requests before metadata lookup", async () => {
 	const { call } = hostFixture();
-	for (const payload of [{}, { package: 42, version: "1.0.0" }, { package: "demo", version: 1 }]) {
+	for (const payload of [{}, { package: 42, version: "1.0.0" }, { package: "demo", version: 1 }, { repository: 42 }, { repository: "x".repeat(2050) }]) {
 		const invalid = await call("details", payload);
 		assert.equal(invalid.ok, false);
 		assert.equal(invalid.error.code, "plugin-sources/invalid-request");
