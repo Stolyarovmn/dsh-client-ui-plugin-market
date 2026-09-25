@@ -119,6 +119,38 @@ test("npm adapter searches canonical and compatibility discovery keywords then d
 	}
 });
 
+test("exact npm package search bypasses a stale npm search index via the latest manifest endpoint", async () => {
+	const requests = [];
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
+		fetchImpl: async (url) => {
+			const value = String(url);
+			requests.push(value);
+			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [] });
+			if (decodeURIComponent(value).includes(`${packageName}/latest`)) {
+				return jsonResponse({
+					name: packageName,
+					version: "0.4.5",
+					description: "Global Schedule tab",
+					keywords: ["dsh", "dsh-plugin", "deepseek-harness"],
+					repository: { type: "git", url: "git+https://github.com/Stolyarovmn/dsh-schedule-tab.git" },
+					dsh: { bundle: { patch: "./cordis.patch.yml" } },
+					peerDependencies: { "@deepseek-ai/dsh": ">=0.1.5-rc.3 <0.1.7-rc.2" },
+				});
+			}
+			return jsonResponse({});
+		},
+		resolveHost: publicDns,
+	});
+	const plugins = await adapter.search(packageName);
+	assert.equal(plugins.length, 1);
+	assert.equal(plugins[0].identity.package, packageName);
+	assert.equal(plugins[0].version, "0.4.5");
+	assert.equal(plugins[0].evidence.installability, "bundle");
+	assert.equal(plugins[0].evidence.dshCompatibility, ">=0.1.5-rc.3 <0.1.7-rc.2");
+	assert.ok(requests.some((url) => decodeURIComponent(url).includes(`${packageName}/latest`)));
+});
+
 test("GitHub health reports the deduplicated discovery set instead of the raw polluted topic total", async () => {
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
