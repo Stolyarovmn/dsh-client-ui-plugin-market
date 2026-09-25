@@ -265,11 +265,12 @@ export async function loadBundle({ resolver } = {}) {
 				props.anchor,
 				...(props.open ? (props.items ?? []).map((item) => ({
 					type: "button",
-					props: { role: "menuitem", "data-menu-id": item.id, onClick: () => props.onSelect?.(item.id) },
+					props: { role: "menuitem", "data-menu-id": item.id, "data-selected": item.id === props.selectedId, onClick: () => props.onSelect?.(item.id) },
 					children: [item.label],
 				})) : []),
 			],
 		}),
+		StateDot: (props) => ({ type: "svg", props: { ...props, "data-state": props.state, className: ["mock-state-dot", props.className].filter(Boolean).join(" ") }, children: [] }),
 		IconPlusOutlineRegular: Icon,
 		IconRefreshOutlineRegular: Icon,
 		IconChevronDownOutlineRegular: Icon,
