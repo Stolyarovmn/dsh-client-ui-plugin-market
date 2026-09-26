@@ -581,6 +581,26 @@ test("captures npm freshness, monthly downloads, and maintenance evidence from s
 	assert.equal(plugin.evidence.releasedAt, "2026-09-21T12:00:00.000Z");
 });
 
+test("does not cache failed discovery rows so a transient source outage can recover immediately", async () => {
+	let calls = 0;
+	const cachedSource = source({ id: "cache-recovery", url: "https://catalog.example/cache-recovery.json" });
+	const fetchImpl = async () => {
+		calls += 1;
+		if (calls === 1) throw new Error("temporary outage");
+		return jsonResponse({ plugins: [{ name: "recovered", package: "recovered", version: "1.0.0" }] });
+	};
+	const options = { fetchImpl, resolveHost: publicDns, cacheDiscovery: true, enrichDownloads: false, pageSize: 20 };
+
+	const failed = await browseSources([cachedSource], "", options);
+	assert.equal(failed.plugins.length, 0);
+	assert.equal(failed.sources[0].health.ok, false);
+
+	const recovered = await browseSources([cachedSource], "", options);
+	assert.equal(calls, 2);
+	assert.deepEqual(recovered.plugins.map((plugin) => plugin.name), ["recovered"]);
+	assert.equal(recovered.sources[0].health.ok, true);
+});
+
 test("reuses discovery rows across pagination and invalidates only on refresh revision", async () => {
 	let calls = 0;
 	const cachedSource = source({ id: "cache-performance", url: "https://catalog.example/cache-performance.json" });

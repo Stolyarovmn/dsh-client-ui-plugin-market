@@ -17,7 +17,7 @@ import {
 
 const settle = async (milliseconds = 0) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function setup(sources = [], sourceDefaultsVersion = 1, options = {}) {
+async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const { exports, document } = await loadBundle();
 	const locale = makeLocale("en");
 	const scope = makeSettingsScope({ sources, sourceDefaultsVersion });
@@ -27,7 +27,11 @@ async function setup(sources = [], sourceDefaultsVersion = 1, options = {}) {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
 				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
-				if (endpoint === "plugin-sources/browse") return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
+				if (endpoint === "plugin-sources/browse") {
+					if (typeof options.browseValue === "function") return { ok: true, value: options.browseValue(payload, scope) };
+					if (options.browseValue) return { ok: true, value: options.browseValue };
+					return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
+				}
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
 				return { ok: false, error: { message: "unknown" } };
 			},
@@ -350,7 +354,65 @@ test("migrates an existing npm-only source config to include GitHub exactly once
 		await settle();
 		assert.ok(fixture.scope.__section.sources.some((source) => source.type === "github"));
 		assert.equal(fixture.scope.__section.sources.filter((source) => source.type === "github").length, 1);
-		assert.equal(fixture.scope.__section.sourceDefaultsVersion, 1);
+		assert.equal(fixture.scope.__section.sourceDefaultsVersion, 2);
+	} finally { fixture.restore(); }
+});
+
+test("Browse keeps filters visible when there are zero results and explains missing sources", async () => {
+	const fixture = await setup([], 2, {
+		browseValue: { plugins: [], total: 0, page: 1, pageSize: 20, pageCount: 1, sources: [] },
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(byId(tree, "pm-freshness") !== undefined, true);
+		assert.equal(byId(tree, "pm-category") !== undefined, true);
+		assert.equal(byId(tree, "pm-dsh-metadata") !== undefined, true);
+		assert.equal(byClass(tree, "pm-sort-criterion").length, 4);
+		assert.match(textOf(tree), /0 results/);
+		assert.match(textOf(tree), /No enabled registry sources/);
+	} finally { fixture.restore(); }
+});
+
+test("Browse surfaces per-source failures instead of presenting them as ordinary zero matches", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		browseValue: {
+			plugins: [],
+			total: 0,
+			page: 1,
+			pageSize: 20,
+			pageCount: 1,
+			sources: [{ source: { id: "npm", name: "npm", type: "npm" }, health: { ok: false, error: "HTTP 429 rate limited" } }],
+		},
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /All enabled registry sources are unavailable/);
+		assert.match(textOf(tree), /npm: HTTP 429 rate limited/);
+		assert.equal(byClass(tree, "pm-sort-criterion").length, 4);
+	} finally { fixture.restore(); }
+});
+
+test("v2 default-source migration restores npm and GitHub when an older config has lost both", async () => {
+	const fixture = await setup([], 1);
+	try {
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		assert.equal(fixture.scope.__section.sources.filter((source) => source.type === "npm").length, 1);
+		assert.equal(fixture.scope.__section.sources.filter((source) => source.type === "github").length, 1);
+		assert.equal(fixture.scope.__section.sourceDefaultsVersion, 2);
 	} finally { fixture.restore(); }
 });
 

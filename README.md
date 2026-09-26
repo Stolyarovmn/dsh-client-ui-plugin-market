@@ -100,6 +100,13 @@ Registry Aggregator treats registry search hits as **candidates**, not automatic
 - Registry candidates that do not declare a valid `dsh.bundle.patch` are discarded before totals, sorting, pagination, and rendering. They never appear in Browse.
 - npm/GitHub source counts reflect verified installable bundles rather than raw keyword/topic matches.
 
+## Browse resilience
+
+- Browse controls remain visible even when the result set is empty, so filters can always be inspected or reset.
+- Empty results distinguish between no matches, no enabled sources, and upstream source failures.
+- Failed registry discovery responses are not cached; transient npm/GitHub failures are retried on the next request or refresh.
+- A one-time source-default migration restores the built-in npm and GitHub sources if an older configuration lost them during upgrades.
+
 ## Popularity evidence
 
 - npm download counts come from the npm downloads API.
