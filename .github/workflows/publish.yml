@@ -3,14 +3,19 @@ name: Publish to npm
 on:
   release:
     types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
   publish:
+    if: >
+      github.event_name != 'push' ||
+      startsWith(github.event.head_commit.message, 'release: v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,12 +32,16 @@ jobs:
       - name: Update npm for trusted publishing
         run: npm install --global npm@latest
 
-      - name: Verify release tag matches package version
-        if: github.event_name == 'release'
+      - name: Verify release version
         shell: bash
         run: |
           VERSION="$(node -p "require('./package.json').version")"
-          test "${{ github.event.release.tag_name }}" = "v$VERSION"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            test "${{ github.event.release.tag_name }}" = "v$VERSION"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            FIRST_LINE="$(git log -1 --pretty=%s)"
+            test "$FIRST_LINE" = "release: v$VERSION"
+          fi
 
       - name: Install test dependencies
         run: npm install --package-lock=false --legacy-peer-deps
@@ -42,6 +51,20 @@ jobs:
 
       - name: Verify package contents
         run: npm run test:pack
+
+      - name: Create GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          NOTES=".github/release-notes/v$VERSION.md"
+          if [ -f "$NOTES" ]; then
+            gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file "$NOTES"
+          else
+            gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes
+          fi
 
       - name: Publish
         run: npm publish --access public --provenance

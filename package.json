@@ -83,10 +83,10 @@
 	"icon": "./icon.svg",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/Stolyarovmn/dsh-ui-registry-aggregator.git"
+		"url": "git+https://github.com/Stolyarovmn/dsh-client-ui-plugin-market.git"
 	},
-	"homepage": "https://github.com/Stolyarovmn/dsh-ui-registry-aggregator#readme",
+	"homepage": "https://github.com/Stolyarovmn/dsh-client-ui-plugin-market#readme",
 	"bugs": {
-		"url": "https://github.com/Stolyarovmn/dsh-ui-registry-aggregator/issues"
+		"url": "https://github.com/Stolyarovmn/dsh-client-ui-plugin-market/issues"
 	}
 }
