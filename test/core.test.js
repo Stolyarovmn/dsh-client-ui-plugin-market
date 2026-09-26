@@ -469,6 +469,61 @@ test("queries scoped npm download counts individually because npm bulk point que
 	assert.equal(counts.get("@acme/dsh-two"), 22);
 });
 
+test("browse restores GitHub star counts for npm-discovered plugins from repository metadata", async () => {
+	const npmSource = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const githubSource = { id: "github", name: "GitHub", type: "github", enabled: true };
+	const requests = [];
+	const result = await browseSources([npmSource, githubSource], "stars-evidence", {
+		resolveHost: publicDns,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			requests.push(value);
+			if (value.includes("api.github.com/repos/acme/starred")) {
+				return jsonResponse({ stargazers_count: 77, pushed_at: "2026-09-24T10:00:00Z" });
+			}
+			if (value.includes("api.github.com/search/repositories")) return jsonResponse({ items: [] });
+			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [{
+				package: {
+					name: "@acme/starred",
+					version: "1.0.0",
+					description: "stars-evidence plugin",
+					keywords: ["dsh-plugin"],
+					links: { repository: "https://github.com/acme/starred" },
+				},
+			}] });
+			return jsonResponse({});
+		},
+	});
+	assert.equal(result.plugins.length, 1);
+	assert.equal(result.plugins[0].evidence?.stars, 77);
+	assert.equal(result.plugins[0].evidence?.repositoryUpdatedAt, "2026-09-24T10:00:00.000Z");
+	assert.equal(requests.filter((value) => value.includes("api.github.com/repos/acme/starred")).length, 1);
+});
+
+test("star sorting enriches missing GitHub repository stats before ordering npm results", async () => {
+	const npmSource = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const githubSource = { id: "github", name: "GitHub", type: "github", enabled: true };
+	const result = await browseSources([npmSource, githubSource], "rank-stars", {
+		resolveHost: publicDns,
+		enrichDownloads: false,
+		sorts: [{ key: "stars", direction: "desc" }],
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			if (value.includes("api.github.com/repos/acme/one")) return jsonResponse({ stargazers_count: 5 });
+			if (value.includes("api.github.com/repos/acme/two")) return jsonResponse({ stargazers_count: 50 });
+			if (value.includes("api.github.com/search/repositories")) return jsonResponse({ items: [] });
+			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [
+				{ package: { name: "@acme/one", version: "1.0.0", description: "rank-stars", keywords: ["dsh-plugin"], links: { repository: "https://github.com/acme/one" } } },
+				{ package: { name: "@acme/two", version: "1.0.0", description: "rank-stars", keywords: ["dsh-plugin"], links: { repository: "https://github.com/acme/two" } } },
+			] });
+			return jsonResponse({});
+		},
+	});
+	assert.deepEqual(result.plugins.map((plugin) => plugin.identity.package), ["@acme/two", "@acme/one"]);
+	assert.deepEqual(result.plugins.map((plugin) => plugin.evidence?.stars), [50, 5]);
+});
+
 test("paginates before optional npm evidence enrichment", async () => {
 	const rows = Array.from({ length: 55 }, (_, index) => ({ name: `plugin-${String(index + 1).padStart(2, "0")}`, package: `plugin-${index + 1}`, version: "1.0.0" }));
 	const result = await browseSources([source()], "", {
