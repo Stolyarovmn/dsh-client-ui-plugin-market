@@ -17,7 +17,7 @@ import {
 
 const settle = async (milliseconds = 0) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-async function setup(sources = [], sourceDefaultsVersion = 1, options = {}) {
+async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const { exports, document } = await loadBundle();
 	const locale = makeLocale("en");
 	const scope = makeSettingsScope({ sources, sourceDefaultsVersion });
