@@ -100,6 +100,13 @@ Registry Aggregator treats registry search hits as **candidates**, not automatic
 - Registry candidates that do not declare a valid `dsh.bundle.patch` are discarded before totals, sorting, pagination, and rendering. They never appear in Browse.
 - npm/GitHub source counts reflect verified installable bundles rather than raw keyword/topic matches.
 
+## Popularity evidence
+
+- npm download counts come from the npm downloads API.
+- GitHub stars are taken from GitHub discovery when available.
+- When an npm-discovered plugin has a GitHub repository but no star evidence, the visible page is enriched directly from the GitHub repository API and cached.
+- When sorting by stars, missing GitHub star evidence is resolved before ordering, within the public API budget; authenticated GitHub sources allow a larger enrichment set.
+
 ## Sorting
 
 Sorting criteria are independent and composable:
