@@ -86,7 +86,7 @@ pnpm dlx @deepseek-ai/dsh@0.1.7-rc.1 plugin --profile web add @stolyarovmn/dsh-u
 ### GitHub
 
 ```sh
-pnpm dlx @deepseek-ai/dsh@0.1.7-rc.1 plugin --profile web add "git+https://github.com/Stolyarovmn/dsh-client-ui-plugin-market.git"
+pnpm dlx @deepseek-ai/dsh@0.1.7-rc.1 plugin --profile web add "git+https://github.com/Stolyarovmn/dsh-ui-registry-aggregator.git"
 ```
 
 Enable the installed bundle, then open:
