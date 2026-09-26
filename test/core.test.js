@@ -101,12 +101,19 @@ test("custom JSON adapter accepts plugins envelope and applies result cap", asyn
 	assert.equal(plugins[0].identity.package, "one");
 });
 
-test("npm adapter searches canonical and compatibility discovery keywords then deduplicates", async () => {
+
+test("npm interactive search uses one fast registry query when it already finds a DSH package", async () => {
 	const queries = [];
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
 		fetchImpl: async (url) => {
 			queries.push(decodeURIComponent(String(url)));
-			return jsonResponse({ objects: [{ package: { name: "@stolyarovmn/dsh-client-ui-schedule-tab", version: "0.4.1", description: "Schedule", links: { repository: "https://github.com/Stolyarovmn/dsh-schedule-tab" } } }] });
+			return jsonResponse({ objects: [{ package: {
+				name: "@stolyarovmn/dsh-client-ui-schedule-tab",
+				version: "0.4.1",
+				description: "Schedule",
+				keywords: ["dsh-plugin", "schedule"],
+				links: { repository: "https://github.com/Stolyarovmn/dsh-schedule-tab" },
+			} }] });
 		},
 		resolveHost: publicDns,
 	});
@@ -114,9 +121,8 @@ test("npm adapter searches canonical and compatibility discovery keywords then d
 	assert.equal(plugins.length, 1);
 	assert.equal(plugins[0].identity.package, "@stolyarovmn/dsh-client-ui-schedule-tab");
 	assert.deepEqual(plugins[0].install, { type: "npm", spec: "@stolyarovmn/dsh-client-ui-schedule-tab@0.4.1" });
-	for (const keyword of ["dsh-plugin", "deepseek-harness", "deepseek-harness-plugin", "dsh-plugins"]) {
-		assert.ok(queries.some((query) => query.includes(`keywords:${keyword}`)), `missing npm discovery keyword ${keyword}`);
-	}
+	assert.equal(queries.filter((query) => query.includes("/-/v1/search")).length, 1);
+	assert.equal(queries.some((query) => query.includes("keywords:")), false);
 });
 
 test("Browse partial search filters the canonical npm plugin set locally instead of trusting npm query ranking", async () => {
@@ -289,49 +295,45 @@ test("Browse derives GitHub query aliases for DSH package-style names", async ()
 	assert.ok(queries.some((q) => q.includes("schedule-tab")));
 });
 
-test("GitHub health reports the deduplicated discovery set instead of the raw polluted topic total", async () => {
-	const queries = [];
+
+test("GitHub health probes rate_limit without consuming repository-search quota", async () => {
+	const urls = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
 		fetchImpl: async (url) => {
-			queries.push(new URL(String(url)).searchParams.get("q"));
-			return jsonResponse({
-				total_count: 16083,
-				items: [{ id: 1, name: "demo", html_url: "https://github.com/acme/demo", topics: ["deepseek-harness", "dsh-plugin"] }],
-			});
+			urls.push(String(url));
+			return jsonResponse({ resources: { search: { limit: 10, remaining: 7, reset: 1790450000 } } });
 		},
 		resolveHost: publicDns,
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, 1);
-	assert.equal(queries.length, 3);
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugin")));
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness-plugin")));
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugins")));
+	assert.equal(health.searchLimit, 10);
+	assert.equal(health.searchRemaining, 7);
+	assert.equal(urls.length, 1);
+	assert.equal(new URL(urls[0]).pathname, "/rate_limit");
+	assert.equal(urls[0].includes("/search/repositories"), false);
 });
 
-test("registry source health counts only verified installable DSH bundles when verification is enabled", async () => {
+
+test("npm health uses the lightweight ping endpoint even when bundle verification is enabled", async () => {
+	const urls = [];
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
 		resolveHost: publicDns,
 		verifyInstallability: true,
 		fetchImpl: async (url) => {
-			const value = decodeURIComponent(String(url));
-			if (value.includes("/-/v1/search")) {
-				return jsonResponse({ objects: [
-					{ package: { name: "installable", version: "1.0.0", keywords: ["dsh-plugin"] } },
-					{ package: { name: "docs-only", version: "1.0.0", keywords: ["dsh-plugin"] } },
-				] });
-			}
-			if (value.includes("installable/1.0.0")) return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+			urls.push(String(url));
 			return jsonResponse({});
 		},
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, 1);
+	assert.equal(urls.length, 1);
+	assert.equal(new URL(urls[0]).pathname, "/-/ping");
+	assert.equal(urls[0].includes("/-/v1/search"), false);
 });
 
-test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
+
+test("GitHub interactive search stops after the first topic query that returns a matching plugin", async () => {
 	const queries = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
 		fetchImpl: async (url) => {
@@ -343,9 +345,49 @@ test("GitHub adapter searches plugin topics and deduplicates the same repository
 	const plugins = await adapter.search("schedule");
 	assert.equal(plugins.length, 1);
 	assert.equal(plugins[0].identity.repository, "https://github.com/stolyarovmn/dsh-schedule-tab");
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugin")));
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness-plugin")));
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugins")));
+	assert.equal(queries.length, 1);
+	assert.ok(queries[0].includes("topic:deepseek-harness topic:dsh-plugin"));
+});
+
+
+test("npm search keeps partial compatibility-keyword results when other batches are rate limited", async () => {
+	let calls = 0;
+	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			calls += 1;
+			const decoded = decodeURIComponent(String(url));
+			if (!decoded.includes("keywords:")) {
+				return new Response("slow down", { status: 429, headers: { "retry-after": "1" } });
+			}
+			if (decoded.includes("keywords:dsh-plugin")) {
+				return jsonResponse({ objects: [{ package: { name: "@acme/schedule", version: "1.0.0", description: "schedule", keywords: ["dsh-plugin"] } }] });
+			}
+			return new Response("slow down", { status: 429, headers: { "retry-after": "1" } });
+		},
+	});
+	const plugins = await adapter.search("schedule");
+	assert.equal(plugins.length, 1);
+	assert.equal(plugins[0].identity.package, "@acme/schedule");
+	assert.ok(calls >= 2);
+});
+
+test("GitHub search continues to the next discovery topic after a rate-limited topic query", async () => {
+	let calls = 0;
+	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			calls += 1;
+			const q = new URL(String(url)).searchParams.get("q") ?? "";
+			if (q.includes("topic:deepseek-harness topic:dsh-plugin")) {
+				return new Response("rate limited", { status: 403, headers: { "x-ratelimit-remaining": "0", "x-ratelimit-reset": "1790450000" } });
+			}
+			return jsonResponse({ items: [{ id: 2, name: "dsh-schedule-tab", description: "Schedule", html_url: "https://github.com/Stolyarovmn/dsh-schedule-tab" }] });
+		},
+	});
+	const plugins = await adapter.search("schedule");
+	assert.equal(plugins.length, 1);
+	assert.equal(calls, 2);
 });
 
 test("blocks private destinations and redirects before the next request", async () => {
