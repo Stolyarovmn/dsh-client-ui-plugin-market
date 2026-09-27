@@ -4,21 +4,23 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '.github/workflows/restore-screenshots.yml'
 
 permissions:
   contents: write
 
 jobs:
   restore:
-    if: ${{ github.event.head_commit.message == 'fix: restore README screenshots v2' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Convert lossless WebP back to PNG
+      - name: Convert lossless WebP to PNG
         run: |
           python3 -m pip install --quiet pillow
-          python3 -c "from PIL import Image; Image.open('docs/screenshots/registry-sources.webp').save('docs/screenshots/registry-sources.png','PNG'); Image.open('docs/screenshots/registry-browse.webp').save('docs/screenshots/registry-browse.png','PNG')"
-          sed -i 's/registry-sources\.webp/registry-sources.png/g; s/registry-browse\.webp/registry-browse.png/g' README.md
+          python3 -c "from PIL import Image; Image.open('docs/screenshots/registry-sources.webp').save('docs/screenshots/registry-sources.png', 'PNG'); Image.open('docs/screenshots/registry-browse.webp').save('docs/screenshots/registry-browse.png', 'PNG')"
+          sed -i 's/registry-sources\.webp/registry-sources.png/g' README.md
+          sed -i 's/registry-browse\.webp/registry-browse.png/g' README.md
           rm docs/screenshots/registry-sources.webp docs/screenshots/registry-browse.webp
       - name: Commit PNG screenshots
         run: |
