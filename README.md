@@ -8,13 +8,13 @@ Registry Aggregator is a federated plugin-discovery UI for DeepSeek Harness. It 
 
 Built-in npm and GitHub sources are health-checked, counted, and managed from the **Sources** view.
 
-![Registry Aggregator — connected sources](docs/screenshots/registry-sources.webp)
+![Registry Aggregator — connected sources](docs/screenshots/registry-sources.png)
 
 ### Browse and search
 
 Search across connected sources, filter results, inspect evidence, and install a verified DSH bundle without leaving DeepSeek Harness.
 
-![Registry Aggregator — Browse search](docs/screenshots/registry-browse.webp)
+![Registry Aggregator — Browse search](docs/screenshots/registry-browse.png)
 
 ## Highlights
 
