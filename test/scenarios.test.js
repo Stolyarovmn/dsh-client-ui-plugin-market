@@ -26,7 +26,8 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 		rpc: {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
-				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
+				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, latencyMs: 2 } })) } };
+				if (endpoint === "plugin-sources/counts") return { ok: true, value: { sources: scope.__section.sources.map((source) => source.enabled === false ? { source, disabled: true } : { source, count: 1 }) } };
 				if (endpoint === "plugin-sources/browse") {
 					if (typeof options.browseValue === "function") return { ok: true, value: options.browseValue(payload, scope) };
 					if (options.browseValue) return { ok: true, value: options.browseValue };
@@ -166,12 +167,13 @@ test("source cards keep copy URL and move the only destructive action into the h
 	} finally { fixture.restore(); }
 });
 
-test("Sources health uses the Browse transport to avoid a stale dedicated health route", async () => {
+test("Sources loads lightweight health separately from verified source counts", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
 		fixture.render();
 		await settle();
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/browse" && call.payload?.healthOnly === true));
+		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/counts"));
 		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/health"), false);
 	} finally { fixture.restore(); }
 });

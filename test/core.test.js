@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
 	browseSources,
+	countSources,
 	createAdapter,
 	dedupePlugins,
 	fetchJson,
@@ -290,11 +291,14 @@ test("Browse derives GitHub query aliases for DSH package-style names", async ()
 	assert.ok(queries.some((q) => q.includes("schedule-tab")));
 });
 
-test("GitHub health reports the deduplicated discovery set instead of the raw polluted topic total", async () => {
+test("GitHub health uses one lightweight discovery probe without exposing raw topic totals", async () => {
 	const queries = [];
+	const perPages = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
 		fetchImpl: async (url) => {
-			queries.push(new URL(String(url)).searchParams.get("q"));
+			const parsed = new URL(String(url));
+			queries.push(parsed.searchParams.get("q"));
+			perPages.push(parsed.searchParams.get("per_page"));
 			return jsonResponse({
 				total_count: 16083,
 				items: [{ id: 1, name: "demo", html_url: "https://github.com/acme/demo", topics: ["deepseek-harness", "dsh-plugin"] }],
@@ -304,21 +308,48 @@ test("GitHub health reports the deduplicated discovery set instead of the raw po
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, 1);
-	assert.equal(queries.length, 3);
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugin")));
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness-plugin")));
-	assert.ok(queries.some((query) => query.includes("topic:deepseek-harness topic:dsh-plugins")));
+	assert.equal(health.count, undefined);
+	assert.equal(queries.length, 1);
+	assert.equal(perPages[0], "1");
+	assert.equal(queries[0], "topic:deepseek-harness topic:dsh-plugin");
 });
 
-test("registry source health counts only verified installable DSH bundles when verification is enabled", async () => {
+test("npm health uses one lightweight probe and skips bundle manifest verification", async () => {
+	let searchRequests = 0;
+	let manifestRequests = 0;
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		fetchImpl: async (url) => {
+			const parsed = new URL(String(url));
+			const value = decodeURIComponent(String(url));
+			if (value.includes("/-/v1/search")) {
+				searchRequests += 1;
+				assert.equal(parsed.searchParams.get("size"), "1");
+				assert.equal(parsed.searchParams.get("text"), "keywords:dsh-plugin");
+				return jsonResponse({ total: 6240, objects: [
+					{ package: { name: "installable", version: "1.0.0", keywords: ["dsh-plugin"] } },
+				] });
+			}
+			manifestRequests += 1;
+			return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+		},
+	});
+	const health = await adapter.health();
+	assert.equal(health.ok, true);
+	assert.equal(health.count, undefined);
+	assert.equal(searchRequests, 1);
+	assert.equal(manifestRequests, 0);
+});
+
+test("source counts preserve verified DSH bundle semantics instead of raw registry totals", async () => {
+	const result = await countSources([{ id: "npm-count", name: "npm", type: "npm", enabled: true }], {
 		resolveHost: publicDns,
 		verifyInstallability: true,
 		fetchImpl: async (url) => {
 			const value = decodeURIComponent(String(url));
 			if (value.includes("/-/v1/search")) {
-				return jsonResponse({ objects: [
+				return jsonResponse({ total: 6240, objects: [
 					{ package: { name: "installable", version: "1.0.0", keywords: ["dsh-plugin"] } },
 					{ package: { name: "docs-only", version: "1.0.0", keywords: ["dsh-plugin"] } },
 				] });
@@ -327,9 +358,8 @@ test("registry source health counts only verified installable DSH bundles when v
 			return jsonResponse({});
 		},
 	});
-	const health = await adapter.health();
-	assert.equal(health.ok, true);
-	assert.equal(health.count, 1);
+	assert.equal(result.length, 1);
+	assert.equal(result[0].count, 1);
 });
 
 test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
