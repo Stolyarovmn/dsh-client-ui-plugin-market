@@ -33,6 +33,10 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 					return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
 				}
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
+				if (endpoint === "plugin-sources/stars") {
+					const value = typeof options.starsValue === "function" ? options.starsValue(payload) : options.starsValue;
+					return { ok: true, value: Array.isArray(value) ? value : [] };
+				}
 				return { ok: false, error: { message: "unknown" } };
 			},
 		},
@@ -210,6 +214,45 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 	} finally { fixture.restore(); }
 });
 
+
+test("Browse asynchronously hydrates missing GitHub stars without replacing Browse results", async () => {
+	const repository = "https://github.com/acme/star-hydration";
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		browseValue: {
+			plugins: [{
+				identity: { package: "@acme/star-hydration", repository, fallback: "npm:@acme/star-hydration" },
+				name: "star-hydration",
+				description: "DSH plugin",
+				version: "1.0.0",
+				tags: ["ui"],
+				evidence: { releaseChannel: "stable", installability: "bundle" },
+				install: { type: "npm", spec: "@acme/star-hydration@1.0.0" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1,
+			page: 1,
+			pageSize: 20,
+			pageCount: 1,
+			sources: [{ source: { id: "npm", name: "npm", type: "npm" }, health: { ok: true, count: 1 } }],
+		},
+		starsValue: [{ repository, stars: 73, repositoryUpdatedAt: "2026-09-27T10:00:00Z" }],
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		const starsCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/stars");
+		assert.ok(starsCall);
+		assert.deepEqual(starsCall.payload.repositories, [repository]);
+		assert.match(textOf(tree), /73/);
+		assert.equal(byClass(tree, "pm-card").length, 1);
+	} finally { fixture.restore(); }
+});
 
 test("Browse filter dropdowns use the native DSH Menu and combine selections in Host requests", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
