@@ -300,7 +300,7 @@ test("Browse combines independent ordered sort criteria and resolves DSH compati
 	} finally { fixture.restore(); }
 });
 
-test("Install button uses the native DSH ongoing spinner and follows plugin-manager progress events", async () => {
+test("Install button follows progress events and becomes cancellable after Host acknowledgement", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 1, { installDelayMs: 35 });
 	try {
 		let tree = fixture.render();
@@ -318,13 +318,13 @@ test("Install button uses the native DSH ongoing spinner and follows plugin-mana
 
 		const running = byClass(tree, "pm-card-install")[0];
 		assert.equal(running.props["data-state"], "installing");
-		assert.match(String(running.props["aria-label"]), /Installing 1\/1/);
-		assert.equal(byClass(tree, "mock-state-dot").length, 1);
-		assert.equal(byClass(tree, "mock-state-dot")[0].props["data-state"], "ongoing");
+		assert.match(String(running.props["aria-label"]), /^Cancel · Installing 1\/1/);
+		assert.equal(running.props.disabled, false);
+		assert.equal(byClass(tree, "mock-state-dot").length, 0);
 
 		await pending;
 		tree = fixture.render();
-		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed 1.0.0"));
 	} finally { fixture.restore(); }
 });
 
@@ -350,7 +350,7 @@ test("Install starts immediately through the native DSH plugin-manager remote an
 		assert.equal(fixture.installs[0].options.registry, null);
 		assert.equal(typeof fixture.installs[0].options.requestId, "string");
 		tree = fixture.render();
-		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed 1.0.0"));
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
 	} finally { fixture.restore(); }
 });
