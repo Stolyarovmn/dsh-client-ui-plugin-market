@@ -796,11 +796,14 @@ test("Browse removes npm candidates that are not real DSH bundles before totals 
 test("reads explicit DSH compatibility and DSH API peers from npm version metadata", async () => {
 	const explicit = await npmPluginDetails("@acme/explicit", "1.0.0", {
 		resolveHost: publicDns,
+		runtimeVersion: "0.1.7-rc.2",
 		fetchImpl: async () => jsonResponse({
 			peerDependencies: { "@deepseek-ai/dsh": ">=0.1.7-rc.1 <0.2.0", "@deepseek-ai/dsh-client-ui-slots": "^0.1.7" },
 		}),
 	});
 	assert.equal(explicit.dshCompatibility, ">=0.1.7-rc.1 <0.2.0");
+	assert.equal(explicit.dshRuntimeVersion, "0.1.7-rc.2");
+	assert.equal(explicit.dshCompatibilityStatus, "compatible");
 	assert.equal(explicit.dshPeers[0].dependency, "@deepseek-ai/dsh-client-ui-slots");
 
 	const peersOnly = await npmPluginDetails("@acme/legacy", "2.0.0", {
@@ -825,6 +828,7 @@ test("combines stable, freshness, category, and declared-DSH metadata filters", 
 		resolveHost: publicDns,
 		fetchImpl: async () => jsonResponse(rows),
 		enrichDownloads: false,
+		runtimeVersion: "0.1.7-rc.2",
 		pageSize: 20,
 		stableOnly: true,
 		freshnessDays: 30,
@@ -832,6 +836,8 @@ test("combines stable, freshness, category, and declared-DSH metadata filters", 
 		dshMetadata: "declared",
 	});
 	assert.deepEqual(result.plugins.map((plugin) => plugin.name), ["fresh-ui"]);
+	assert.equal(result.plugins[0].evidence.dshRuntimeVersion, "0.1.7-rc.2");
+	assert.equal(result.plugins[0].evidence.dshCompatibilityStatus, "compatible");
 	assert.equal(result.total, 1);
 });
 
