@@ -29,17 +29,14 @@ Search across connected sources, filter results, inspect evidence, and install a
 - **Fallback command** — installable results also expose their `dsh plugin add …` command.
 - **Responsive popularity metadata** — missing GitHub star counts are hydrated after Browse renders, so GitHub metadata cannot block the initial search result.
 
-## What's new in 0.4.13
+## What's new in 0.4.14
 
-0.4.13 restores the fast, stable Browse/discovery path from the last known-good search implementation and separates GitHub popularity metadata from the critical search path.
+0.4.14 is the first release published from the renamed `Stolyarovmn/dsh-ui-registry-aggregator` repository through npm Trusted Publishing. It keeps the fast Browse/search path from 0.4.13 unchanged.
 
-- restored npm/GitHub source discovery and source counters;
-- restored fast empty-query and keyword Browse behavior;
-- kept exact and partial package-name discovery, including scoped npm packages;
-- preserved bundle verification before exposing install actions;
-- moved missing GitHub star resolution to a separate asynchronous request after cards render;
-- star lookups are cached, best-effort, and limited to the visible page;
-- a GitHub statistics failure no longer delays or fails Browse.
+- published from the canonical `dsh-ui-registry-aggregator` repository;
+- npm Trusted Publisher is wired to `.github/workflows/publish.yml`;
+- README screenshots and repository metadata point to the renamed repository;
+- search, source counts, bundle verification, and asynchronous GitHub star hydration remain unchanged from 0.4.13.
 
 ## Architecture
 
@@ -70,8 +67,6 @@ Browse request
 ## Install
 
 ### npm
-
-After the package is published:
 
 ```sh
 dsh plugin --profile web add @stolyarovmn/dsh-ui-registry-aggregator
