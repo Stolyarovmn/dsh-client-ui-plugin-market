@@ -637,6 +637,27 @@ test("reuses discovery rows across pagination and invalidates only on refresh re
 	assert.equal(calls, 2);
 });
 
+test("discovery cache evicts old query entries after the configured bound", async () => {
+	let calls = 0;
+	const cachedSource = source({ id: "bounded-cache" });
+	const options = {
+		resolveHost: publicDns,
+		cacheDiscovery: true,
+		enrichDownloads: false,
+		pageSize: 20,
+		fetchImpl: async () => {
+			calls += 1;
+			return jsonResponse([{ name: "cache-probe", id: "cache-probe", version: "1.0.0" }]);
+		},
+	};
+	for (let index = 0; index <= 100; index += 1) {
+		await browseSources([cachedSource], `query-${index}`, options);
+	}
+	assert.equal(calls, 101);
+	await browseSources([cachedSource], "query-0", options);
+	assert.equal(calls, 102);
+});
+
 test("text search ranks exact and prefix matches ahead of description-only matches", async () => {
 	const rows = [
 		{ name: "description-helper", package: "description-helper", version: "1.0.0", description: "Utilities for schedule workflows" },
