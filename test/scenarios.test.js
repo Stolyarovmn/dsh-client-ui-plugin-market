@@ -40,6 +40,8 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const slots = makeSlots();
 	const installs = [];
 	const inspections = [];
+	const cancellations = [];
+	const cancelledRequests = new Set();
 	const remoteListeners = new Map();
 	const emitRemote = (event, payload) => {
 		for (const handler of remoteListeners.get(event) ?? []) handler(payload);
@@ -52,7 +54,13 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 			return () => listeners.delete(handler);
 		},
 		pluginManager: {
+			async listBundles() { return { ok: true, value: options.installedBundles ?? [] }; },
 			async inspect(spec, options) { inspections.push({ spec, options }); return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
+			async cancelInstall(requestId) {
+				cancellations.push(requestId);
+				cancelledRequests.add(requestId);
+				return { ok: true, value: { status: options.cancelStatus ?? "cancelled" } };
+			},
 			async installBundle(spec, installOptions) {
 				installs.push({ spec, options: installOptions });
 				if (installOptions?.requestId) {
@@ -60,6 +68,9 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 					emitRemote("plugin-manager/install-log", { requestId: installOptions.requestId, jobId: "job-1", argv: ["pnpm", "add", spec], cwd: "/profile", stream: "stdout", text: "Resolving package…" });
 				}
 				if (options.installDelayMs) await settle(options.installDelayMs);
+				if (installOptions?.requestId && cancelledRequests.has(installOptions.requestId)) {
+					return { ok: true, value: { changed: false, application: "cancelled" } };
+				}
 				if (installOptions?.requestId) emitRemote("plugin-manager/install-state", { requestId: installOptions.requestId, phase: "applying" });
 				return { ok: true, value: { changed: true, application: "applied", bundle: spec } };
 			},
@@ -72,7 +83,7 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, emitRemote, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, emitRemote, section, activation, render, restore };
 }
 
 test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
