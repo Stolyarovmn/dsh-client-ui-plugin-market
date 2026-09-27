@@ -355,7 +355,7 @@ test("GitHub health uses one lightweight discovery probe", async () => {
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, undefined);
+	assert.equal(health.count, 16083);
 	assert.equal(queries.length, 1);
 	assert.equal(perPages[0], "1");
 	assert.ok(queries[0].includes("topic:deepseek-harness topic:dsh-plugin"));
@@ -374,7 +374,7 @@ test("npm health skips bundle verification even when verification is enabled", a
 			if (value.includes("/-/v1/search")) {
 				assert.equal(parsed.searchParams.get("size"), "1");
 				assert.equal(parsed.searchParams.get("text"), "keywords:dsh-plugin");
-				return jsonResponse({ objects: [
+				return jsonResponse({ total: 37, objects: [
 					{ package: { name: "installable", version: "1.0.0", keywords: ["dsh-plugin"] } },
 				] });
 			}
@@ -384,9 +384,73 @@ test("npm health skips bundle verification even when verification is enabled", a
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, undefined);
+	assert.equal(health.count, 37);
 	assert.equal(requests, 1);
 	assert.equal(manifestRequests, 0);
+});
+
+test("empty npm and GitHub discovery uses one ranked request per source", async () => {
+	const npmRequests = [];
+	const npmAdapter = createAdapter({ id: "npm-empty", name: "npm", type: "npm", enabled: true }, {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			npmRequests.push(String(url));
+			return jsonResponse({ total: 2, objects: [
+				{ package: { name: "z-popular", version: "1.0.0", keywords: ["dsh-plugin"] } },
+				{ package: { name: "a-less-popular", version: "1.0.0", keywords: ["dsh-plugin"] } },
+			] });
+		},
+	});
+	const npmPlugins = await npmAdapter.search("");
+	assert.equal(npmRequests.length, 1);
+	assert.equal(new URL(npmRequests[0]).searchParams.get("text"), "keywords:dsh-plugin");
+	assert.deepEqual(npmPlugins.map((plugin) => plugin.name), ["z-popular", "a-less-popular"]);
+
+	const githubRequests = [];
+	const githubAdapter = createAdapter({ id: "github-empty", name: "GitHub", type: "github", enabled: true }, {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			githubRequests.push(String(url));
+			return jsonResponse({ total_count: 2, items: [
+				{ id: 1, name: "z-popular", html_url: "https://github.com/acme/z-popular", stargazers_count: 100 },
+				{ id: 2, name: "a-less-popular", html_url: "https://github.com/acme/a-less-popular", stargazers_count: 1 },
+			] });
+		},
+	});
+	const githubPlugins = await githubAdapter.search("");
+	assert.equal(githubRequests.length, 1);
+	const githubUrl = new URL(githubRequests[0]);
+	assert.equal(githubUrl.searchParams.get("q"), "topic:deepseek-harness topic:dsh-plugin");
+	assert.equal(githubUrl.searchParams.get("sort"), "stars");
+	assert.equal(githubUrl.searchParams.get("order"), "desc");
+	assert.deepEqual(githubPlugins.map((plugin) => plugin.name), ["z-popular", "a-less-popular"]);
+});
+
+test("failed empty registry discovery is retried instead of cached as an empty catalog", async () => {
+	let calls = 0;
+	const npm = { id: "npm-empty-retry", name: "npm", type: "npm", enabled: true };
+	const options = {
+		resolveHost: publicDns,
+		cacheDiscovery: true,
+		enrichDownloads: false,
+		verifyInstallability: false,
+		fetchImpl: async () => {
+			calls += 1;
+			if (calls === 1) return new Response("rate limited", { status: 429 });
+			return jsonResponse({ total: 1, objects: [
+				{ package: { name: "recovered-plugin", version: "1.0.0", keywords: ["dsh-plugin"] } },
+			] });
+		},
+	};
+	const failed = await browseSources([npm], "", options);
+	assert.equal(failed.total, 0);
+	assert.equal(failed.sources[0].health.ok, false);
+
+	const recovered = await browseSources([npm], "", options);
+	assert.equal(recovered.total, 1);
+	assert.equal(recovered.sources[0].health.ok, true);
+	assert.equal(recovered.plugins[0].name, "recovered-plugin");
+	assert.equal(calls, 2);
 });
 
 test("GitHub adapter searches plugin topics and deduplicates the same repository", async () => {
