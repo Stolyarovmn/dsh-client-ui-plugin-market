@@ -33,11 +33,12 @@ Search across connected sources, filter results, inspect evidence, and install a
 
 This branch is intentionally not released yet. It collects the next Registry Aggregator improvements for review:
 
-- **Lightweight source health** — npm and GitHub health checks use one minimal probe request and never run bundle verification; the Sources view shows probe latency instead of a fake package count.
+- **Lightweight source health** — npm and GitHub health checks use one minimal probe request and never run bundle verification; the same response supplies the registry result count shown in Sources, without an extra discovery pass.
 - **Installed-state awareness** — Browse reads the native Plugin Manager `listBundles()` result and refreshes on `plugin-manager/changed`.
 - **Update availability** — when both installed and discovered versions are valid SemVer, Browse marks a newer discovered version. This is advisory only: DSH 0.1.7-rc.1 refuses an already-installed package during `inspect()`, so Registry Aggregator does not invent an unsupported in-place upgrade flow.
 - **Install cancellation** — active Host-owned installs can be cancelled through `cancelInstall(requestId)` after the Host acknowledges the run.
 - **Relevance ranking** — text searches prioritize exact package/name matches, then prefixes, tags, repository and description matches; explicit user sorting remains primary.
+- **Browse without a query** — npm and GitHub use a single canonical discovery request per source, preserve the registry's native ranking (GitHub requests stars-descending), and failed discovery responses are not cached as an empty catalog.
 - **Consistent deduplication** — the displayed version stays aligned with the selected install source, preferring authoritative npm identity over derived catalog records.
 - **Evidence provenance** — GitHub stars and npm downloads are marked authoritative and cannot be replaced by larger source-reported values from arbitrary JSON catalogs.
 - **Bounded caches and single-flight** — metadata/discovery caches have entry limits, and concurrent requests for the same npm/GitHub metadata share one in-flight request.
