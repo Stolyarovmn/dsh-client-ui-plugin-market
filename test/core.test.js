@@ -24,8 +24,10 @@ test("normalizes and merges duplicate npm identities with all source attribution
 	assert.equal(plugins.length, 1);
 	assert.deepEqual(plugins[0].sources.map((row) => row.id), ["community", "npm"]);
 	assert.deepEqual(plugins[0].versions, ["1.0.0", "1.1.0"]);
+	assert.equal(plugins[0].version, "1.1.0");
 	assert.equal(plugins[0].description, "Longer description");
 	assert.equal(plugins[0].install.type, "npm");
+	assert.equal(plugins[0].install.spec, "@acme/pdf@1.1.0");
 });
 
 test("uses canonical repository then source-specific fallback identities", () => {
