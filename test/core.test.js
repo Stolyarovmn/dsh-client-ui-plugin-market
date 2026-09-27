@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
 	browseSources,
+	countSources,
 	createAdapter,
 	dedupePlugins,
 	dshCompatibilityStatus,
@@ -355,7 +356,7 @@ test("GitHub health uses one lightweight discovery probe", async () => {
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, 16083);
+	assert.equal(health.count, undefined);
 	assert.equal(queries.length, 1);
 	assert.equal(perPages[0], "1");
 	assert.ok(queries[0].includes("topic:deepseek-harness topic:dsh-plugin"));
@@ -384,9 +385,41 @@ test("npm health skips bundle verification even when verification is enabled", a
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
-	assert.equal(health.count, 37);
+	assert.equal(health.count, undefined);
 	assert.equal(requests, 1);
 	assert.equal(manifestRequests, 0);
+});
+
+test("source counts include only verified installable DSH bundles", async () => {
+	const npm = { id: "npm-verified-count", name: "npm", type: "npm", enabled: true };
+	let discoveryRequests = 0;
+	let manifestRequests = 0;
+	const result = await countSources([npm], {
+		resolveHost: publicDns,
+		refreshRevision: 1,
+		fetchImpl: async (url) => {
+			const value = decodeURIComponent(String(url));
+			if (value.includes("/-/v1/search")) {
+				discoveryRequests += 1;
+				return jsonResponse({ total: 6240, objects: [
+					{ package: { name: "count-real-dsh-bundle", version: "1.0.0", keywords: ["dsh-plugin"] } },
+					{ package: { name: "count-not-a-bundle", version: "1.0.0", keywords: ["dsh-plugin"] } },
+				] });
+			}
+			manifestRequests += 1;
+			if (value.includes("count-real-dsh-bundle/1.0.0")) {
+				return jsonResponse({ name: "count-real-dsh-bundle", version: "1.0.0", dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+			}
+			if (value.includes("count-not-a-bundle/1.0.0")) {
+				return jsonResponse({ name: "count-not-a-bundle", version: "1.0.0" });
+			}
+			return new Response("not found", { status: 404 });
+		},
+	});
+	assert.equal(result.length, 1);
+	assert.equal(result[0].count, 1);
+	assert.equal(discoveryRequests, 4);
+	assert.equal(manifestRequests, 2);
 });
 
 test("empty npm and GitHub discovery uses one ranked request per source", async () => {
