@@ -4,6 +4,7 @@ import {
 	browseSources,
 	createAdapter,
 	dedupePlugins,
+	dshCompatibilityStatus,
 	fetchJson,
 	githubPluginDetails,
 	githubRepositoryStats,
@@ -16,6 +17,15 @@ import {
 const publicDns = async () => ["93.184.216.34"];
 const jsonResponse = (value, init = {}) => new Response(JSON.stringify(value), { status: 200, headers: { "content-type": "application/json" }, ...init });
 const source = (overrides = {}) => ({ id: "community", name: "Community", type: "custom-json", url: "https://catalog.example/plugins.json", enabled: true, ...overrides });
+
+test("evaluates DSH compatibility with prerelease-aware SemVer ranges", () => {
+	assert.equal(dshCompatibilityStatus(">=0.1.7-rc.1 <0.2.0", "0.1.7-rc.1"), "compatible");
+	assert.equal(dshCompatibilityStatus(">=0.1.7-rc.1 <0.2.0", "0.1.7-rc.2"), "compatible");
+	assert.equal(dshCompatibilityStatus(">=0.1.7 <0.2.0", "0.1.7-rc.2"), "compatible");
+	assert.equal(dshCompatibilityStatus(">=0.1.8 <0.2.0", "0.1.7-rc.2"), "incompatible");
+	assert.equal(dshCompatibilityStatus("not-a-range", "0.1.7-rc.2"), "invalid");
+	assert.equal(dshCompatibilityStatus(undefined, "0.1.7-rc.2"), "unknown");
+});
 
 test("normalizes and merges duplicate npm identities with all source attributions", () => {
 	const first = normalizePlugin({ name: "PDF tools", package: "@acme/pdf", version: "1.0.0", repository: "https://github.com/acme/pdf.git" }, source());
