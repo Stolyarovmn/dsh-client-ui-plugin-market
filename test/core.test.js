@@ -30,6 +30,38 @@ test("normalizes and merges duplicate npm identities with all source attribution
 	assert.equal(plugins[0].install.spec, "@acme/pdf@1.1.0");
 });
 
+test("authoritative GitHub and npm evidence wins over catalog-supplied popularity", () => {
+	const catalogStars = normalizePlugin({
+		name: "Demo",
+		repository: "https://github.com/acme/demo",
+		stars: 999999,
+	}, source());
+	const githubStars = normalizePlugin({
+		name: "Demo",
+		repository: "https://github.com/acme/demo",
+		stars: 12,
+	}, source({ id: "github", name: "GitHub", type: "github", url: undefined }));
+	const stars = dedupePlugins([catalogStars, githubStars])[0];
+	assert.equal(stars.evidence.stars, 12);
+	assert.equal(stars.evidence.starsAuthoritative, true);
+	assert.equal(stars.evidence.starsSource, "github");
+
+	const catalogDownloads = normalizePlugin({
+		name: "Pkg",
+		package: "@acme/pkg",
+		downloads30d: 999999,
+	}, source());
+	const npmDownloads = normalizePlugin({
+		name: "Pkg",
+		package: "@acme/pkg",
+		downloads30d: 42,
+	}, source({ id: "npm", name: "npm", type: "npm", url: undefined }));
+	const downloads = dedupePlugins([catalogDownloads, npmDownloads])[0];
+	assert.equal(downloads.evidence.downloads30d, 42);
+	assert.equal(downloads.evidence.downloadsAuthoritative, true);
+	assert.equal(downloads.evidence.downloadsSource, "npm");
+});
+
 test("uses canonical repository then source-specific fallback identities", () => {
 	const a = normalizePlugin({ id: "one", name: "Repo plugin", repository: "git+https://github.com/acme/tool.git" }, source());
 	const b = normalizePlugin({ id: "two", name: "Renamed", repository: "https://github.com/acme/tool/" }, source({ id: "other", name: "Other" }));
