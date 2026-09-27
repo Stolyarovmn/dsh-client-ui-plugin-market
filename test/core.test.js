@@ -683,6 +683,42 @@ test("supports ordered multi-criteria ranking with independent directions", asyn
 	assert.deepEqual(reverseStars.plugins.map((plugin) => plugin.evidence?.stars), [1, 10, 50, 500]);
 });
 
+test("metadata lookups coalesce concurrent npm and GitHub requests", async () => {
+	let npmCalls = 0;
+	const npmOptions = {
+		resolveHost: publicDns,
+		fetchImpl: async () => {
+			npmCalls += 1;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+		},
+	};
+	const [npmA, npmB] = await Promise.all([
+		npmPluginDetails("@acme/single-flight", "1.0.0", npmOptions),
+		npmPluginDetails("@acme/single-flight", "1.0.0", npmOptions),
+	]);
+	assert.equal(npmCalls, 1);
+	assert.equal(npmA.installability, "bundle");
+	assert.equal(npmB.installability, "bundle");
+
+	let githubCalls = 0;
+	const githubOptions = {
+		resolveHost: publicDns,
+		fetchImpl: async () => {
+			githubCalls += 1;
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			return jsonResponse({ name: "@acme/github-flight", version: "1.0.0", dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+		},
+	};
+	const [githubA, githubB] = await Promise.all([
+		githubPluginDetails("https://github.com/acme/single-flight", githubOptions),
+		githubPluginDetails("https://github.com/acme/single-flight", githubOptions),
+	]);
+	assert.equal(githubCalls, 1);
+	assert.equal(githubA.installability, "bundle");
+	assert.equal(githubB.installability, "bundle");
+});
+
 test("npm package details classify only manifests with dsh.bundle.patch as installable bundles", async () => {
 	const bundle = await npmPluginDetails("@acme/bundle", "1.0.0", {
 		resolveHost: publicDns,
