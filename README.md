@@ -33,7 +33,7 @@ Search across connected sources, filter results, inspect evidence, and install a
 
 This branch is intentionally not released yet. It collects the next Registry Aggregator improvements for review:
 
-- **Lightweight source health** — npm and GitHub health checks use one minimal probe request and never run bundle verification; the same response supplies the registry result count shown in Sources, without an extra discovery pass.
+- **Lightweight source health + verified counts** — npm and GitHub online status uses one minimal probe request, while the Sources counter is computed separately from comprehensive discovery and `dsh.bundle.patch` verification. Verified counts are cached, so raw npm/GitHub search totals are never shown as DSH plugin counts.
 - **Installed-state awareness** — Browse reads the native Plugin Manager `listBundles()` result and refreshes on `plugin-manager/changed`.
 - **Update availability** — when both installed and discovered versions are valid SemVer, Browse marks a newer discovered version. This is advisory only: DSH 0.1.7-rc.1 refuses an already-installed package during `inspect()`, so Registry Aggregator does not invent an unsupported in-place upgrade flow.
 - **Install cancellation** — active Host-owned installs can be cancelled through `cancelInstall(requestId)` after the Host acknowledges the run.
