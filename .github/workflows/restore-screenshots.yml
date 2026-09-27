@@ -2,39 +2,25 @@ name: Restore README screenshots
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   restore:
-    if: github.event.head_commit.message == 'fix: restore README screenshots as PNG'
+    if: ${{ github.event.head_commit.message == 'fix: restore README screenshots v2' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Restore PNG screenshots losslessly
+      - name: Convert lossless WebP back to PNG
         run: |
           python3 -m pip install --quiet pillow
-          python3 - <<'PY'
-          from PIL import Image
-          for src, dst in [
-              ("docs/screenshots/registry-sources.webp", "docs/screenshots/registry-sources.png"),
-              ("docs/screenshots/registry-browse.webp", "docs/screenshots/registry-browse.png"),
-          ]:
-              with Image.open(src) as im:
-                  im.save(dst, "PNG")
-          PY
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path("README.md")
-          text=p.read_text()
-          text=text.replace("docs/screenshots/registry-sources.webp","docs/screenshots/registry-sources.png")
-          text=text.replace("docs/screenshots/registry-browse.webp","docs/screenshots/registry-browse.png")
-          p.write_text(text)
-          PY
+          python3 -c "from PIL import Image; Image.open('docs/screenshots/registry-sources.webp').save('docs/screenshots/registry-sources.png','PNG'); Image.open('docs/screenshots/registry-browse.webp').save('docs/screenshots/registry-browse.png','PNG')"
+          sed -i 's/registry-sources\.webp/registry-sources.png/g; s/registry-browse\.webp/registry-browse.png/g' README.md
           rm docs/screenshots/registry-sources.webp docs/screenshots/registry-browse.webp
-      - name: Commit restored screenshots
+      - name: Commit PNG screenshots
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
