@@ -29,6 +29,22 @@ Search across connected sources, filter results, inspect evidence, and install a
 - **Fallback command** — installable results also expose their `dsh plugin add …` command.
 - **Responsive popularity metadata** — missing GitHub star counts are hydrated after Browse renders, so GitHub metadata cannot block the initial search result.
 
+## Unreleased draft
+
+This branch is intentionally not released yet. It collects the next Registry Aggregator improvements for review:
+
+- **Lightweight source health** — npm and GitHub health checks use one minimal probe request and never run bundle verification; the Sources view shows probe latency instead of a fake package count.
+- **Installed-state awareness** — Browse reads the native Plugin Manager `listBundles()` result and refreshes on `plugin-manager/changed`.
+- **Update availability** — when both installed and discovered versions are valid SemVer, Browse marks a newer discovered version. This is advisory only: DSH 0.1.7-rc.1 refuses an already-installed package during `inspect()`, so Registry Aggregator does not invent an unsupported in-place upgrade flow.
+- **Install cancellation** — active Host-owned installs can be cancelled through `cancelInstall(requestId)` after the Host acknowledges the run.
+- **Relevance ranking** — text searches prioritize exact package/name matches, then prefixes, tags, repository and description matches; explicit user sorting remains primary.
+- **Consistent deduplication** — the displayed version stays aligned with the selected install source, preferring authoritative npm identity over derived catalog records.
+- **Evidence provenance** — GitHub stars and npm downloads are marked authoritative and cannot be replaced by larger source-reported values from arbitrary JSON catalogs.
+- **Bounded caches and single-flight** — metadata/discovery caches have entry limits, and concurrent requests for the same npm/GitHub metadata share one in-flight request.
+- **Multi-source provenance** — merged cards show multiple contributing sources and flag conflicting discovered versions.
+- **Runtime compatibility** — declared DSH ranges are evaluated against the actual running `@deepseek-ai/dsh` version with prerelease-aware SemVer semantics.
+- **Persistent Browse preferences** — the active tab, query, filters, sort criteria and page size are restored from local browser storage.
+
 ## What's new in 0.4.14
 
 0.4.14 is the first release published from the renamed `Stolyarovmn/dsh-ui-registry-aggregator` repository through npm Trusted Publishing. It keeps the fast Browse/search path from 0.4.13 unchanged.
