@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { access } from "node:fs/promises";
+import { Script } from "node:vm";
 
 const root = new URL("../", import.meta.url);
 const read = (path) => readFile(new URL(path, root), "utf8");
@@ -51,6 +52,7 @@ test("bundle patch activates this package exactly once", async () => {
 test("production client uses Connection RPC and contains no arbitrary remote fetch or sample fallback", async () => {
 	const client = await read("lib/client.js");
 	const host = await read("lib/index.js");
+	assert.doesNotThrow(() => new Script(client), "production client must remain valid browser JavaScript");
 	assert.match(client, /connection\.rpc\.call\(CHANNEL/);
 	assert.match(client, /ctx\.configForms\?\.get\?\.\(NS\)/);
 	assert.match(client, /plugins\.bundle\.config/);
@@ -58,6 +60,10 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /Registry Aggregator ready/);
 	assert.match(client, /remote\.pluginManager\.inspect\(spec, \{ registry: null \}\)/);
 	assert.match(client, /remote\.pluginManager\.installBundle\(spec, options\)/);
+	assert.match(client, /remote\.pluginManager\.listBundles\(\)/);
+	assert.match(client, /remote\.pluginManager\.cancelInstall\(requestId\)/);
+	assert.match(client, /plugin-manager\/changed/);
+	assert.match(client, /localStorage/);
 	assert.match(client, /enabled: true/);
 	assert.match(client, /requestId/);
 	assert.match(client, /plugin-manager\/install-state/);
@@ -68,6 +74,7 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
 	assert.match(host, /githubPluginDetails/);
+	assert.match(host, /@deepseek-ai\/dsh\/package\.json/);
 	assert.doesNotMatch(host, /export default apply/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
 	assert.doesNotMatch(client, /sampleCatalog|__PM_RESOLVER__/);
