@@ -133,6 +133,7 @@ test("source cards omit redundant Enabled text and label GitHub counts as reposi
 		const tree = fixture.render();
 		assert.equal(textOf(tree).includes("Enabled"), false);
 		assert.match(textOf(tree), /1 repositories/);
+		assert.equal(textOf(tree).includes("2 ms"), false);
 		assert.equal(byClass(tree, "pm-status").length >= 1, true);
 	} finally { fixture.restore(); }
 });
