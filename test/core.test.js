@@ -123,7 +123,11 @@ test("preserves source ratings and derives release channel", () => {
 	}, source());
 	assert.deepEqual(plugin.evidence, {
 		stars: 42,
+		starsSource: "community",
+		starsAuthoritative: false,
 		downloads30d: 900,
+		downloadsSource: "community",
+		downloadsAuthoritative: false,
 		rating: 4.7,
 		ratingCount: 23,
 		releaseChannel: "beta",
