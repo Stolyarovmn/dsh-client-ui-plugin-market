@@ -589,6 +589,35 @@ test("reuses discovery rows across pagination and invalidates only on refresh re
 	assert.equal(calls, 2);
 });
 
+test("text search ranks exact and prefix matches ahead of description-only matches", async () => {
+	const rows = [
+		{ name: "description-helper", package: "description-helper", version: "1.0.0", description: "Utilities for schedule workflows" },
+		{ name: "schedule-tools", package: "schedule-tools", version: "1.0.0", description: "Tools" },
+		{ name: "schedule", package: "schedule", version: "1.0.0", description: "Exact" },
+		{ name: "tagged-helper", package: "tagged-helper", version: "1.0.0", tags: ["schedule"] },
+	];
+	const opts = { resolveHost: publicDns, fetchImpl: async () => jsonResponse(rows), enrichDownloads: false, pageSize: 20 };
+
+	const ranked = await browseSources([source()], "schedule", opts);
+	assert.deepEqual(ranked.plugins.map((plugin) => plugin.name), [
+		"schedule",
+		"schedule-tools",
+		"tagged-helper",
+		"description-helper",
+	]);
+
+	const explicitNameSort = await browseSources([source()], "schedule", {
+		...opts,
+		sorts: [{ key: "name", direction: "asc" }],
+	});
+	assert.deepEqual(explicitNameSort.plugins.map((plugin) => plugin.name), [
+		"description-helper",
+		"schedule",
+		"schedule-tools",
+		"tagged-helper",
+	]);
+});
+
 test("supports ordered multi-criteria ranking with independent directions", async () => {
 	const rows = [
 		{ name: "fresh-popular", package: "fresh-popular", version: "1.0.0", evidence: { downloads30d: 800, stars: 50, releasedAt: "2026-09-20T00:00:00Z" } },
