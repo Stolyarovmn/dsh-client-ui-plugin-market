@@ -356,6 +356,69 @@ test("Install starts immediately through the native DSH plugin-manager remote an
 });
 
 
+test("Browse reflects installed bundles and advisory update availability from Plugin Manager", async () => {
+	const exact = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		installedBundles: [{ name: "dsh-demo", version: "1.0.0", enabled: true, installed: true }],
+	});
+	try {
+		let tree = exact.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		exact.render();
+		await settle(260);
+		await settle();
+		tree = exact.render();
+		const installed = byClass(tree, "pm-card-install")[0];
+		assert.equal(installed.props["data-state"], "installed");
+		assert.equal(installed.props["aria-label"], "Installed 1.0.0");
+		assert.equal(installed.props.disabled, true);
+	} finally { exact.restore(); }
+
+	const update = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		installedBundles: [{ name: "dsh-demo", version: "0.9.0", enabled: true, installed: true }],
+	});
+	try {
+		let tree = update.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		update.render();
+		await settle(260);
+		await settle();
+		tree = update.render();
+		assert.match(textOf(tree), /Update available 0\.9\.0 → 1\.0\.0/);
+		const installed = byClass(tree, "pm-card-install")[0];
+		assert.match(String(installed.props["aria-label"]), /Update available 0\.9\.0 → 1\.0\.0/);
+		assert.equal(installed.props.disabled, true);
+	} finally { update.restore(); }
+});
+
+test("an acknowledged active install can be cancelled through Plugin Manager", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, { installDelayMs: 40 });
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		const install = byTag(tree, "button").find((button) => button.props["aria-label"] === "Install");
+		assert.ok(install);
+		const pending = install.props.onClick();
+		await settle();
+		tree = fixture.render();
+
+		const cancel = byClass(tree, "pm-card-install")[0];
+		assert.match(String(cancel.props["aria-label"]), /^Cancel · Installing 1\/1/);
+		await cancel.props.onClick();
+		assert.equal(fixture.cancellations.length, 1);
+		assert.equal(typeof fixture.cancellations[0], "string");
+
+		await pending;
+		await settle();
+		tree = fixture.render();
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Install"));
+	} finally { fixture.restore(); }
+});
+
 test("migrates an existing npm-only source config to include GitHub exactly once", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 0);
 	try {
