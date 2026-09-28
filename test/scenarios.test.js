@@ -27,7 +27,12 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
 				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, latencyMs: 2 } })) } };
-				if (endpoint === "plugin-sources/counts") return { ok: true, value: { sources: scope.__section.sources.map((source) => source.enabled === false ? { source, disabled: true } : { source, count: 1 }) } };
+				if (endpoint === "plugin-sources/counts") {
+					const source = scope.__section.sources.find((row) => row.id === payload?.sourceId);
+					if (!source) return { ok: false, error: { message: "unknown source" } };
+					if (typeof options.countsValue === "function") return { ok: true, value: await options.countsValue(payload, source) };
+					return { ok: true, value: { sources: [source.enabled === false ? { source, disabled: true } : { source, count: 1 }] } };
+				}
 				if (endpoint === "plugin-sources/browse") {
 					if (typeof options.browseValue === "function") return { ok: true, value: options.browseValue(payload, scope) };
 					if (options.browseValue) return { ok: true, value: options.browseValue };
@@ -173,8 +178,36 @@ test("Sources loads lightweight health separately from verified source counts", 
 		fixture.render();
 		await settle();
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/browse" && call.payload?.healthOnly === true));
-		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/counts"));
+		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/counts" && call.payload?.sourceId === "npm"));
 		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/health"), false);
+	} finally { fixture.restore(); }
+});
+
+test("Sources renders a fast source count without waiting for a slower source", async () => {
+	let releaseGithub;
+	const githubWait = new Promise((resolve) => { releaseGithub = resolve; });
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
+		countsValue: async (payload, source) => {
+			if (payload.sourceId === "github") await githubWait;
+			return { sources: [{ source, count: payload.sourceId === "npm" ? 322 : 17 }] };
+		},
+	});
+	try {
+		fixture.render();
+		await settle();
+		await settle();
+		let tree = fixture.render();
+		assert.match(textOf(tree), /322 packages/);
+		assert.equal(textOf(tree).includes("17 repositories"), false);
+
+		releaseGithub();
+		await settle();
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /17 repositories/);
 	} finally { fixture.restore(); }
 });
 

@@ -468,6 +468,20 @@ test("GitHub retries transient HTTP failures but does not retry ordinary client 
 		fetchImpl: async () => { forbiddenCalls += 1; return new Response("forbidden", { status: 403 }); },
 	}), /HTTP 403/);
 	assert.equal(forbiddenCalls, 1);
+
+	let throttledCalls = 0;
+	const throttled = await fetchJson("https://api.github.com/repos/acme/demo", { id: "github-throttled", name: "GitHub", type: "github", enabled: true }, {
+		resolveHost: publicDns,
+		githubRetryDelayMs: 0,
+		fetchImpl: async () => {
+			throttledCalls += 1;
+			return throttledCalls === 1
+				? new Response("secondary rate limit", { status: 403, headers: { "retry-after": "0" } })
+				: jsonResponse({ stargazers_count: 9 });
+		},
+	});
+	assert.equal(throttled.stargazers_count, 9);
+	assert.equal(throttledCalls, 2);
 });
 
 test("non-GitHub sources keep single-attempt request behavior", async () => {
