@@ -129,6 +129,8 @@ test("source cards omit redundant Enabled text and label GitHub counts as reposi
 	try {
 		fixture.render();
 		await settle();
+		fixture.render();
+		await settle();
 		const tree = fixture.render();
 		assert.equal(textOf(tree).includes("Enabled"), false);
 		assert.match(textOf(tree), /1 repositories/);
@@ -177,6 +179,8 @@ test("Sources loads lightweight health separately from verified source counts", 
 	try {
 		fixture.render();
 		await settle();
+		fixture.render();
+		await settle();
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/browse" && call.payload?.healthOnly === true));
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/counts" && call.payload?.sourceId === "npm"));
 		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/health"), false);
@@ -196,6 +200,8 @@ test("Sources renders a fast source count without waiting for a slower source", 
 		},
 	});
 	try {
+		fixture.render();
+		await settle();
 		fixture.render();
 		await settle();
 		await settle();
