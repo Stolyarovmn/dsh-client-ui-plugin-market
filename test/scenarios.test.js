@@ -50,6 +50,8 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const slots = makeSlots();
 	const installs = [];
 	const inspections = [];
+	const cancellations = [];
+	const cancelledRequests = new Set();
 	const bundleLists = [];
 	const remoteListeners = new Map();
 	const emitRemote = (event, payload) => {
@@ -69,6 +71,15 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 				return { ok: true, value: Array.isArray(value) ? value : [] };
 			},
 			async inspect(spec, options) { inspections.push({ spec, options }); return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
+			async cancelInstall(requestId) {
+				cancellations.push(requestId);
+				const status = typeof options.cancelStatus === "function" ? options.cancelStatus(requestId) : options.cancelStatus ?? "cancelled";
+				if (status === "cancelled") {
+					cancelledRequests.add(requestId);
+					emitRemote("plugin-manager/install-state", { requestId, phase: "cancelling" });
+				}
+				return { ok: true, value: { status } };
+			},
 			async installBundle(spec, installOptions) {
 				installs.push({ spec, options: installOptions });
 				if (installOptions?.requestId) {
@@ -76,6 +87,9 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 					emitRemote("plugin-manager/install-log", { requestId: installOptions.requestId, jobId: "job-1", argv: ["pnpm", "add", spec], cwd: "/profile", stream: "stdout", text: "Resolving package…" });
 				}
 				if (options.installDelayMs) await settle(options.installDelayMs);
+				if (installOptions?.requestId && cancelledRequests.has(installOptions.requestId)) {
+					return { ok: true, value: { changed: false, application: "cancelled", bundle: null } };
+				}
 				if (installOptions?.requestId) emitRemote("plugin-manager/install-state", { requestId: installOptions.requestId, phase: "applying" });
 				return { ok: true, value: { changed: true, application: "applied", bundle: spec } };
 			},
@@ -88,7 +102,7 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, bundleLists, emitRemote, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, render, restore };
 }
 
 test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
@@ -532,6 +546,45 @@ test("Install button uses the native DSH ongoing spinner and follows plugin-mana
 		await pending;
 		tree = fixture.render();
 		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed 1.0.0"));
+	} finally { fixture.restore(); }
+});
+
+test("Install can be cancelled through the native DSH plugin-manager request id", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 1, { installDelayMs: 45 });
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		const install = byTag(tree, "button").find((button) => button.props["aria-label"] === "Install");
+		assert.ok(install);
+		const pending = install.props.onClick();
+		await settle();
+		tree = fixture.render();
+
+		const cancel = byClass(tree, "pm-card-install")[0];
+		assert.equal(cancel.props["aria-label"], "Cancel install");
+		assert.equal(cancel.props.disabled, false);
+		cancel.props.onClick();
+		await settle();
+
+		assert.equal(fixture.cancellations.length, 1);
+		assert.equal(fixture.cancellations[0], fixture.installs[0].options.requestId);
+
+		tree = fixture.render();
+		const cancelling = byClass(tree, "pm-card-install")[0];
+		assert.equal(cancelling.props["aria-label"], "Cancelling…");
+		assert.equal(cancelling.props.disabled, true);
+
+		await pending;
+		tree = fixture.render();
+		const retryable = byClass(tree, "pm-card-install")[0];
+		assert.equal(retryable.props["aria-label"], "Install");
+		assert.equal(retryable.props.disabled, false);
+		assert.equal(textOf(tree).includes("Install failed"), false);
 	} finally { fixture.restore(); }
 });
 

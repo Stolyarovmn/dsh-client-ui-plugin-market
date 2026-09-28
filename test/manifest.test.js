@@ -59,6 +59,7 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /remote\.pluginManager\.listBundles\(\)/);
 	assert.match(client, /remote\.pluginManager\.inspect\(spec, \{ registry: null \}\)/);
 	assert.match(client, /remote\.pluginManager\.installBundle\(spec, options\)/);
+	assert.match(client, /remote\.pluginManager\.cancelInstall\(requestId\)/);
 	assert.match(client, /enabled: true/);
 	assert.match(client, /requestId/);
 	assert.match(client, /plugin-manager\/install-state/);
