@@ -431,6 +431,73 @@ test("Browse marks an already installed bundle and disables duplicate installati
 	} finally { fixture.restore(); }
 });
 
+test("Browse shows update available when discovered version is newer than the installed bundle", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+		browseValue: {
+			plugins: [{
+				identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+				name: "dsh-demo",
+				description: "Demo plugin",
+				version: "1.2.0",
+				tags: ["ui"],
+				evidence: { releaseChannel: "stable", installability: "bundle" },
+				install: { type: "npm", spec: "dsh-demo@1.2.0" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1,
+			page: 1,
+			pageSize: 20,
+			pageCount: 1,
+			sources: [],
+		},
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
+		const installed = byClass(tree, "pm-card-install")[0];
+		assert.equal(installed.props.disabled, true);
+		assert.equal(installed.props["data-state"], "installed");
+		assert.equal(installed.props["aria-label"], "Update available 1.0.0 → 1.2.0");
+	} finally { fixture.restore(); }
+});
+
+test("update comparison handles prerelease versions without false positives", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0-rc.2", installed: true, enabled: true, rows: [], overrides: [] }],
+		browseValue: {
+			plugins: [{
+				identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+				name: "dsh-demo",
+				description: "Demo plugin",
+				version: "1.0.0-rc.3",
+				tags: [],
+				evidence: { releaseChannel: "stable", installability: "bundle" },
+				install: { type: "npm", spec: "dsh-demo@1.0.0-rc.3" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+		},
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /Update available 1\.0\.0-rc\.2 → 1\.0\.0-rc\.3/);
+	} finally { fixture.restore(); }
+});
+
 test("Install button uses the native DSH ongoing spinner and follows plugin-manager progress events", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 1, { installDelayMs: 35 });
 	try {
