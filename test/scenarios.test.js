@@ -565,9 +565,11 @@ test("Install can be cancelled through the native DSH plugin-manager request id"
 		await settle();
 		tree = fixture.render();
 
-		const cancel = byClass(tree, "pm-card-install")[0];
+		const running = byClass(tree, "pm-card-install")[0];
+		assert.match(String(running.props["aria-label"]), /Installing 1\/1/);
+		assert.equal(running.props.disabled, true);
+		const cancel = byClass(tree, "pm-card-cancel")[0];
 		assert.equal(cancel.props["aria-label"], "Cancel install");
-		assert.equal(cancel.props.disabled, false);
 		cancel.props.onClick();
 		await settle();
 
@@ -578,6 +580,7 @@ test("Install can be cancelled through the native DSH plugin-manager request id"
 		const cancelling = byClass(tree, "pm-card-install")[0];
 		assert.equal(cancelling.props["aria-label"], "Cancelling…");
 		assert.equal(cancelling.props.disabled, true);
+		assert.equal(byClass(tree, "pm-card-cancel").length, 0);
 
 		await pending;
 		tree = fixture.render();
