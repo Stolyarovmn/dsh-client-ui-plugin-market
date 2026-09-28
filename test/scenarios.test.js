@@ -324,6 +324,8 @@ test("Browse asynchronously enriches npm results with exact GitHub evidence and 
 		await settle(260);
 		await settle();
 		await settle();
+		fixture.render();
+		await settle();
 		tree = fixture.render();
 
 		const starsCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/stars");
