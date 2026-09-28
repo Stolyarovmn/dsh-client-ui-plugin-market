@@ -289,9 +289,12 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 });
 
 
-test("Browse asynchronously hydrates missing GitHub stars without replacing Browse results", async () => {
+test("Browse asynchronously enriches npm results with exact GitHub evidence and source attribution", async () => {
 	const repository = "https://github.com/acme/star-hydration";
-	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
 		browseValue: {
 			plugins: [{
 				identity: { package: "@acme/star-hydration", repository, fallback: "npm:@acme/star-hydration" },
@@ -307,9 +310,12 @@ test("Browse asynchronously hydrates missing GitHub stars without replacing Brow
 			page: 1,
 			pageSize: 20,
 			pageCount: 1,
-			sources: [{ source: { id: "npm", name: "npm", type: "npm" }, health: { ok: true, count: 1 } }],
+			sources: [
+				{ id: "npm", name: "npm", type: "npm", health: { ok: true, count: 1 } },
+				{ id: "github", name: "GitHub", type: "github", health: { ok: true, count: 1 } },
+			],
 		},
-		starsValue: [{ repository, stars: 73, repositoryUpdatedAt: "2026-09-27T10:00:00Z" }],
+		starsValue: [{ repository, stars: 73, repositoryUpdatedAt: "2026-09-27T10:00:00Z", discoveryEligible: true }],
 	});
 	try {
 		let tree = fixture.render();
@@ -325,6 +331,7 @@ test("Browse asynchronously hydrates missing GitHub stars without replacing Brow
 		assert.deepEqual(starsCall.payload.repositories, [repository]);
 		assert.equal(byClass(tree, "pm-card").length, 1);
 		assert.ok(byClass(tree, "pm-star-icon").length >= 1);
+		assert.deepEqual(byClass(tree, "pm-badge").map((badge) => textOf(badge)), ["npm", "GitHub"]);
 	} finally { fixture.restore(); }
 });
 

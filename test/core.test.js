@@ -389,12 +389,13 @@ test("resolves GitHub star evidence independently from Browse discovery", async 
 		resolveHost: publicDns,
 		fetchImpl: async (url) => {
 			requests.push(String(url));
-			if (String(url).includes("/repos/acme/one")) return jsonResponse({ stargazers_count: 5, pushed_at: "2026-09-24T10:00:00Z" });
-			if (String(url).includes("/repos/acme/two")) return jsonResponse({ stargazers_count: 50, pushed_at: "2026-09-25T10:00:00Z" });
+			if (String(url).includes("/repos/acme/one")) return jsonResponse({ stargazers_count: 5, pushed_at: "2026-09-24T10:00:00Z", topics: ["deepseek-harness", "dsh-plugin"] });
+			if (String(url).includes("/repos/acme/two")) return jsonResponse({ stargazers_count: 50, pushed_at: "2026-09-25T10:00:00Z", topics: ["deepseek-harness"] });
 			return new Response("not found", { status: 404 });
 		},
 	});
 	assert.deepEqual(rows.map((row) => row.stars), [5, 50]);
+	assert.deepEqual(rows.map((row) => row.discoveryEligible), [true, false]);
 	assert.equal(requests.length, 2);
 });
 
