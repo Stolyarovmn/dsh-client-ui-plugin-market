@@ -50,6 +50,7 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const slots = makeSlots();
 	const installs = [];
 	const inspections = [];
+	const bundleLists = [];
 	const remoteListeners = new Map();
 	const emitRemote = (event, payload) => {
 		for (const handler of remoteListeners.get(event) ?? []) handler(payload);
@@ -62,6 +63,11 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 			return () => listeners.delete(handler);
 		},
 		pluginManager: {
+			async listBundles() {
+				bundleLists.push(true);
+				const value = typeof options.bundlesValue === "function" ? options.bundlesValue() : options.bundlesValue;
+				return { ok: true, value: Array.isArray(value) ? value : [] };
+			},
 			async inspect(spec, options) { inspections.push({ spec, options }); return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
 			async installBundle(spec, installOptions) {
 				installs.push({ spec, options: installOptions });
@@ -82,7 +88,7 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, emitRemote, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, bundleLists, emitRemote, section, activation, render, restore };
 }
 
 test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
@@ -397,6 +403,31 @@ test("Browse combines independent ordered sort criteria and resolves DSH compati
 		tree = fixture.render();
 		assert.match(textOf(tree), /DSH >=0\.1\.7-rc\.1 <0\.2\.0/);
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/details"));
+	} finally { fixture.restore(); }
+});
+
+test("Browse marks an already installed bundle and disables duplicate installation", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(fixture.bundleLists.length, 1);
+		assert.match(textOf(tree), /Installed 1\.0\.0/);
+		const installed = byClass(tree, "pm-card-install")[0];
+		assert.equal(installed.props["data-state"], "installed");
+		assert.equal(installed.props.disabled, true);
+		assert.equal(installed.props["aria-label"], "Installed 1.0.0");
+		await installed.props.onClick();
+		assert.equal(fixture.inspections.length, 0);
+		assert.equal(fixture.installs.length, 0);
 	} finally { fixture.restore(); }
 });
 
