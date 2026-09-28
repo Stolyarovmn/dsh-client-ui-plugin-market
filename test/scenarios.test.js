@@ -455,7 +455,7 @@ test("Install button uses the native DSH ongoing spinner and follows plugin-mana
 
 		await pending;
 		tree = fixture.render();
-		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed 1.0.0"));
 	} finally { fixture.restore(); }
 });
 
@@ -481,7 +481,7 @@ test("Install starts immediately through the native DSH plugin-manager remote an
 		assert.equal(fixture.installs[0].options.registry, null);
 		assert.equal(typeof fixture.installs[0].options.requestId, "string");
 		tree = fixture.render();
-		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed 1.0.0"));
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
 	} finally { fixture.restore(); }
 });
