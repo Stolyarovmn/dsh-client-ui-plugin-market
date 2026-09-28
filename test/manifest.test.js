@@ -75,7 +75,7 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.doesNotMatch(client, /tokenEnv|allowPrivateNetwork/);
 	assert.match(client, /children: "\.\.\." \}\) : null/);
 	assert.match(client, /\.pm-desc-more\{[^}]*background:transparent[^}]*font:900/s);
-	assert.match(client, /source\.type === "github" \? "source\.repositories" : "source\.packages"/);
+	assert.match(client, /source\.type === "github" \? t\("source\.repositories"/);
 	assert.doesNotMatch(client, /children: source\.enabled !== false \? t\("source\.enabled"\)/);
 	assert.match(client, /\.pm-source-list\{align-items:start\}/);
 	assert.match(client, /\.pm-status-ok\{[^}]*box-shadow:0 0 7px/s);
