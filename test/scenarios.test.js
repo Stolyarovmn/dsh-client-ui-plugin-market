@@ -405,6 +405,82 @@ test("Browse asynchronously enriches npm results with exact GitHub evidence and 
 	} finally { fixture.restore(); }
 });
 
+test("Browse relevance reorders only visible cards and preserves async GitHub stars", async () => {
+	const exactRepository = "https://github.com/acme/schedule";
+	const docsRepository = "https://github.com/acme/docs";
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
+		browseValue: {
+			plugins: [
+				{
+					identity: { package: "docs-helper", repository: docsRepository, fallback: "npm:docs-helper" },
+					name: "docs-helper",
+					description: "Documentation for schedule workflows",
+					version: "1.0.0",
+					tags: ["ui"],
+					evidence: { releaseChannel: "stable", installability: "bundle" },
+					install: { type: "npm", spec: "docs-helper@1.0.0" },
+					sources: [{ id: "npm", name: "npm", type: "npm" }],
+				},
+				{
+					identity: { package: "schedule", repository: exactRepository, fallback: "npm:schedule" },
+					name: "schedule",
+					description: "Exact package",
+					version: "1.0.0",
+					tags: ["schedule"],
+					evidence: { releaseChannel: "stable", installability: "bundle" },
+					install: { type: "npm", spec: "schedule@1.0.0" },
+					sources: [{ id: "npm", name: "npm", type: "npm" }],
+				},
+			],
+			total: 2,
+			page: 1,
+			pageSize: 20,
+			pageCount: 1,
+			sources: [
+				{ id: "npm", name: "npm", type: "npm", health: { ok: true, count: 2 } },
+				{ id: "github", name: "GitHub", type: "github", health: { ok: true, count: 2 } },
+			],
+		},
+		starsValue: [
+			{ repository: docsRepository, stars: 11, repositoryUpdatedAt: "2026-09-27T10:00:00Z", discoveryEligible: true },
+			{ repository: exactRepository, stars: 73, repositoryUpdatedAt: "2026-09-27T10:00:00Z", discoveryEligible: true },
+		],
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		const search = byId(tree, "pm-search");
+		search.props.onChange({ target: { value: "schedule" } });
+		fixture.render();
+		await settle(260);
+		await settle();
+		fixture.render();
+		await settle();
+		tree = fixture.render();
+
+		const cards = byClass(tree, "pm-card");
+		assert.equal(cards.length, 2);
+		assert.match(textOf(cards[0]), /schedule/);
+		assert.match(textOf(cards[0]), /73/);
+		assert.match(textOf(cards[1]), /docs-helper/);
+		assert.match(textOf(cards[1]), /11/);
+
+		const starsCalls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/stars");
+		assert.ok(starsCalls.length >= 1);
+		const requested = new Set(starsCalls.flatMap((call) => call.payload.repositories));
+		assert.equal(requested.has(exactRepository), true);
+		assert.equal(requested.has(docsRepository), true);
+	} finally { fixture.restore(); }
+});
+
 test("Browse filter dropdowns use the native DSH Menu and combine selections in Host requests", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
