@@ -26,7 +26,10 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 		rpc: {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
-				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, latencyMs: 2 } })) } };
+				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) {
+					if (typeof options.healthValue === "function") return { ok: true, value: await options.healthValue(payload, scope, calls) };
+					return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, latencyMs: 2 } })) } };
+				}
 				if (endpoint === "plugin-sources/counts") {
 					const source = scope.__section.sources.find((row) => row.id === payload?.sourceId);
 					if (!source) return { ok: false, error: { message: "unknown source" } };
@@ -205,6 +208,57 @@ test("Sources loads lightweight health separately from verified source counts", 
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/counts" && call.payload?.sourceId === "npm"));
 		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/health"), false);
 	} finally { fixture.restore(); }
+});
+
+test("Sources refresh stays available while counts are loading and rechecks health", async () => {
+	let releaseCount;
+	const countWait = new Promise((resolve) => { releaseCount = resolve; });
+	let healthReads = 0;
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
+		healthValue: async (_payload, scope) => {
+			healthReads += 1;
+			return {
+				sources: scope.__section.sources.map((source) => ({
+					source,
+					health: source.id === "github" && healthReads === 1
+						? { ok: false, error: "source returned HTTP 403" }
+						: { ok: true, latencyMs: 2 },
+				})),
+			};
+		},
+		countsValue: async (_payload, source) => {
+			if (source.id === "npm") await countWait;
+			return { sources: [{ source, count: source.id === "npm" ? 322 : 141 }] };
+		},
+	});
+	try {
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		let tree = fixture.render();
+		assert.match(textOf(tree), /Unavailable/);
+		const refresh = byClass(tree, "pm-refresh-icon")[0];
+		assert.equal(refresh.props.disabled, false);
+
+		refresh.props.onClick();
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(healthReads >= 2, true);
+		assert.equal(textOf(tree).includes("Unavailable"), false);
+		assert.match(textOf(tree), /Status: online/);
+	} finally {
+		releaseCount();
+		await settle();
+		fixture.restore();
+	}
 });
 
 test("Sources shows native DSH ongoing state while a verified source count is loading", async () => {

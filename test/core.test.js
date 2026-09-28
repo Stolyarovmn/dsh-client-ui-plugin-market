@@ -291,27 +291,23 @@ test("Browse derives GitHub query aliases for DSH package-style names", async ()
 	assert.ok(queries.some((q) => q.includes("schedule-tab")));
 });
 
-test("GitHub health uses one lightweight discovery probe without exposing raw topic totals", async () => {
-	const queries = [];
-	const perPages = [];
+test("GitHub health checks API availability without consuming Search API quota", async () => {
+	const requests = [];
 	const adapter = createAdapter({ id: "github", name: "GitHub", type: "github", enabled: true }, {
 		fetchImpl: async (url) => {
-			const parsed = new URL(String(url));
-			queries.push(parsed.searchParams.get("q"));
-			perPages.push(parsed.searchParams.get("per_page"));
-			return jsonResponse({
-				total_count: 16083,
-				items: [{ id: 1, name: "demo", html_url: "https://github.com/acme/demo", topics: ["deepseek-harness", "dsh-plugin"] }],
-			});
+			requests.push(String(url));
+			return jsonResponse({ resources: { search: { limit: 10, remaining: 0, reset: 0, used: 10 } } });
 		},
 		resolveHost: publicDns,
 	});
 	const health = await adapter.health();
 	assert.equal(health.ok, true);
 	assert.equal(health.count, undefined);
-	assert.equal(queries.length, 1);
-	assert.equal(perPages[0], "1");
-	assert.equal(queries[0], "topic:deepseek-harness topic:dsh-plugin");
+	assert.equal(requests.length, 1);
+	const request = new URL(requests[0]);
+	assert.equal(request.origin, "https://api.github.com");
+	assert.equal(request.pathname, "/rate_limit");
+	assert.equal(request.search, "");
 });
 
 test("npm health uses one lightweight probe and skips bundle manifest verification", async () => {
