@@ -29,14 +29,20 @@ Search across connected sources, filter results, inspect evidence, and install a
 - **Fallback command** — installable results also expose their `dsh plugin add …` command.
 - **Responsive popularity metadata** — missing GitHub star counts are hydrated after Browse renders, so GitHub metadata cannot block the initial search result.
 
-## What's new in 0.4.14
+## What's new in 0.4.15
 
-0.4.14 is the first release published from the renamed `Stolyarovmn/dsh-ui-registry-aggregator` repository through npm Trusted Publishing. It keeps the fast Browse/search path from 0.4.13 unchanged.
+0.4.15 focuses on reliability and native DSH integration while preserving the existing Browse evidence path.
 
-- published from the canonical `dsh-ui-registry-aggregator` repository;
-- npm Trusted Publisher is wired to `.github/workflows/publish.yml`;
-- README screenshots and repository metadata point to the renamed repository;
-- search, source counts, bundle verification, and asynchronous GitHub star hydration remain unchanged from 0.4.13.
+- lightweight source health checks are separated from verified DSH bundle counts;
+- npm and GitHub counts load independently with native DSH progress indicators;
+- GitHub requests retry transient failures, while health no longer consumes Search API quota;
+- installed bundles are detected through the native Plugin Manager and duplicate installs are disabled;
+- newer discovered versions are shown as advisory `Update available` notices;
+- active installs can be cancelled through the native Plugin Manager request id;
+- npm results can be enriched with exact GitHub provenance without broad GitHub pagination;
+- search relevance is presentation-only, so GitHub stars, downloads, evidence, pagination, and explicit sorting keep their existing behavior.
+
+Tested with DSH `0.1.7-rc.2`.
 
 ## Architecture
 
@@ -167,7 +173,7 @@ The order in which criteria are enabled defines priority.
 ## Compatibility
 
 - DSH: `>=0.1.7-rc.1 <0.2.0`
-- Tested with DSH `0.1.7-rc.1`
+- Tested with DSH `0.1.7-rc.2`
 
 Exact package compatibility is read from package metadata when a publisher declares it. Installation is validated again by the native DSH Plugin Manager.
 

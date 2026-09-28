@@ -26,13 +26,26 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 		rpc: {
 			async call(channel, endpoint, payload) {
 				calls.push({ channel, endpoint, payload });
-				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, count: 1, latencyMs: 2 } })) } };
+				if (endpoint === "plugin-sources/browse" && payload?.healthOnly === true) {
+					if (typeof options.healthValue === "function") return { ok: true, value: await options.healthValue(payload, scope, calls) };
+					return { ok: true, value: { sources: scope.__section.sources.map((source) => ({ source, health: source.enabled === false ? { ok: false, disabled: true } : { ok: true, latencyMs: 2 } })) } };
+				}
+				if (endpoint === "plugin-sources/counts") {
+					const source = scope.__section.sources.find((row) => row.id === payload?.sourceId);
+					if (!source) return { ok: false, error: { message: "unknown source" } };
+					if (typeof options.countsValue === "function") return { ok: true, value: await options.countsValue(payload, source) };
+					return { ok: true, value: { sources: [source.enabled === false ? { source, disabled: true } : { source, count: 1 }] } };
+				}
 				if (endpoint === "plugin-sources/browse") {
 					if (typeof options.browseValue === "function") return { ok: true, value: options.browseValue(payload, scope) };
 					if (options.browseValue) return { ok: true, value: options.browseValue };
 					return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
 				}
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
+				if (endpoint === "plugin-sources/stars") {
+					const value = typeof options.starsValue === "function" ? options.starsValue(payload) : options.starsValue;
+					return { ok: true, value: Array.isArray(value) ? value : [] };
+				}
 				return { ok: false, error: { message: "unknown" } };
 			},
 		},
@@ -40,6 +53,9 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const slots = makeSlots();
 	const installs = [];
 	const inspections = [];
+	const cancellations = [];
+	const cancelledRequests = new Set();
+	const bundleLists = [];
 	const remoteListeners = new Map();
 	const emitRemote = (event, payload) => {
 		for (const handler of remoteListeners.get(event) ?? []) handler(payload);
@@ -52,7 +68,21 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 			return () => listeners.delete(handler);
 		},
 		pluginManager: {
+			async listBundles() {
+				bundleLists.push(true);
+				const value = typeof options.bundlesValue === "function" ? options.bundlesValue() : options.bundlesValue;
+				return { ok: true, value: Array.isArray(value) ? value : [] };
+			},
 			async inspect(spec, options) { inspections.push({ spec, options }); return { ok: true, value: { status: "accepted", kind: "registry", name: spec.split("@")[0] || spec, bundle: true, registry: null } }; },
+			async cancelInstall(requestId) {
+				cancellations.push(requestId);
+				const status = typeof options.cancelStatus === "function" ? options.cancelStatus(requestId) : options.cancelStatus ?? "cancelled";
+				if (status === "cancelled") {
+					cancelledRequests.add(requestId);
+					emitRemote("plugin-manager/install-state", { requestId, phase: "cancelling" });
+				}
+				return { ok: true, value: { status } };
+			},
 			async installBundle(spec, installOptions) {
 				installs.push({ spec, options: installOptions });
 				if (installOptions?.requestId) {
@@ -60,6 +90,9 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 					emitRemote("plugin-manager/install-log", { requestId: installOptions.requestId, jobId: "job-1", argv: ["pnpm", "add", spec], cwd: "/profile", stream: "stdout", text: "Resolving package…" });
 				}
 				if (options.installDelayMs) await settle(options.installDelayMs);
+				if (installOptions?.requestId && cancelledRequests.has(installOptions.requestId)) {
+					return { ok: true, value: { changed: false, application: "cancelled", bundle: null } };
+				}
 				if (installOptions?.requestId) emitRemote("plugin-manager/install-state", { requestId: installOptions.requestId, phase: "applying" });
 				return { ok: true, value: { changed: true, application: "applied", bundle: spec } };
 			},
@@ -72,7 +105,7 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, emitRemote, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, render, restore };
 }
 
 test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
@@ -119,6 +152,8 @@ test("source cards omit redundant Enabled text and label GitHub counts as reposi
 	try {
 		fixture.render();
 		await settle();
+		fixture.render();
+		await settle();
 		const tree = fixture.render();
 		assert.equal(textOf(tree).includes("Enabled"), false);
 		assert.match(textOf(tree), /1 repositories/);
@@ -162,13 +197,124 @@ test("source cards keep copy URL and move the only destructive action into the h
 	} finally { fixture.restore(); }
 });
 
-test("Sources health uses the Browse transport to avoid a stale dedicated health route", async () => {
+test("Sources loads lightweight health separately from verified source counts", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
 	try {
 		fixture.render();
 		await settle();
+		fixture.render();
+		await settle();
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/browse" && call.payload?.healthOnly === true));
+		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/counts" && call.payload?.sourceId === "npm"));
 		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/health"), false);
+	} finally { fixture.restore(); }
+});
+
+test("Sources refresh stays available while counts are loading and rechecks health", async () => {
+	let releaseCount;
+	const countWait = new Promise((resolve) => { releaseCount = resolve; });
+	let healthReads = 0;
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
+		healthValue: async (_payload, scope) => {
+			healthReads += 1;
+			return {
+				sources: scope.__section.sources.map((source) => ({
+					source,
+					health: source.id === "github" && healthReads === 1
+						? { ok: false, error: "source returned HTTP 403" }
+						: { ok: true, latencyMs: 2 },
+				})),
+			};
+		},
+		countsValue: async (_payload, source) => {
+			if (source.id === "npm") await countWait;
+			return { sources: [{ source, count: source.id === "npm" ? 322 : 141 }] };
+		},
+	});
+	try {
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		let tree = fixture.render();
+		assert.match(textOf(tree), /Unavailable/);
+		const refresh = byClass(tree, "pm-refresh-icon")[0];
+		assert.equal(refresh.props.disabled, false);
+
+		refresh.props.onClick();
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(healthReads >= 2, true);
+		assert.equal(textOf(tree).includes("Unavailable"), false);
+		assert.match(textOf(tree), /Status: online/);
+	} finally {
+		releaseCount();
+		await settle();
+		fixture.restore();
+	}
+});
+
+test("Sources shows native DSH ongoing state while a verified source count is loading", async () => {
+	let releaseCount;
+	const countWait = new Promise((resolve) => { releaseCount = resolve; });
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		countsValue: async (_payload, source) => {
+			await countWait;
+			return { sources: [{ source, count: 322 }] };
+		},
+	});
+	try {
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		let tree = fixture.render();
+		assert.equal(byClass(tree, "mock-state-dot").filter((node) => node.props["data-state"] === "ongoing").length, 1);
+		assert.equal(textOf(tree).includes("322 packages"), false);
+
+		releaseCount();
+		await settle();
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /322 packages/);
+		assert.equal(byClass(tree, "mock-state-dot").filter((node) => node.props["data-state"] === "ongoing").length, 0);
+	} finally { fixture.restore(); }
+});
+
+test("Sources renders a fast source count without waiting for a slower source", async () => {
+	let releaseGithub;
+	const githubWait = new Promise((resolve) => { releaseGithub = resolve; });
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
+		countsValue: async (payload, source) => {
+			if (payload.sourceId === "github") await githubWait;
+			return { sources: [{ source, count: payload.sourceId === "npm" ? 322 : 17 }] };
+		},
+	});
+	try {
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		await settle();
+		let tree = fixture.render();
+		assert.match(textOf(tree), /322 packages/);
+		assert.equal(textOf(tree).includes("17 repositories"), false);
+
+		releaseGithub();
+		await settle();
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /17 repositories/);
 	} finally { fixture.restore(); }
 });
 
@@ -210,6 +356,130 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 	} finally { fixture.restore(); }
 });
 
+
+test("Browse asynchronously enriches npm results with exact GitHub evidence and source attribution", async () => {
+	const repository = "https://github.com/acme/star-hydration";
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
+		browseValue: {
+			plugins: [{
+				identity: { package: "@acme/star-hydration", repository, fallback: "npm:@acme/star-hydration" },
+				name: "star-hydration",
+				description: "DSH plugin",
+				version: "1.0.0",
+				tags: ["ui"],
+				evidence: { releaseChannel: "stable", installability: "bundle" },
+				install: { type: "npm", spec: "@acme/star-hydration@1.0.0" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1,
+			page: 1,
+			pageSize: 20,
+			pageCount: 1,
+			sources: [
+				{ id: "npm", name: "npm", type: "npm", health: { ok: true, count: 1 } },
+				{ id: "github", name: "GitHub", type: "github", health: { ok: true, count: 1 } },
+			],
+		},
+		starsValue: [{ repository, stars: 73, repositoryUpdatedAt: "2026-09-27T10:00:00Z", discoveryEligible: true }],
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		fixture.render();
+		await settle();
+		tree = fixture.render();
+
+		const starsCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/stars");
+		assert.ok(starsCall);
+		assert.deepEqual(starsCall.payload.repositories, [repository]);
+		assert.equal(byClass(tree, "pm-card").length, 1);
+		assert.ok(byClass(tree, "pm-star-icon").length >= 1);
+		assert.deepEqual(byClass(tree, "pm-badge").map((badge) => textOf(badge)), ["npm", "GitHub"]);
+	} finally { fixture.restore(); }
+});
+
+test("Browse relevance reorders only visible cards and preserves async GitHub stars", async () => {
+	const exactRepository = "https://github.com/acme/schedule";
+	const docsRepository = "https://github.com/acme/docs";
+	const fixture = await setup([
+		{ id: "npm", name: "npm", type: "npm", enabled: true },
+		{ id: "github", name: "GitHub", type: "github", enabled: true },
+	], 2, {
+		browseValue: {
+			plugins: [
+				{
+					identity: { package: "docs-helper", repository: docsRepository, fallback: "npm:docs-helper" },
+					name: "docs-helper",
+					description: "Documentation for schedule workflows",
+					version: "1.0.0",
+					tags: ["ui"],
+					evidence: { releaseChannel: "stable", installability: "bundle" },
+					install: { type: "npm", spec: "docs-helper@1.0.0" },
+					sources: [{ id: "npm", name: "npm", type: "npm" }],
+				},
+				{
+					identity: { package: "schedule", repository: exactRepository, fallback: "npm:schedule" },
+					name: "schedule",
+					description: "Exact package",
+					version: "1.0.0",
+					tags: ["schedule"],
+					evidence: { releaseChannel: "stable", installability: "bundle" },
+					install: { type: "npm", spec: "schedule@1.0.0" },
+					sources: [{ id: "npm", name: "npm", type: "npm" }],
+				},
+			],
+			total: 2,
+			page: 1,
+			pageSize: 20,
+			pageCount: 1,
+			sources: [
+				{ id: "npm", name: "npm", type: "npm", health: { ok: true, count: 2 } },
+				{ id: "github", name: "GitHub", type: "github", health: { ok: true, count: 2 } },
+			],
+		},
+		starsValue: [
+			{ repository: docsRepository, stars: 11, repositoryUpdatedAt: "2026-09-27T10:00:00Z", discoveryEligible: true },
+			{ repository: exactRepository, stars: 73, repositoryUpdatedAt: "2026-09-27T10:00:00Z", discoveryEligible: true },
+		],
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		const search = byId(tree, "pm-search");
+		search.props.onChange({ target: { value: "schedule" } });
+		fixture.render();
+		await settle(260);
+		await settle();
+		fixture.render();
+		await settle();
+		tree = fixture.render();
+
+		const cards = byClass(tree, "pm-card");
+		assert.equal(cards.length, 2);
+		assert.match(textOf(cards[0]), /schedule/);
+		assert.match(textOf(cards[0]), /73/);
+		assert.match(textOf(cards[1]), /docs-helper/);
+		assert.match(textOf(cards[1]), /11/);
+
+		const starsCalls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/stars");
+		assert.ok(starsCalls.length >= 1);
+		const requested = new Set(starsCalls.flatMap((call) => call.payload.repositories));
+		assert.equal(requested.has(exactRepository), true);
+		assert.equal(requested.has(docsRepository), true);
+	} finally { fixture.restore(); }
+});
 
 test("Browse filter dropdowns use the native DSH Menu and combine selections in Host requests", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
@@ -289,6 +559,98 @@ test("Browse combines independent ordered sort criteria and resolves DSH compati
 	} finally { fixture.restore(); }
 });
 
+test("Browse marks an already installed bundle and disables duplicate installation", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(fixture.bundleLists.length, 1);
+		assert.match(textOf(tree), /Installed 1\.0\.0/);
+		const installed = byClass(tree, "pm-card-install")[0];
+		assert.equal(installed.props["data-state"], "installed");
+		assert.equal(installed.props.disabled, true);
+		assert.equal(installed.props["aria-label"], "Installed 1.0.0");
+		await installed.props.onClick();
+		assert.equal(fixture.inspections.length, 0);
+		assert.equal(fixture.installs.length, 0);
+	} finally { fixture.restore(); }
+});
+
+test("Browse shows update available when discovered version is newer than the installed bundle", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+		browseValue: {
+			plugins: [{
+				identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+				name: "dsh-demo",
+				description: "Demo plugin",
+				version: "1.2.0",
+				tags: ["ui"],
+				evidence: { releaseChannel: "stable", installability: "bundle" },
+				install: { type: "npm", spec: "dsh-demo@1.2.0" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1,
+			page: 1,
+			pageSize: 20,
+			pageCount: 1,
+			sources: [],
+		},
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
+		const installed = byClass(tree, "pm-card-install")[0];
+		assert.equal(installed.props.disabled, true);
+		assert.equal(installed.props["data-state"], "installed");
+		assert.equal(installed.props["aria-label"], "Update available 1.0.0 → 1.2.0");
+	} finally { fixture.restore(); }
+});
+
+test("update comparison handles prerelease versions without false positives", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0-rc.2", installed: true, enabled: true, rows: [], overrides: [] }],
+		browseValue: {
+			plugins: [{
+				identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+				name: "dsh-demo",
+				description: "Demo plugin",
+				version: "1.0.0-rc.3",
+				tags: [],
+				evidence: { releaseChannel: "stable", installability: "bundle" },
+				install: { type: "npm", spec: "dsh-demo@1.0.0-rc.3" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+		},
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /Update available 1\.0\.0-rc\.2 → 1\.0\.0-rc\.3/);
+	} finally { fixture.restore(); }
+});
+
 test("Install button uses the native DSH ongoing spinner and follows plugin-manager progress events", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 1, { installDelayMs: 35 });
 	try {
@@ -313,7 +675,49 @@ test("Install button uses the native DSH ongoing spinner and follows plugin-mana
 
 		await pending;
 		tree = fixture.render();
-		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed 1.0.0"));
+	} finally { fixture.restore(); }
+});
+
+test("Install can be cancelled through the native DSH plugin-manager request id", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 1, { installDelayMs: 45 });
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		const install = byTag(tree, "button").find((button) => button.props["aria-label"] === "Install");
+		assert.ok(install);
+		const pending = install.props.onClick();
+		await settle();
+		tree = fixture.render();
+
+		const running = byClass(tree, "pm-card-install")[0];
+		assert.match(String(running.props["aria-label"]), /Installing 1\/1/);
+		assert.equal(running.props.disabled, true);
+		const cancel = byClass(tree, "pm-card-cancel")[0];
+		assert.equal(cancel.props["aria-label"], "Cancel install");
+		cancel.props.onClick();
+		await settle();
+
+		assert.equal(fixture.cancellations.length, 1);
+		assert.equal(fixture.cancellations[0], fixture.installs[0].options.requestId);
+
+		tree = fixture.render();
+		const cancelling = byClass(tree, "pm-card-install")[0];
+		assert.equal(cancelling.props["aria-label"], "Cancelling…");
+		assert.equal(cancelling.props.disabled, true);
+		assert.equal(byClass(tree, "pm-card-cancel").length, 0);
+
+		await pending;
+		tree = fixture.render();
+		const retryable = byClass(tree, "pm-card-install")[0];
+		assert.equal(retryable.props["aria-label"], "Install");
+		assert.equal(retryable.props.disabled, false);
+		assert.equal(textOf(tree).includes("Install failed"), false);
 	} finally { fixture.restore(); }
 });
 
@@ -339,7 +743,7 @@ test("Install starts immediately through the native DSH plugin-manager remote an
 		assert.equal(fixture.installs[0].options.registry, null);
 		assert.equal(typeof fixture.installs[0].options.requestId, "string");
 		tree = fixture.render();
-		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed"));
+		assert.ok(byTag(tree, "button").some((button) => button.props["aria-label"] === "Installed 1.0.0"));
 		assert.match(textOf(tree), /dsh plugin add dsh-demo@1\.0\.0/);
 	} finally { fixture.restore(); }
 });

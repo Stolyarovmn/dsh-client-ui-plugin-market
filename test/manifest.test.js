@@ -9,7 +9,7 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 test("package declares both DSH faces and required client services", async () => {
 	const pkg = JSON.parse(await read("package.json"));
 	assert.equal(pkg.name, "@stolyarovmn/dsh-ui-registry-aggregator");
-	assert.equal(pkg.version, "0.4.14");
+	assert.equal(pkg.version, "0.4.15");
 	assert.equal(pkg.type, "module");
 	assert.equal(pkg.main, "lib/index.js");
 	assert.equal(pkg.exports["./client"], "./lib/client.js");
@@ -56,8 +56,10 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /plugins\.bundle\.config/);
 	assert.match(client, /plugins\.bundle\.activation/);
 	assert.match(client, /Registry Aggregator ready/);
+	assert.match(client, /remote\.pluginManager\.listBundles\(\)/);
 	assert.match(client, /remote\.pluginManager\.inspect\(spec, \{ registry: null \}\)/);
 	assert.match(client, /remote\.pluginManager\.installBundle\(spec, options\)/);
+	assert.match(client, /remote\.pluginManager\.cancelInstall\(requestId\)/);
 	assert.match(client, /enabled: true/);
 	assert.match(client, /requestId/);
 	assert.match(client, /plugin-manager\/install-state/);
@@ -67,6 +69,7 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section/);
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
+	assert.match(host, /connection\.fetch\.register\(route\("counts"\)\)/);
 	assert.match(host, /githubPluginDetails/);
 	assert.doesNotMatch(host, /export default apply/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
@@ -74,7 +77,7 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.doesNotMatch(client, /tokenEnv|allowPrivateNetwork/);
 	assert.match(client, /children: "\.\.\." \}\) : null/);
 	assert.match(client, /\.pm-desc-more\{[^}]*background:transparent[^}]*font:900/s);
-	assert.match(client, /source\.type === "github" \? "source\.repositories" : "source\.packages"/);
+	assert.match(client, /source\.type === "github" \? t\("source\.repositories"/);
 	assert.doesNotMatch(client, /children: source\.enabled !== false \? t\("source\.enabled"\)/);
 	assert.match(client, /\.pm-source-list\{align-items:start\}/);
 	assert.match(client, /\.pm-status-ok\{[^}]*box-shadow:0 0 7px/s);
