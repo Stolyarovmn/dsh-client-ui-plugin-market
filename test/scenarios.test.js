@@ -187,6 +187,33 @@ test("Sources loads lightweight health separately from verified source counts", 
 	} finally { fixture.restore(); }
 });
 
+test("Sources shows native DSH ongoing state while a verified source count is loading", async () => {
+	let releaseCount;
+	const countWait = new Promise((resolve) => { releaseCount = resolve; });
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		countsValue: async (_payload, source) => {
+			await countWait;
+			return { sources: [{ source, count: 322 }] };
+		},
+	});
+	try {
+		fixture.render();
+		await settle();
+		fixture.render();
+		await settle();
+		let tree = fixture.render();
+		assert.equal(byClass(tree, "mock-state-dot").filter((node) => node.props["data-state"] === "ongoing").length, 1);
+		assert.equal(textOf(tree).includes("322 packages"), false);
+
+		releaseCount();
+		await settle();
+		await settle();
+		tree = fixture.render();
+		assert.match(textOf(tree), /322 packages/);
+		assert.equal(byClass(tree, "mock-state-dot").filter((node) => node.props["data-state"] === "ongoing").length, 0);
+	} finally { fixture.restore(); }
+});
+
 test("Sources renders a fast source count without waiting for a slower source", async () => {
 	let releaseGithub;
 	const githubWait = new Promise((resolve) => { releaseGithub = resolve; });
