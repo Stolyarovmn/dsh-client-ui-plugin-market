@@ -413,6 +413,73 @@ test("GitHub star evidence failures stay best-effort and do not fail the batch",
 	assert.equal(rows.find((row) => row.repository.endsWith("/rate-limited"))?.stars, undefined);
 });
 
+test("GitHub retries transient network failures and succeeds on a later attempt", async () => {
+	let calls = 0;
+	const result = await fetchJson("https://api.github.com/search/repositories?q=dsh", { id: "github-retry", name: "GitHub", type: "github", enabled: true }, {
+		resolveHost: publicDns,
+		githubRetryDelayMs: 0,
+		fetchImpl: async () => {
+			calls += 1;
+			if (calls < 3) throw new Error("ECONNRESET");
+			return jsonResponse({ ok: true });
+		},
+	});
+	assert.deepEqual(result, { ok: true });
+	assert.equal(calls, 3);
+});
+
+test("GitHub retries a timed out request with a fresh attempt", async () => {
+	let calls = 0;
+	const result = await fetchJson("https://api.github.com/search/repositories?q=dsh", { id: "github-timeout", name: "GitHub", type: "github", enabled: true }, {
+		resolveHost: publicDns,
+		timeoutMs: 5,
+		githubRetryTimeoutMs: 5,
+		githubRetryAttempts: 2,
+		githubRetryDelayMs: 0,
+		fetchImpl: async (_url, init) => {
+			calls += 1;
+			if (calls === 1) {
+				return new Promise((_resolve, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true }));
+			}
+			return jsonResponse({ recovered: true });
+		},
+	});
+	assert.deepEqual(result, { recovered: true });
+	assert.equal(calls, 2);
+});
+
+test("GitHub retries transient HTTP failures but does not retry ordinary client errors", async () => {
+	let transientCalls = 0;
+	const recovered = await fetchJson("https://api.github.com/repos/acme/demo", { id: "github-503", name: "GitHub", type: "github", enabled: true }, {
+		resolveHost: publicDns,
+		githubRetryDelayMs: 0,
+		fetchImpl: async () => {
+			transientCalls += 1;
+			return transientCalls === 1 ? new Response("busy", { status: 503 }) : jsonResponse({ stargazers_count: 7 });
+		},
+	});
+	assert.equal(recovered.stargazers_count, 7);
+	assert.equal(transientCalls, 2);
+
+	let forbiddenCalls = 0;
+	await assert.rejects(() => fetchJson("https://api.github.com/repos/acme/demo", { id: "github-403", name: "GitHub", type: "github", enabled: true }, {
+		resolveHost: publicDns,
+		githubRetryDelayMs: 0,
+		fetchImpl: async () => { forbiddenCalls += 1; return new Response("forbidden", { status: 403 }); },
+	}), /HTTP 403/);
+	assert.equal(forbiddenCalls, 1);
+});
+
+test("non-GitHub sources keep single-attempt request behavior", async () => {
+	let calls = 0;
+	await assert.rejects(() => fetchJson("https://registry.npmjs.org/-/v1/search?text=dsh", { id: "npm-no-retry", name: "npm", type: "npm", enabled: true }, {
+		resolveHost: publicDns,
+		githubRetryDelayMs: 0,
+		fetchImpl: async () => { calls += 1; throw new Error("offline"); },
+	}), /offline/);
+	assert.equal(calls, 1);
+});
+
 test("blocks private destinations and redirects before the next request", async () => {
 	let calls = 0;
 	await assert.rejects(() => fetchJson("http://127.0.0.1/catalog", source(), { fetchImpl: async () => { calls++; return jsonResponse([]); } }), /private network/);
