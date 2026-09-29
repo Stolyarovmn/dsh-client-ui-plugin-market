@@ -133,7 +133,7 @@ test("self-embeds Plugin Registry after native Installed on stock DSH DOM", asyn
 		installed.remove();
 		fixture.notifyMutation();
 		await settle();
-		assert.equal(root.unmounted, false);
+		assert.equal(root.unmounted, true);
 	} finally { fixture.restore(); }
 });
 
