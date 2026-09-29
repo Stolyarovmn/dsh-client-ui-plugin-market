@@ -357,6 +357,45 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 });
 
 
+test("Browse shows automatic runtime compatibility without a details request", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		browseValue: {
+			plugins: [{
+				identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+				name: "dsh-demo",
+				description: "Demo plugin",
+				version: "1.0.0",
+				tags: ["ui"],
+				evidence: {
+					releaseChannel: "stable",
+					installability: "bundle",
+					dshCompatibility: ">=0.1.7-rc.1 <0.2.0",
+					dshRuntimeVersion: "0.1.7-rc.2",
+					dshCompatibilityStatus: "compatible",
+				},
+				install: { type: "npm", spec: "dsh-demo@1.0.0" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+		},
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		assert.match(textOf(tree), /DSH compatible/);
+		const compat = byClass(tree, "pm-compat-button")[0];
+		assert.equal(compat.props["data-status"], "compatible");
+		assert.match(compat.props.title, />=0\.1\.7-rc\.1 <0\.2\.0/);
+		assert.match(compat.props.title, /0\.1\.7-rc\.2/);
+		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/details"), false);
+	} finally { fixture.restore(); }
+});
+
 test("Browse asynchronously enriches npm results with exact GitHub evidence and source attribution", async () => {
 	const repository = "https://github.com/acme/star-hydration";
 	const fixture = await setup([
