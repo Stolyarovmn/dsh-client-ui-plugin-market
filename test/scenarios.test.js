@@ -99,11 +99,20 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 		},
 	};
 	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection, remote });
+	const domCards = [];
 	if (options.domBridge === true) {
 		const page = document.createElement("section");
 		const installed = document.createElement("section");
 		installed.setAttribute("data-plugin-scope", "global");
 		installed.setAttribute("data-plugin-group", "bundles");
+		const list = document.createElement("ul");
+		for (const packageName of options.domInstalledPackages ?? []) {
+			const card = document.createElement("li");
+			card.setAttribute("data-plugin-package", packageName);
+			list.appendChild(card);
+			domCards.push(card);
+		}
+		installed.appendChild(list);
 		page.appendChild(installed);
 		document.body.appendChild(page);
 	}
@@ -114,7 +123,7 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listSection, mini, render, restore, document, reactDomRoots, notifyMutation };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listSection, mini, render, restore, document, reactDomRoots, notifyMutation, domCards };
 }
 
 test("self-embeds Plugin Registry after native Installed on stock DSH DOM", async () => {
@@ -134,6 +143,51 @@ test("self-embeds Plugin Registry after native Installed on stock DSH DOM", asyn
 		fixture.notifyMutation();
 		await settle();
 		assert.equal(root.unmounted, true);
+	} finally { fixture.restore(); }
+});
+
+test("shows an update badge on the matching native Installed card", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		domBridge: true,
+		domInstalledPackages: ["dsh-demo", "dsh-current"],
+		bundlesValue: [
+			{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+			{ name: "dsh-current", version: "2.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+		],
+		browseValue: (payload) => {
+			const name = payload.query;
+			const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
+			return {
+				plugins: [{
+					identity: { package: name, fallback: `npm:${name}` },
+					name,
+					description: "Installed plugin",
+					version,
+					tags: ["ui"],
+					evidence: { releaseChannel: "stable", installability: "bundle" },
+					install: { type: "npm", spec: `${name}@${version}` },
+					sources: [{ id: "npm", name: "npm", type: "npm" }],
+				}],
+				total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+			};
+		},
+	});
+	try {
+		await settle();
+		await settle();
+		assert.equal(fixture.reactDomRoots.length, 3);
+		const cardRoots = fixture.reactDomRoots.filter((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.equal(cardRoots.length, 2);
+
+		const demoRoot = cardRoots.find((root) => root.container.parentElement?.getAttribute("data-plugin-package") === "dsh-demo");
+		const currentRoot = cardRoots.find((root) => root.container.parentElement?.getAttribute("data-plugin-package") === "dsh-current");
+		assert.ok(demoRoot);
+		assert.ok(currentRoot);
+
+		const demoTree = fixture.mini.render(demoRoot.element);
+		const currentTree = fixture.mini.render(currentRoot.element);
+		assert.match(textOf(demoTree), /Update 1\.2\.0/);
+		assert.equal(textOf(currentTree).includes("Update"), false);
 	} finally { fixture.restore(); }
 });
 
