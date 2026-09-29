@@ -184,10 +184,22 @@ test("shows an update badge on the matching native Installed card", async () => 
 		assert.ok(demoRoot);
 		assert.ok(currentRoot);
 
-		const demoTree = fixture.mini.render(demoRoot.element);
-		const currentTree = fixture.mini.render(currentRoot.element);
+		const demoMini = new MiniReact({ document: fixture.document });
+		let demoTree = demoMini.render(demoRoot.element);
+		const currentMini = new MiniReact({ document: fixture.document });
+		const currentTree = currentMini.render(currentRoot.element);
 		assert.match(textOf(demoTree), /Update 1\.2\.0/);
 		assert.equal(textOf(currentTree).includes("Update"), false);
+
+		const expand = byClass(demoTree, "pm-installed-expand")[0];
+		assert.ok(expand);
+		assert.equal(expand.props["aria-expanded"], false);
+		expand.props.onClick({ preventDefault() {}, stopPropagation() {} });
+		demoTree = demoMini.render(demoRoot.element);
+		assert.equal(byClass(demoTree, "pm-installed-expand")[0].props["aria-expanded"], true);
+		assert.match(textOf(demoTree), /Registry 1\.2\.0/);
+		assert.match(textOf(demoTree), /Installed plugin/);
+		assert.match(textOf(demoTree), /npm/);
 	} finally { fixture.restore(); }
 });
 
