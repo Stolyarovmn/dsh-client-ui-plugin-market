@@ -55,6 +55,8 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /ctx\.configForms\?\.get\?\.\(NS\)/);
 	assert.match(client, /plugins\.bundle\.config/);
 	assert.match(client, /plugins\.bundle\.activation/);
+	assert.match(client, /plugins\.list\.tab/);
+	assert.match(client, /plugins\.list\.action/);
 	assert.match(client, /Registry Aggregator ready/);
 	assert.match(client, /remote\.pluginManager\.listBundles\(\)/);
 	assert.match(client, /remote\.pluginManager\.inspect\(spec, \{ registry: null \}\)/);
@@ -85,5 +87,5 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 });
 
 test("all published documentation files exist", async () => {
-	await Promise.all(["README.md", "LICENSE", "icon.svg", "lib/index.js", "lib/client.js", "lib/core.js", "cordis.patch.yml"].map((path) => access(new URL(path, root))));
+	await Promise.all(["README.md", "LICENSE", "icon.svg", "lib/index.js", "lib/client.js", "lib/core.js", "cordis.patch.yml", "docs/upstream/dsh-plugin-manager-list-slots.patch"].map((path) => access(new URL(path, root))));
 });
