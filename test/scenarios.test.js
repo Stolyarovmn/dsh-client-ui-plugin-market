@@ -146,10 +146,11 @@ test("registers native Plugins list tabs while keeping the bundle-detail fallbac
 	} finally { fixture.restore(); }
 });
 
-test("native Updates tab finds newer versions for installed bundles", async () => {
+test("native Updates tab finds newer versions and refreshes its badge after plugin changes", async () => {
+	let demoVersion = "1.0.0";
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
-		bundlesValue: [
-			{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+		bundlesValue: () => [
+			{ name: "dsh-demo", version: demoVersion, installed: true, enabled: true, rows: [], overrides: [] },
 			{ name: "dsh-current", version: "2.0.0", installed: true, enabled: true, rows: [], overrides: [] },
 		],
 		browseValue: (payload) => {
@@ -185,6 +186,14 @@ test("native Updates tab finds newer versions for installed bundles", async () =
 		assert.match(textOf(tree), /dsh-demo/);
 		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
 		assert.equal(textOf(tree).includes("dsh-current"), false);
+
+		demoVersion = "1.2.0";
+		fixture.emitRemote("plugin-manager/changed", {});
+		fixture.renderNative("registry-aggregator.updates", { view: "label" });
+		await settle();
+		await settle();
+		const refreshedLabel = fixture.renderNative("registry-aggregator.updates", { view: "label" });
+		assert.equal(textOf(refreshedLabel), "Updates");
 	} finally { fixture.restore(); }
 });
 
