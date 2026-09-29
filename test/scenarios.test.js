@@ -369,9 +369,10 @@ test("Browse shows automatic runtime compatibility without a details request", a
 				evidence: {
 					releaseChannel: "stable",
 					installability: "bundle",
-					dshCompatibility: ">=0.1.7-rc.1 <0.2.0",
 					dshRuntimeVersion: "0.1.7-rc.2",
 					dshCompatibilityStatus: "compatible",
+					dshMetadataResolved: true,
+					dshPeers: [{ dependency: "@deepseek-ai/dsh-client-ui-primitives", range: ">=0.1.7-rc.1 <0.2.0", compatible: true }],
 				},
 				install: { type: "npm", spec: "dsh-demo@1.0.0" },
 				sources: [{ id: "npm", name: "npm", type: "npm" }],
@@ -390,7 +391,7 @@ test("Browse shows automatic runtime compatibility without a details request", a
 		assert.match(textOf(tree), /DSH compatible/);
 		const compat = byClass(tree, "pm-compat-button")[0];
 		assert.equal(compat.props["data-status"], "compatible");
-		assert.match(compat.props.title, />=0\.1\.7-rc\.1 <0\.2\.0/);
+		assert.match(compat.props.title, /@deepseek-ai\/dsh-client-ui-primitives >=0\.1\.7-rc\.1 <0\.2\.0/);
 		assert.match(compat.props.title, /0\.1\.7-rc\.2/);
 		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/details"), false);
 	} finally { fixture.restore(); }
