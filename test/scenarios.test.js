@@ -102,19 +102,83 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	exports.apply(ctx);
 	const section = recorded.find((row) => row.options.name === "plugins.bundle.config");
 	const activation = recorded.find((row) => row.options.name === "plugins.bundle.activation");
+	const listTabs = recorded.filter((row) => row.options.name === "plugins.list.tab");
+	const listAction = recorded.find((row) => row.options.name === "plugins.list.action");
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listTabs, listAction, mini, render, restore };
 }
 
-test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
+test("registers native Plugin Manager tabs plus the legacy detail fallback", async () => {
 	const fixture = await setup();
 	try {
 		assert.equal(fixture.section.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
 		assert.equal(fixture.activation.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
+		assert.deepEqual(fixture.listTabs.map((row) => row.options.id), ["registry-sources", "registry-browse", "registry-updates"]);
+		assert.deepEqual(fixture.listTabs.map((row) => row.options.order), [20, 30, 40]);
+		assert.equal(fixture.listTabs[0].options.label(), "Sources");
+		assert.equal(fixture.listTabs[1].options.label(), "Browse");
+		assert.equal(fixture.listTabs[2].options.label(), "Updates");
+		assert.equal(fixture.listAction.options.id, "registry-add-source");
 		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "configForms", "connection", "remote", "remote.pluginManager"]);
-		assert.equal(fixture.locale.bind("registry-aggregator")("tab.browse"), "Browse");
+	} finally { fixture.restore(); }
+});
+
+test("native Sources and Browse tabs render without the fallback Registry Aggregator chrome", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+	try {
+		const sources = fixture.listTabs.find((row) => row.options.id === "registry-sources");
+		let tree = fixture.mini.render({ type: sources.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		tree = fixture.mini.render({ type: sources.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
+		assert.match(textOf(tree), /Connected sources/);
+
+		const browse = fixture.listTabs.find((row) => row.options.id === "registry-browse");
+		tree = fixture.mini.render({ type: browse.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle(260);
+		await settle();
+		tree = fixture.mini.render({ type: browse.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
+		assert.ok(byId(tree, "pm-search"));
+	} finally { fixture.restore(); }
+});
+
+test("native Updates tab checks installed package versions and shows only newer discoveries", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [
+			{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+			{ name: "dsh-current", version: "2.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+		],
+		browseValue: (payload) => {
+			const name = payload.query;
+			const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
+			return {
+				plugins: [{
+					identity: { package: name, fallback: `npm:${name}` },
+					name,
+					description: "Update candidate",
+					version,
+					tags: ["ui"],
+					evidence: { releaseChannel: "stable", installability: "bundle" },
+					install: { type: "npm", spec: `${name}@${version}` },
+					sources: [{ id: "npm", name: "npm", type: "npm" }],
+				}],
+				total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+			};
+		},
+	});
+	try {
+		const updates = fixture.listTabs.find((row) => row.options.id === "registry-updates");
+		let tree = fixture.mini.render({ type: updates.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		await settle();
+		tree = fixture.mini.render({ type: updates.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		assert.match(textOf(tree), /1 updates/);
+		assert.match(textOf(tree), /dsh-demo/);
+		assert.equal(textOf(tree).includes("dsh-current"), false);
+		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
 	} finally { fixture.restore(); }
 });
 
