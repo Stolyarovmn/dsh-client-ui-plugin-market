@@ -194,7 +194,17 @@ test("shows an update badge on the matching native Installed card", async () => 
 		const expand = byClass(demoTree, "pm-installed-expand")[0];
 		assert.ok(expand);
 		assert.equal(expand.props["aria-expanded"], false);
-		expand.props.onClick({ preventDefault() {}, stopPropagation() {} });
+		let pointerStopped = false;
+		expand.props.onPointerDown({ stopPropagation() { pointerStopped = true; } });
+		assert.equal(pointerStopped, true);
+		let clickPrevented = false;
+		let clickStopped = false;
+		expand.props.onClick({
+			preventDefault() { clickPrevented = true; },
+			stopPropagation() { clickStopped = true; },
+		});
+		assert.equal(clickPrevented, true);
+		assert.equal(clickStopped, true);
 		demoTree = demoMini.render(demoRoot.element);
 		assert.equal(byClass(demoTree, "pm-installed-expand")[0].props["aria-expanded"], true);
 		assert.match(textOf(demoTree), /Registry 1\.2\.0/);
