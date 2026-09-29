@@ -18,7 +18,7 @@ import {
 const settle = async (milliseconds = 0) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
-	const { exports, document } = await loadBundle();
+	const { exports, document, reactDomRoots, notifyMutation } = await loadBundle({ domBridge: options.domBridge === true });
 	const locale = makeLocale("en");
 	const scope = makeSettingsScope({ sources, sourceDefaultsVersion });
 	const calls = [];
@@ -99,6 +99,14 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 		},
 	};
 	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection, remote });
+	if (options.domBridge === true) {
+		const page = document.createElement("section");
+		const installed = document.createElement("section");
+		installed.setAttribute("data-plugin-scope", "global");
+		installed.setAttribute("data-plugin-group", "bundles");
+		page.appendChild(installed);
+		document.body.appendChild(page);
+	}
 	exports.apply(ctx);
 	const section = recorded.find((row) => row.options.name === "plugins.bundle.config");
 	const activation = recorded.find((row) => row.options.name === "plugins.bundle.activation");
@@ -106,8 +114,28 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listSection, mini, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listSection, mini, render, restore, document, reactDomRoots, notifyMutation };
 }
+
+test("self-embeds Plugin Registry after native Installed on stock DSH DOM", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, { domBridge: true });
+	try {
+		await settle();
+		const installed = fixture.document.querySelector('[data-plugin-scope="global"][data-plugin-group="bundles"]');
+		assert.ok(installed);
+		assert.equal(fixture.reactDomRoots.length, 1);
+		const root = fixture.reactDomRoots[0];
+		assert.equal(root.container.previousElementSibling, installed);
+		assert.equal(root.container.attributes["data-registry-aggregator-plugin-section"], "");
+		assert.equal(root.unmounted, false);
+		assert.equal(typeof root.element?.type, "function");
+
+		installed.remove();
+		fixture.notifyMutation();
+		await settle();
+		assert.equal(root.unmounted, false);
+	} finally { fixture.restore(); }
+});
 
 test("registers one native Plugin Manager list section plus the legacy detail fallback", async () => {
 	const fixture = await setup();
