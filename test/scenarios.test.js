@@ -107,10 +107,10 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	const renderNative = (id) => {
+	const renderNative = (id, props = {}) => {
 		const row = nativeTabs.find((entry) => entry.options.id === id);
 		if (!row) throw new Error(`native tab ${id} is not registered`);
-		return mini.render({ type: row.component, props: { t: locale.bind("registry-aggregator"), ...(row.options.inject?.() ?? {}) }, children: [] });
+		return mini.render({ type: row.component, props: { t: locale.bind("registry-aggregator"), ...(row.options.inject?.() ?? {}), ...props }, children: [] });
 	};
 	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, recorded, section, activation, nativeTabs, nativeAction, render, renderNative, restore };
 }
@@ -172,12 +172,15 @@ test("native Updates tab finds newer versions for installed bundles", async () =
 	});
 	try {
 		fixture.renderNative("registry-aggregator.updates");
+		fixture.renderNative("registry-aggregator.updates", { view: "label" });
 		await settle();
 		await settle();
 		let tree = fixture.renderNative("registry-aggregator.updates");
 		await settle();
 		tree = fixture.renderNative("registry-aggregator.updates");
 
+		const label = fixture.renderNative("registry-aggregator.updates", { view: "label" });
+		assert.equal(textOf(label), "Updates 1");
 		assert.match(textOf(tree), /1 updates available/);
 		assert.match(textOf(tree), /dsh-demo/);
 		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
