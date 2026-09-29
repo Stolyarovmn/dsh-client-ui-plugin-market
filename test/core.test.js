@@ -740,6 +740,35 @@ test("coalesces concurrent npm metadata loads into one request", async () => {
 	assert.equal(results.every((row) => row.installability === "bundle"), true);
 });
 
+test("aborting one single-flight waiter preserves Node's readonly AbortError and keeps the shared load alive", async () => {
+	let calls = 0;
+	let release;
+	const gate = new Promise((resolve) => { release = resolve; });
+	const packageName = `single-flight-abort-${Date.now()}`;
+	const controller = new AbortController();
+	const fetchImpl = async () => {
+		calls += 1;
+		await gate;
+		return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+	};
+	const first = npmPluginDetails(packageName, "1.0.0", {
+		resolveHost: publicDns,
+		fetchImpl,
+		signal: controller.signal,
+	});
+	const second = npmPluginDetails(packageName, "1.0.0", {
+		resolveHost: publicDns,
+		fetchImpl,
+	});
+	controller.abort();
+
+	await assert.rejects(first, (error) => error?.name === "AbortError");
+	release();
+	const result = await second;
+	assert.equal(result.installability, "bundle");
+	assert.equal(calls, 1);
+});
+
 test("bounds discovery cache instead of growing for every source key", async () => {
 	let calls = 0;
 	const fetchImpl = async () => {
