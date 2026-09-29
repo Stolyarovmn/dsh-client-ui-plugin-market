@@ -19,8 +19,8 @@ diff --git a/packages/client/ui-plugin-manager/src/client/slot-contract.ts b/pac
 +
 +/** A feature-owned page beside the native Installed list. */
 +export interface PluginListTabOwnerProps {
-+  /** Marker field: a tab owns its own page state. */
-+  children?: never
++  /** The host asks for compact tab-label content or the full page. */
++  readonly view: 'label' | 'page'
 +}
 +
 +/** Toolbar contribution on the Plugins list. */
@@ -131,7 +131,7 @@ diff --git a/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx 
 +                          aria-selected={selectedListTab === row.id}
 +                          onClick={() => { setActiveListTab(row.id) }}
 +                        >
-+                          {row.label}
++                          {renderSlot('plugins.list.tab', { view: 'label' }, { only: row.id })}
 +                        </button>
 +                      ))}
 +                    </div>
@@ -142,7 +142,7 @@ diff --git a/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx 
 +                      .filter(row => row.id === selectedListTab || visitedListTabs.has(row.id))
 +                      .map(row => (
 +                        <div key={row.id} role="tabpanel" hidden={selectedListTab !== row.id}>
-+                          {renderSlot('plugins.list.tab', {}, { only: row.id })}
++                          {renderSlot('plugins.list.tab', { view: 'page' }, { only: row.id })}
 +                        </div>
 +                      ))}
 +                  </>
