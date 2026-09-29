@@ -102,84 +102,97 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 	exports.apply(ctx);
 	const section = recorded.find((row) => row.options.name === "plugins.bundle.config");
 	const activation = recorded.find((row) => row.options.name === "plugins.bundle.activation");
-	const listTabs = recorded.filter((row) => row.options.name === "plugins.list.tab");
-	const listAction = recorded.find((row) => row.options.name === "plugins.list.action");
+	const listSection = recorded.find((row) => row.options.name === "plugins.list.section");
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listTabs, listAction, mini, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listSection, mini, render, restore };
 }
 
-test("registers native Plugin Manager tabs plus the legacy detail fallback", async () => {
+test("registers one native Plugin Manager list section plus the legacy detail fallback", async () => {
 	const fixture = await setup();
 	try {
 		assert.equal(fixture.section.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
 		assert.equal(fixture.activation.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
-		assert.deepEqual(fixture.listTabs.map((row) => row.options.id), ["registry-sources", "registry-browse", "registry-updates"]);
-		assert.deepEqual(fixture.listTabs.map((row) => row.options.order), [20, 30, 40]);
-		assert.equal(fixture.listTabs[0].options.label(), "Sources");
-		assert.equal(fixture.listTabs[1].options.label(), "Browse");
-		assert.equal(fixture.listTabs[2].options.label(), "Updates");
-		assert.equal(fixture.listAction.options.id, "registry-add-source");
+		assert.equal(fixture.listSection.options.id, "registry-aggregator");
+		assert.equal(fixture.listSection.options.order, 20);
 		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "configForms", "connection", "remote", "remote.pluginManager"]);
 	} finally { fixture.restore(); }
 });
 
-test("native Sources and Browse tabs render without the fallback Registry Aggregator chrome", async () => {
-	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
-	try {
-		const sources = fixture.listTabs.find((row) => row.options.id === "registry-sources");
-		let tree = fixture.mini.render({ type: sources.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
-		await settle();
-		tree = fixture.mini.render({ type: sources.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
-		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
-		assert.match(textOf(tree), /Connected sources/);
-
-		const browse = fixture.listTabs.find((row) => row.options.id === "registry-browse");
-		tree = fixture.mini.render({ type: browse.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
-		await settle(260);
-		await settle();
-		tree = fixture.mini.render({ type: browse.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
-		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
-		assert.ok(byId(tree, "pm-search"));
-	} finally { fixture.restore(); }
-});
-
-test("native Updates tab checks installed package versions and shows only newer discoveries", async () => {
+test("native Plugin Registry section renders below Installed with internal Sources/Browse/Updates tabs", async () => {
+	const previousStorage = globalThis.localStorage;
+	const values = new Map();
+	globalThis.localStorage = {
+		getItem(key) { return values.has(key) ? values.get(key) : null; },
+		setItem(key, value) { values.set(key, String(value)); },
+		removeItem(key) { values.delete(key); },
+	};
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
 		bundlesValue: [
 			{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
 			{ name: "dsh-current", version: "2.0.0", installed: true, enabled: true, rows: [], overrides: [] },
 		],
 		browseValue: (payload) => {
-			const name = payload.query;
-			const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
+			if (payload.query === "dsh-demo" || payload.query === "dsh-current") {
+				const name = payload.query;
+				const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
+				return {
+					plugins: [{
+						identity: { package: name, fallback: `npm:${name}` },
+						name,
+						description: "Update candidate",
+						version,
+						tags: ["ui"],
+						evidence: { releaseChannel: "stable", installability: "bundle" },
+						install: { type: "npm", spec: `${name}@${version}` },
+						sources: [{ id: "npm", name: "npm", type: "npm" }],
+					}],
+					total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+				};
+			}
 			return {
-				plugins: [{
-					identity: { package: name, fallback: `npm:${name}` },
-					name,
-					description: "Update candidate",
-					version,
-					tags: ["ui"],
-					evidence: { releaseChannel: "stable", installability: "bundle" },
-					install: { type: "npm", spec: `${name}@${version}` },
-					sources: [{ id: "npm", name: "npm", type: "npm" }],
-				}],
-				total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+				plugins: [],
+				total: 0, page: 1, pageSize: 20, pageCount: 1, sources: [],
 			};
 		},
 	});
 	try {
-		const updates = fixture.listTabs.find((row) => row.options.id === "registry-updates");
-		let tree = fixture.mini.render({ type: updates.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		let tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle(260);
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+
+		assert.match(textOf(tree), /Plugin Registry/);
+		assert.ok(byId(tree, "pm-search"));
+		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
+
+		const buttons = byClass(tree, "pm-native-section-tab");
+		assert.deepEqual(buttons.map((button) => textOf(button).replace(/\s+/g, " ").trim()), ["Sources", "Browse", "Updates"]);
+
+		buttons[0].props.onClick();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		assert.match(textOf(tree), /Connected sources/);
+		assert.equal(values.get("dsh.registry-aggregator.plugin-section.v1"), "sources");
+
+		byClass(tree, "pm-native-section-tab")[2].props.onClick();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
 		await settle();
 		await settle();
-		tree = fixture.mini.render({ type: updates.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+
 		assert.match(textOf(tree), /1 updates/);
 		assert.match(textOf(tree), /dsh-demo/);
 		assert.equal(textOf(tree).includes("dsh-current"), false);
 		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
-	} finally { fixture.restore(); }
+		assert.equal(values.get("dsh.registry-aggregator.plugin-section.v1"), "updates");
+	} finally {
+		fixture.restore();
+		if (previousStorage === undefined) delete globalThis.localStorage;
+		else globalThis.localStorage = previousStorage;
+	}
 });
 
 test("adds a typed source through the durable settings scope", async () => {
