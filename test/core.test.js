@@ -887,7 +887,10 @@ test("reads explicit DSH compatibility and DSH API peers from npm version metada
 		}),
 	});
 	assert.equal(explicit.dshCompatibility, ">=0.1.7-rc.1 <0.2.0");
-	assert.equal(explicit.dshPeers[0].dependency, "@deepseek-ai/dsh-client-ui-slots");
+	assert.deepEqual(explicit.dshPeers.map((peer) => peer.dependency), [
+		"@deepseek-ai/dsh",
+		"@deepseek-ai/dsh-client-ui-slots",
+	]);
 
 	const peersOnly = await npmPluginDetails("@acme/legacy", "2.0.0", {
 		resolveHost: publicDns,
