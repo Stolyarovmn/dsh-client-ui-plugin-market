@@ -82,7 +82,10 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /\.pm-source-list\{align-items:start\}/);
 	assert.match(client, /\.pm-status-ok\{[^}]*box-shadow:0 0 7px/s);
 	assert.match(client, /"data-open": open/);
+	assert.match(client, /\.pm-installed-registry-host\{[^}]*position:relative[^}]*z-index:2[^}]*pointer-events:auto/s);
+	assert.match(client, /\.pm-installed-expand\{[^}]*position:relative[^}]*z-index:3[^}]*pointer-events:auto/s);
 });
+
 
 test("all published documentation files exist", async () => {
 	await Promise.all(["README.md", "LICENSE", "icon.svg", "lib/index.js", "lib/client.js", "lib/core.js", "cordis.patch.yml"].map((path) => access(new URL(path, root))));
