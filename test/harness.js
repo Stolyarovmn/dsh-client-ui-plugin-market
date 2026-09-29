@@ -46,6 +46,19 @@ function makeElement(tagName) {
 			this.attributes[name] = String(value);
 			if (name.startsWith("data-")) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, ch) => ch.toUpperCase())] = String(value);
 		},
+		getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null; },
+		querySelectorAll(selector) {
+			const out = [];
+			const dataPackage = selector === "[data-plugin-package]";
+			const visit = (current) => {
+				for (const child of current.children ?? []) {
+					if (dataPackage && Object.prototype.hasOwnProperty.call(child.attributes ?? {}, "data-plugin-package")) out.push(child);
+					visit(child);
+				}
+			};
+			visit(this);
+			return out;
+		},
 		remove() {
 			if (this.parentElement) {
 				const siblings = this.parentElement.children;
