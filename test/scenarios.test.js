@@ -189,10 +189,7 @@ test("native Add source action switches to Sources", async () => {
 	const fixture = await setup();
 	try {
 		let selected;
-		const tree = new MiniReact({ document: { getElementById() { return null; } } });
-		void tree;
-		const mini = fixture.nativeAction;
-		const component = mini.component({
+		const component = fixture.nativeAction.component({
 			t: fixture.locale.bind("registry-aggregator"),
 			selectTab(id) { selected = id; },
 		});
