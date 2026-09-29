@@ -41,6 +41,20 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 					if (options.browseValue) return { ok: true, value: options.browseValue };
 					return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
 				}
+				if (endpoint === "plugin-sources/installed") {
+					if (typeof options.installedValue === "function") return { ok: true, value: await options.installedValue(payload, scope, calls) };
+					if (Array.isArray(options.installedValue)) return { ok: true, value: options.installedValue };
+					const plugins = [];
+					for (const packageName of payload?.packages ?? []) {
+						let data;
+						if (typeof options.browseValue === "function") data = options.browseValue({ query: packageName, page: 1, pageSize: 20, sorts: [], stableOnly: false, freshnessDays: 0, tag: "", dshMetadata: "any" }, scope);
+						else if (options.browseValue) data = options.browseValue;
+						else data = { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }] };
+						const exact = (data?.plugins ?? []).find((plugin) => plugin.identity?.package === packageName);
+						if (exact) plugins.push(exact);
+					}
+					return { ok: true, value: plugins };
+				}
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
 				if (endpoint === "plugin-sources/stars") {
 					const value = typeof options.starsValue === "function" ? options.starsValue(payload) : options.starsValue;
