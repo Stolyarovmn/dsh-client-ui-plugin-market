@@ -6,6 +6,7 @@ import {
 	createAdapter,
 	dedupePlugins,
 	dshCompatibilityStatus,
+	dshPeerCompatibility,
 	fetchJson,
 	githubPluginDetails,
 	githubRepositoryStats,
@@ -68,6 +69,28 @@ test("evaluates DSH compatibility with prerelease-aware semver", () => {
 	assert.equal(dshCompatibilityStatus("^0.2.0", "0.1.7-rc.2"), "incompatible");
 	assert.equal(dshCompatibilityStatus("not-a-range", "0.1.7-rc.2"), "invalid");
 	assert.equal(dshCompatibilityStatus(undefined, "0.1.7-rc.2"), "unknown");
+});
+
+test("matches native DSH compatibility across all DSH peer dependencies", () => {
+	const compatible = dshPeerCompatibility({
+		"@deepseek-ai/dsh-client-ui-primitives": ">=0.1.7-rc.1 <0.2.0",
+		"@deepseek-ai/dsh-client-connection": "workspace:^",
+		"react": "^19.0.0",
+	}, "0.1.7-rc.2");
+	assert.equal(compatible.declared, true);
+	assert.equal(compatible.status, "compatible");
+	assert.equal(compatible.peers.length, 2);
+	assert.equal(compatible.peers.every((peer) => peer.compatible), true);
+
+	const incompatible = dshPeerCompatibility({
+		"@deepseek-ai/dsh-client-ui-primitives": ">=0.2.0",
+	}, "0.1.7-rc.2");
+	assert.equal(incompatible.status, "incompatible");
+	assert.equal(incompatible.peers[0].compatible, false);
+
+	const undeclared = dshPeerCompatibility({ react: "^19.0.0" }, "0.1.7-rc.2");
+	assert.equal(undeclared.status, "undeclared");
+	assert.equal(undeclared.declared, false);
 });
 
 test("classifies stable and prerelease versions", () => {
@@ -731,6 +754,38 @@ test("bounds discovery cache instead of growing for every source key", async () 
 	assert.equal(calls, 129);
 	await browseSources([source({ id: `${prefix}-0`, url: `https://catalog.example/${prefix}-0.json` })], "", options);
 	assert.equal(calls, 130);
+});
+
+test("DSH declared filter runs after manifest enrichment and includes dsh-* API peers", async () => {
+	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const packageName = `declared-peer-${Date.now()}`;
+	const result = await browseSources([npm], "", {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			if (value.includes("/-/v1/search")) {
+				return jsonResponse({ objects: [{ package: { name: packageName, version: "1.0.0", description: "Declared DSH peer" } }] });
+			}
+			return jsonResponse({
+				name: packageName,
+				version: "1.0.0",
+				dsh: { bundle: { patch: "./cordis.patch.yml" } },
+				peerDependencies: {
+					"@deepseek-ai/dsh-client-ui-primitives": ">=0.1.7-rc.1 <0.2.0",
+				},
+			});
+		},
+		cacheDiscovery: false,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		runtimeVersion: "0.1.7-rc.2",
+		dshMetadata: "declared",
+		pageSize: 20,
+	});
+	assert.equal(result.total, 1);
+	assert.equal(result.plugins[0].evidence.dshCompatibilityStatus, "compatible");
+	assert.equal(result.plugins[0].evidence.dshMetadataResolved, true);
+	assert.deepEqual(result.plugins[0].evidence.dshPeers.map((peer) => peer.dependency), ["@deepseek-ai/dsh-client-ui-primitives"]);
 });
 
 test("supports ordered multi-criteria ranking with independent directions", async () => {
