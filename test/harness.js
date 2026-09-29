@@ -297,6 +297,12 @@ export async function loadBundle({ resolver } = {}) {
 	const modules = {
 		react: makeReact(),
 		"react/jsx-runtime": makeJsxRuntime(),
+		"react-dom/client": {
+			createRoot: () => ({
+				render() {},
+				unmount() {},
+			}),
+		},
 		"@deepseek-ai/dsh-client-ui-primitives": primitives,
 	};
 	const require = (spec) => {
