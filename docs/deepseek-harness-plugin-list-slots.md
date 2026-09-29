@@ -1,152 +1,134 @@
-# DeepSeek Harness Plugin Manager list-extension proposal
+# DeepSeek Harness Plugin Manager list-section proposal
 
-Registry Aggregator can already consume these slots through `ctx.slots.inject()`.
-Current DSH 0.1.7-rc.2 does not declare them, so the package keeps its existing
-`plugins.bundle.config` UI as a fallback.
+Registry Aggregator can consume one additive Plugin Manager slot while keeping the
+current `plugins.bundle.config` page as a fallback.
 
-## Proposed slots
+## Proposed slot
 
-Add the following root-scoped additive slots to
-`@deepseek-ai/dsh-client-ui-plugin-manager`.
+Add one root-scoped list slot to
+`@deepseek-ai/dsh-client-ui-plugin-manager`:
 
 ```ts
-export interface PluginListTabOwnerProps {
-  /** Report or clear the small numeric badge rendered after this tab label. */
-  readonly setBadge?: (count: number | undefined) => void
-}
-
-export interface PluginListActionOwnerProps {
-  /** `installed` or the id of a contributed list tab. */
-  readonly activeTab: string
-  /** Activate the native Installed page or a contributed tab. */
-  readonly activateTab: (id: string) => void
-}
-
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface SlotMap {
     /**
-     * Additive Plugin Manager list page.
+     * Additive content rendered after the native Installed packages list.
      *
-     * Registration uses the standard list options:
-     * `id`, `order`, localized `label`.
-     *
-     * The native Plugin Manager always owns the built-in `installed` page.
+     * The native Plugin Manager still owns Official, Installed, Add plugin,
+     * install/uninstall, toggles, refresh, and package detail navigation.
      */
-    'plugins.list.tab': {
+    'plugins.list.section': {
       kind: 'list'
       scope: 'root'
-      owner: PluginListTabOwnerProps
-    }
-
-    /** Additive controls beside Refresh / Add plugin. */
-    'plugins.list.action': {
-      kind: 'list'
-      scope: 'root'
-      owner: PluginListActionOwnerProps
+      owner: Record<string, never>
     }
   }
 }
 ```
 
-## Plugin Manager projection
-
-The native list view remains the default and is represented internally by
-`installed`. Contributions are projected after it by `order`.
-
-Expected layout:
+## Intended layout
 
 ```text
 Plugins                                      refresh   + Add plugin
-                                                      + Add source
 
-Installed 2 | Sources | Browse | Updates 3
+Official 7
+...
+
+Installed 2
 ─────────────────────────────────────────────────────
-<active list-page content>
+@stolyarovmn/dsh-ui-registry-aggregator
+@stolyarovmn/dsh-client-ui-schedule-tab
+
+Plugin Registry
+Sources   |   Browse   |   Updates 3
+─────────────────────────────────────────────────────
+<Registry Aggregator content>
 ```
 
-Important properties:
+The Registry Aggregator owns the three tabs inside its section. DSH only provides
+the placement point.
 
-- the shipped Installed page stays completely native;
-- switching to a contributed tab does not shadow or duplicate
-  `main/plugins`;
-- visited contributed tabs stay mounted so local search/filter state survives
-  tab switching;
-- a tab may report an optional numeric badge through `setBadge`;
-- actions receive `activeTab` and `activateTab` so an action such as
-  `+ Add source` can switch to the Sources tab;
-- detail pages keep the existing `plugins.bundle.config` /
-  `plugins.detail.*` behavior.
+## PluginManagerPage change
 
-## Suggested PluginManagerPage state
+Extend the page's slot renderer type with `plugins.list.section` and render it
+after the native Installed package list while the root list view is active:
 
-Use the same projection pattern already proven by `settings.plugins.tab`:
-
-```ts
-const [activeListTab, setActiveListTab] = useState('installed')
-const [visitedListTabs, setVisitedListTabs] = useState<ReadonlySet<string>>(
-  () => new Set(['installed']),
-)
-const [tabBadges, setTabBadges] = useState<Record<string, number | undefined>>({})
-
-const extensionTabs = usePluginListTabs(rows => rows)
-const listTabs = [
-  { id: 'installed', order: 0, label: t('bundlesTitle') },
-  ...extensionTabs,
-]
+```tsx
+export type PluginManagerPageProps =
+  PropsRuntime<'main'>
+  & PropsLocale<'pluginManager'>
+  & PropsRenderSlots<
+      | 'plugins.item'
+      | 'plugins.bundle.config'
+      | 'plugins.row.config'
+      | 'plugins.bundle.activation'
+      | 'plugins.detail.actions'
+      | 'plugins.detail.badge'
+      | 'plugins.detail.section'
+      | 'plugins.list.section'
+    >
+  & InjectFace<PluginManagerFace>
+  & PropsStore<ReturnType<typeof createNavigationStore>>
 ```
 
-Render `plugins.list.action` in the list-page toolbar with:
+In the root/list view, after the Installed section:
 
-```ts
-renderSlot('plugins.list.action', {
-  activeTab: activeListTab,
-  activateTab: setActiveListTab,
-})
+```tsx
+{renderSlot('plugins.list.section', {})}
 ```
 
-Render one selected/visited `plugins.list.tab` contribution with:
-
-```ts
-renderSlot('plugins.list.tab', {
-  setBadge: count => setTabBadges(current => ({
-    ...current,
-    [tab.id]: count,
-  })),
-}, { only: tab.id })
-```
+No Plugin Manager tab state, action API, badge API, or alternate navigation model
+is required.
 
 ## Slot declaration
 
-The `main/plugins` registration should declare both children:
+The `main/plugins` registration only needs one additional child:
 
 ```ts
 children: {
-  'plugins.list.tab': { kind: 'list', scope: 'root' },
-  'plugins.list.action': { kind: 'list', scope: 'root' },
-  // existing plugins.* children remain unchanged
+  'plugins.item': { kind: 'list', scope: 'root' },
+  'plugins.bundle.activation': { kind: 'keyed', scope: 'root' },
+  'plugins.bundle.config': { kind: 'keyed', scope: 'root' },
+  'plugins.row.config': { kind: 'keyed', scope: 'root' },
+  'plugins.detail.actions': { kind: 'list', scope: 'root' },
+  'plugins.detail.badge': { kind: 'list', scope: 'root' },
+  'plugins.detail.section': { kind: 'list', scope: 'root' },
+  'plugins.list.section': { kind: 'list', scope: 'root' },
 }
 ```
 
-## Registry Aggregator registrations
+## Registry Aggregator registration
 
-The current feature branch already registers:
+The current feature branch registers exactly one contribution:
 
-```text
-plugins.list.tab
-  registry-sources  order 20
-  registry-browse   order 30
-  registry-updates  order 40
-
-plugins.list.action
-  registry-add-source
+```js
+ctx.slots.inject("plugins.list.section", () =>
+  ctx.slots.register(
+    {
+      name: "plugins.list.section",
+      id: "registry-aggregator",
+      order: 20,
+      locale: NS,
+    },
+    RegistryPluginListSection,
+  ),
+)
 ```
 
-The Updates contribution reports its discovered count through optional
-`setBadge`, so the host can render `Updates 3`.
+Inside that section Registry Aggregator renders and persists its own:
+
+```text
+Sources | Browse | Updates N
+```
+
+The Updates view checks installed bundle versions lazily and only renders packages
+for which a newer registry version is available.
 
 ## Backward compatibility
 
-On DSH versions without these slots, `ctx.slots.inject()` simply waits for a
-future declaration and Registry Aggregator continues to render through the
-existing keyed `plugins.bundle.config` fallback. No DOM patching or page
-replacement is required.
+On DSH versions without `plugins.list.section`, the injection remains dormant and
+Registry Aggregator continues to use its existing keyed
+`plugins.bundle.config` fallback.
+
+There is no DOM patching, no replacement of `main/plugins`, and no duplication of
+native install/uninstall/toggle behavior.
