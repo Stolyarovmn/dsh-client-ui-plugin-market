@@ -70,6 +70,8 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("counts"\)\)/);
+	assert.match(host, /connection\.fetch\.register\(route\("installed"\)\)/);
+	assert.match(host, /lookupInstalledPackages/);
 	assert.match(host, /githubPluginDetails/);
 	assert.doesNotMatch(host, /export default apply/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
