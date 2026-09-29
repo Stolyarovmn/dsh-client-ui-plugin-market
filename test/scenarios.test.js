@@ -925,6 +925,41 @@ test("Browse sends page size and page changes to Host RPC", async () => {
 	} finally { fixture.restore(); }
 });
 
+test("Browse preferences persist across component openings", async () => {
+	const previousStorage = globalThis.localStorage;
+	const values = new Map();
+	globalThis.localStorage = {
+		getItem(key) { return values.has(key) ? values.get(key) : null; },
+		setItem(key, value) { values.set(key, String(value)); },
+		removeItem(key) { values.delete(key); },
+	};
+	try {
+		const first = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+		try {
+			let tree = first.render();
+			byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+			tree = first.render();
+			byId(tree, "pm-search").props.onChange({ target: { value: "schedule" } });
+			first.render();
+			await settle();
+			const saved = JSON.parse(values.get("dsh.registry-aggregator.browse.v1"));
+			assert.equal(saved.tab, "browse");
+			assert.equal(saved.query, "schedule");
+			assert.equal(saved.pageSize, 20);
+		} finally { first.restore(); }
+
+		const second = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+		try {
+			const tree = second.render();
+			assert.equal(byId(tree, "pm-tab-browse").props["aria-selected"], true);
+			assert.equal(byId(tree, "pm-search").props.value, "schedule");
+		} finally { second.restore(); }
+	} finally {
+		if (previousStorage === undefined) delete globalThis.localStorage;
+		else globalThis.localStorage = previousStorage;
+	}
+});
+
 test("activation guidance opens the native Registry Aggregator detail page", async () => {
 	const fixture = await setup();
 	try {
