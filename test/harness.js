@@ -18,34 +18,85 @@
 
 // ── Minimal DOM ───────────────────────────────────────────────────────────────
 function makeElement(tagName) {
-	return {
+	const node = {
 		tagName: tagName.toUpperCase(),
 		dataset: {},
+		attributes: {},
 		textContent: "",
 		children: [],
 		style: {},
-		appendChild(child) { this.children.push(child); },
-		remove() {},
+		parentElement: null,
+		isConnected: false,
+		appendChild(child) {
+			child.parentElement = this;
+			child.isConnected = this.isConnected || this.tagName === "BODY" || this.tagName === "HEAD";
+			this.children.push(child);
+			return child;
+		},
+		insertAdjacentElement(position, child) {
+			if (position !== "afterend" || !this.parentElement) return null;
+			const siblings = this.parentElement.children;
+			const index = siblings.indexOf(this);
+			child.parentElement = this.parentElement;
+			child.isConnected = this.isConnected;
+			siblings.splice(index + 1, 0, child);
+			return child;
+		},
+		setAttribute(name, value) {
+			this.attributes[name] = String(value);
+			if (name.startsWith("data-")) this.dataset[name.slice(5).replace(/-([a-z])/g, (_, ch) => ch.toUpperCase())] = String(value);
+		},
+		remove() {
+			if (this.parentElement) {
+				const siblings = this.parentElement.children;
+				const index = siblings.indexOf(this);
+				if (index >= 0) siblings.splice(index, 1);
+			}
+			this.parentElement = null;
+			this.isConnected = false;
+		},
+		get previousElementSibling() {
+			if (!this.parentElement) return null;
+			const siblings = this.parentElement.children;
+			const index = siblings.indexOf(this);
+			return index > 0 ? siblings[index - 1] : null;
+		},
 	};
+	return node;
 }
 export function makeDocument() {
+	const documentElement = makeElement("html");
+	const head = makeElement("head");
+	const body = makeElement("body");
+	documentElement.isConnected = true;
+	head.isConnected = true;
+	body.isConnected = true;
+	documentElement.lang = "en";
+	documentElement.appendChild(head);
+	documentElement.appendChild(body);
+	const scan = (nodes, predicate) => {
+		for (const node of nodes) {
+			if (predicate(node)) return node;
+			const found = scan(node.children ?? [], predicate);
+			if (found) return found;
+		}
+		return null;
+	};
 	const document = {
-		documentElement: { lang: "en" },
-		head: makeElement("head"),
-		body: makeElement("body"),
+		documentElement,
+		head,
+		body,
 		createElement: (tag) => makeElement(tag),
 		querySelector(selector) {
-			const match = /^style\[data-plugin-css="(.*)"\]$/.exec(selector);
-			if (!match) return null;
-			const scan = (nodes) => {
-				for (const node of nodes) {
-					if (node.tagName === "STYLE" && node.dataset.pluginCss === match[1]) return node;
-					const found = scan(node.children ?? []);
-					if (found) return found;
-				}
-				return null;
-			};
-			return scan([document.head]);
+			const styleMatch = /^style\[data-plugin-css="(.*)"\]$/.exec(selector);
+			if (styleMatch) return scan([documentElement], (node) => node.tagName === "STYLE" && node.dataset.pluginCss === styleMatch[1]);
+			if (selector === '[data-plugin-scope="global"][data-plugin-group="bundles"]') {
+				return scan([documentElement], (node) => node.dataset.pluginScope === "global" && node.dataset.pluginGroup === "bundles");
+			}
+			if (selector === "[data-registry-aggregator-plugin-section]") {
+				return scan([documentElement], (node) => Object.prototype.hasOwnProperty.call(node.attributes ?? {}, "data-registry-aggregator-plugin-section"));
+			}
+			return null;
 		},
 	};
 	return document;
@@ -245,13 +296,21 @@ export function makeCtx(locale, { settingsScope, configForms, slots, connection,
 }
 
 // ── Bundle loader ─────────────────────────────────────────────────────────────
-export async function loadBundle({ resolver } = {}) {
+export async function loadBundle({ resolver, domBridge = false } = {}) {
 	const registrations = [];
 	const document = makeDocument();
+	const observerCallbacks = new Set();
 	const window = {
 		__ModuleLoader__: { load(record) { registrations.push(record); } },
 		document,
 		__PM_RESOLVER__: resolver,
+		...(domBridge ? {
+			MutationObserver: class {
+				constructor(callback) { this.callback = callback; observerCallbacks.add(callback); }
+				observe() {}
+				disconnect() { observerCallbacks.delete(this.callback); }
+			},
+		} : {}),
 	};
 	const Icon = (props) => ({ type: "svg", props, children: [] });
 	const primitives = {
@@ -294,14 +353,19 @@ export async function loadBundle({ resolver } = {}) {
 		IconChecklistOutlineRegular: Icon,
 		IconCodeOutlineRegular: Icon,
 	};
+	const reactDomRoots = [];
 	const modules = {
 		react: makeReact(),
 		"react/jsx-runtime": makeJsxRuntime(),
 		"react-dom/client": {
-			createRoot: () => ({
-				render() {},
-				unmount() {},
-			}),
+			createRoot: (container) => {
+				const record = { container, element: undefined, unmounted: false };
+				reactDomRoots.push(record);
+				return {
+					render(element) { record.element = element; },
+					unmount() { record.unmounted = true; },
+				};
+			},
 		},
 		"@deepseek-ai/dsh-client-ui-primitives": primitives,
 	};
@@ -315,7 +379,7 @@ export async function loadBundle({ resolver } = {}) {
 	const run = new Function("window", source + "\n;return undefined;");
 	run(window);
 	if (registrations.length !== 1) throw new Error(`expected exactly one bundle registration, got ${registrations.length}`);
-	return { registration: registrations[0], exports: registrations[0].factory(require), window, document };
+	return { registration: registrations[0], exports: registrations[0].factory(require), window, document, reactDomRoots, notifyMutation: () => { for (const callback of [...observerCallbacks]) callback([], undefined); } };
 }
 
 // ── Render helper ─────────────────────────────────────────────────────────────
