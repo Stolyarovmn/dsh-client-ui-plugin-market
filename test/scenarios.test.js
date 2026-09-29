@@ -559,6 +559,36 @@ test("Browse combines independent ordered sort criteria and resolves DSH compati
 	} finally { fixture.restore(); }
 });
 
+test("Browse refreshes installed bundle state on plugin-manager/changed", async () => {
+	let bundles = [];
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: () => bundles,
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(fixture.bundleLists.length, 1);
+		assert.equal(textOf(tree).includes("Installed 1.0.0"), false);
+
+		bundles = [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }];
+		fixture.emitRemote("plugin-manager/changed", { name: "dsh-demo" });
+		fixture.render();
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(fixture.bundleLists.length, 2);
+		assert.match(textOf(tree), /Installed 1\.0\.0/);
+		assert.equal(byClass(tree, "pm-card-install")[0].props.disabled, true);
+	} finally { fixture.restore(); }
+});
+
 test("Browse marks an already installed bundle and disables duplicate installation", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
 		bundlesValue: [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
