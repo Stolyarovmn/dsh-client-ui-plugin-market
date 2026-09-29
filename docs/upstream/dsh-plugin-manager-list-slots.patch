@@ -1,0 +1,234 @@
+From 639ed015397290b3745d163aafe02ffee4aa3f84 Mon Sep 17 00:00:00 2001
+Subject: [PATCH] feat(ui-plugin-manager): expose list tabs and actions
+
+Base: deepseek-ai/deepseek-harness@639ed015397290b3745d163aafe02ffee4aa3f84
+
+This patch adds two additive extension points to the native Plugins list:
+- plugins.list.tab: feature-owned list pages beside Installed
+- plugins.list.action: toolbar actions beside Add plugin
+
+Existing Plugins behavior is unchanged when no contributors are registered.
+
+diff --git a/packages/client/ui-plugin-manager/src/client/slot-contract.ts b/packages/client/ui-plugin-manager/src/client/slot-contract.ts
+--- a/packages/client/ui-plugin-manager/src/client/slot-contract.ts
++++ b/packages/client/ui-plugin-manager/src/client/slot-contract.ts
+@@
+ export interface PluginActivationOwnerProps {
+@@
+ }
++
++/** A feature-owned page beside the native Installed list. */
++export interface PluginListTabOwnerProps {
++  /** Marker field: a tab owns its own page state. */
++  children?: never
++}
++
++/** Toolbar contribution on the Plugins list. */
++export interface PluginListActionOwnerProps {
++  /** Native Installed uses "installed"; contributed tabs use their registration id. */
++  readonly activeTabId: string
++  /** Select one native/contributed list tab. */
++  readonly selectTab: (id: string) => void
++}
+@@
+   interface SlotMap {
++    /**
++     * One additive page beside the native Installed list. Registrants provide
++     * id/order/label through list-slot options; the Plugins page owns tab chrome.
++     */
++    'plugins.list.tab': { kind: 'list'; scope: 'root'; owner: PluginListTabOwnerProps }
++    /**
++     * Additive toolbar actions on the Plugins list, before Add plugin.
++     * The owner supplies the selected list tab and a navigation callback.
++     */
++    'plugins.list.action': { kind: 'list'; scope: 'root'; owner: PluginListActionOwnerProps }
+     /** Optional guidance after the user enables a bundle from the list, keyed by npm package name. */
+     'plugins.bundle.activation': { kind: 'keyed'; scope: 'root'; owner: PluginActivationOwnerProps }
+
+diff --git a/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx b/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx
+--- a/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx
++++ b/packages/client/ui-plugin-manager/src/client/PluginManagerPage.tsx
+@@
+-import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
++import type { HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+@@
+ export type PluginManagerPageProps =
+@@
+   & PropsRenderSlots<
+     | 'plugins.item' | 'plugins.bundle.config' | 'plugins.row.config' | 'plugins.bundle.activation'
+-    | 'plugins.detail.actions' | 'plugins.detail.badge' | 'plugins.detail.section'
++    | 'plugins.detail.actions' | 'plugins.detail.badge' | 'plugins.detail.section'
++    | 'plugins.list.tab' | 'plugins.list.action'
+   >
+-  & InjectFace<PluginManagerFace>
++  & InjectFace<PluginManagerPageFace>
+@@
++export interface PluginListTabEntry {
++  readonly id: string
++  readonly order: number
++  readonly label: string
++}
++
++export interface PluginManagerPageFace extends Omit<PluginManagerFace, 'hooks'> {
++  hooks: PluginManagerFace['hooks'] & {
++    listTabs: HostObservable<readonly PluginListTabEntry[]>
++  }
++}
+@@
+ export function PluginManagerPage(props: PluginManagerPageProps): ReactNode {
+@@
+   const state = props.usePluginManager(snapshot => snapshot)
++  const listTabs = props.useListTabs(rows => rows)
++  const [activeListTab, setActiveListTab] = useState('installed')
++  const [visitedListTabs, setVisitedListTabs] = useState<ReadonlySet<string>>(() => new Set())
++  const selectedListTab = activeListTab === 'installed' || listTabs.some(row => row.id === activeListTab)
++    ? activeListTab
++    : 'installed'
++  useEffect(() => {
++    if (selectedListTab === 'installed') return
++    setVisitedListTabs(previous => previous.has(selectedListTab)
++      ? previous
++      : new Set([...previous, selectedListTab]))
++  }, [selectedListTab])
+@@
+             <div className={css.toolbar}>
+@@
+               </Tooltip>
++              {renderSlot('plugins.list.action', {
++                activeTabId: selectedListTab,
++                selectTab: setActiveListTab,
++              })}
+               <Button variant="primary" size="sm" className={css.addButton}
+@@
+       {loaded && showsCards
+@@
+           : (
+             <>
+               {renderGroup('official', t('officialTitle'), officialCards)}
+-              {renderGroup('bundles', t('bundlesTitle'), mine.map(packageCard))}
++              {listTabs.length === 0
++                ? renderGroup('bundles', t('bundlesTitle'), mine.map(packageCard))
++                : (
++                  <>
++                    <div className={css.listTabs} role="tablist" aria-label={t('bundlesTitle')}>
++                      <button
++                        type="button"
++                        role="tab"
++                        className={css.listTab}
++                        data-active={selectedListTab === 'installed' ? 'true' : undefined}
++                        aria-selected={selectedListTab === 'installed'}
++                        onClick={() => { setActiveListTab('installed') }}
++                      >
++                        {t('bundlesTitle')} <span className={css.count}>{mine.length}</span>
++                      </button>
++                      {listTabs.map(row => (
++                        <button
++                          key={row.id}
++                          type="button"
++                          role="tab"
++                          className={css.listTab}
++                          data-active={selectedListTab === row.id ? 'true' : undefined}
++                          aria-selected={selectedListTab === row.id}
++                          onClick={() => { setActiveListTab(row.id) }}
++                        >
++                          {row.label}
++                        </button>
++                      ))}
++                    </div>
++                    <div hidden={selectedListTab !== 'installed'}>
++                      <ul className={css.cards}>{mine.map(packageCard)}</ul>
++                    </div>
++                    {listTabs
++                      .filter(row => row.id === selectedListTab || visitedListTabs.has(row.id))
++                      .map(row => (
++                        <div key={row.id} role="tabpanel" hidden={selectedListTab !== row.id}>
++                          {renderSlot('plugins.list.tab', {}, { only: row.id })}
++                        </div>
++                      ))}
++                  </>
++                )}
+@@
+diff --git a/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css b/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css
+--- a/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css
++++ b/packages/client/ui-plugin-manager/src/client/PluginManagerPage.module.css
+@@
+ .count {
+@@
+ }
++
++.listTabs {
++  display: flex;
++  align-items: center;
++  gap: 18px;
++  border-bottom: 0.5px solid var(--dsw-alias-border-l3);
++}
++
++.listTab {
++  position: relative;
++  padding: 8px 0 9px;
++  border: 0;
++  background: transparent;
++  color: var(--dsw-alias-label-secondary);
++  font: inherit;
++  font-size: 14px;
++  cursor: pointer;
++}
++
++.listTab[data-active='true'] {
++  color: var(--dsw-alias-label-primary);
++}
++
++.listTab[data-active='true']::after {
++  content: '';
++  position: absolute;
++  inset: auto 0 -1px;
++  height: 2px;
++  border-radius: 2px;
++  background: var(--dsw-alias-state-business-primary);
++}
+
+diff --git a/packages/client/ui-plugin-manager/src/client/index.ts b/packages/client/ui-plugin-manager/src/client/index.ts
+--- a/packages/client/ui-plugin-manager/src/client/index.ts
++++ b/packages/client/ui-plugin-manager/src/client/index.ts
+@@
+ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
++import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
+@@
+-import { PluginManagerPage } from './PluginManagerPage.tsx'
++import { PluginManagerPage, type PluginListTabEntry } from './PluginManagerPage.tsx'
+@@
+   const configLedger = configLedgerSource(ctx)
+-  const face = controller.inject(configLedger, text => ctx.locale.resolveText(text))
++  let listTabsVersion = -1
++  let listTabsRevision = -1
++  let listTabs: readonly PluginListTabEntry[] = []
++  const listTabsSource = {
++    getSnapshot: () => {
++      const version = ctx.slots.getVersion('plugins.list.tab')
++      const revision = ctx.locale.getSnapshot().revision
++      if (version !== listTabsVersion || revision !== listTabsRevision) {
++        listTabsVersion = version
++        listTabsRevision = revision
++        listTabs = ctx.slots.entries('plugins.list.tab')
++          .map(entry => ({
++            id: entry.options.id ?? '',
++            order: entry.options.order ?? 0,
++            label: resolveSlotLabel(entry.options.label) ?? '',
++          }))
++          .sort((a, b) => a.order - b.order)
++      }
++      return listTabs
++    },
++    subscribe: (listener: () => void) => {
++      const offSlots = ctx.slots.subscribe('plugins.list.tab', listener)
++      const offLocale = ctx.locale.subscribe(listener)
++      return () => { offSlots(); offLocale() }
++    },
++  }
++  const baseFace = controller.inject(configLedger, text => ctx.locale.resolveText(text))
++  const face = { ...baseFace, hooks: { ...baseFace.hooks, listTabs: listTabsSource } }
+@@
+       children: {
++        'plugins.list.tab': { kind: 'list', scope: 'root' },
++        'plugins.list.action': { kind: 'list', scope: 'root' },
+         'plugins.item': { kind: 'list', scope: 'root' },
