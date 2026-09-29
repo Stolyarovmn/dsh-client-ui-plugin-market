@@ -688,6 +688,42 @@ test("reuses discovery rows across pagination and invalidates only on refresh re
 	assert.equal(calls, 2);
 });
 
+test("coalesces concurrent npm metadata loads into one request", async () => {
+	let calls = 0;
+	const packageName = `single-flight-${Date.now()}`;
+	const options = {
+		resolveHost: publicDns,
+		fetchImpl: async () => {
+			calls += 1;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+		},
+	};
+	const results = await Promise.all([
+		npmPluginDetails(packageName, "1.0.0", options),
+		npmPluginDetails(packageName, "1.0.0", options),
+		npmPluginDetails(packageName, "1.0.0", options),
+	]);
+	assert.equal(calls, 1);
+	assert.equal(results.every((row) => row.installability === "bundle"), true);
+});
+
+test("bounds discovery cache instead of growing for every source key", async () => {
+	let calls = 0;
+	const fetchImpl = async () => {
+		calls += 1;
+		return jsonResponse({ plugins: [{ name: "one", package: "one", version: "1.0.0" }] });
+	};
+	const options = { fetchImpl, resolveHost: publicDns, cacheDiscovery: true, enrichDownloads: false };
+	const prefix = `bounded-discovery-${Date.now()}`;
+	for (let index = 0; index < 129; index += 1) {
+		await browseSources([source({ id: `${prefix}-${index}`, url: `https://catalog.example/${prefix}-${index}.json` })], "", options);
+	}
+	assert.equal(calls, 129);
+	await browseSources([source({ id: `${prefix}-0`, url: `https://catalog.example/${prefix}-0.json` })], "", options);
+	assert.equal(calls, 130);
+});
+
 test("supports ordered multi-criteria ranking with independent directions", async () => {
 	const rows = [
 		{ name: "fresh-popular", package: "fresh-popular", version: "1.0.0", evidence: { downloads30d: 800, stars: 50, releasedAt: "2026-09-20T00:00:00Z" } },
