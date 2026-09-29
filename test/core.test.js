@@ -5,6 +5,7 @@ import {
 	countSources,
 	createAdapter,
 	dedupePlugins,
+	dshCompatibilityStatus,
 	fetchJson,
 	githubPluginDetails,
 	githubRepositoryStats,
@@ -59,6 +60,14 @@ test("normalizes display tags from explicit catalog, npm, and GitHub metadata", 
 		normalizePlugin({ name: "Schedule UI", package: "@acme/schedule", tags: ["integration", "tool"] }, source({ id: "other", name: "Other" })),
 	]);
 	assert.deepEqual(merged[0].tags, ["ui", "schedule", "theme", "provider", "workflow", "integration", "tool"]);
+});
+
+test("evaluates DSH compatibility with prerelease-aware semver", () => {
+	assert.equal(dshCompatibilityStatus(">=0.1.7-rc.1 <0.2.0", "0.1.7-rc.2"), "compatible");
+	assert.equal(dshCompatibilityStatus(">=0.1.7-rc.3 <0.2.0", "0.1.7-rc.2"), "incompatible");
+	assert.equal(dshCompatibilityStatus("^0.2.0", "0.1.7-rc.2"), "incompatible");
+	assert.equal(dshCompatibilityStatus("not-a-range", "0.1.7-rc.2"), "invalid");
+	assert.equal(dshCompatibilityStatus(undefined, "0.1.7-rc.2"), "unknown");
 });
 
 test("classifies stable and prerelease versions", () => {
