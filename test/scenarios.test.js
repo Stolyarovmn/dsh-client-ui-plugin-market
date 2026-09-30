@@ -43,7 +43,8 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 				}
 				if (endpoint === "plugin-sources/installed") {
 					if (typeof options.installedValue === "function") return { ok: true, value: await options.installedValue(payload, scope, calls) };
-					if (Array.isArray(options.installedValue)) return { ok: true, value: options.installedValue };
+					if (options.installedValue && typeof options.installedValue === "object" && !Array.isArray(options.installedValue)) return { ok: true, value: options.installedValue };
+					if (Array.isArray(options.installedValue)) return { ok: true, value: { plugins: options.installedValue, errors: [] } };
 					const plugins = [];
 					for (const packageName of payload?.packages ?? []) {
 						let data;
@@ -53,7 +54,7 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 						const exact = (data?.plugins ?? []).find((plugin) => plugin.identity?.package === packageName);
 						if (exact) plugins.push(exact);
 					}
-					return { ok: true, value: plugins };
+					return { ok: true, value: { plugins, errors: [] } };
 				}
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
 				if (endpoint === "plugin-sources/stars") {
@@ -224,6 +225,27 @@ test("shows an update badge on the matching native Installed card", async () => 
 		assert.match(textOf(demoTree), /Registry 1\.2\.0/);
 		assert.match(textOf(demoTree), /Installed plugin/);
 		assert.match(textOf(demoTree), /npm/);
+	} finally { fixture.restore(); }
+});
+
+test("expanded Installed card surfaces exact registry lookup errors", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		domBridge: true,
+		domInstalledPackages: ["dsh-missing"],
+		bundlesValue: [{ name: "dsh-missing", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+		installedValue: { plugins: [], errors: [{ package: "dsh-missing", error: "source returned HTTP 404" }] },
+	});
+	try {
+		await settle();
+		await settle();
+		const cardRoot = fixture.reactDomRoots.find((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.ok(cardRoot);
+		const mini = new MiniReact({ document: fixture.document });
+		let tree = mini.render(cardRoot.element);
+		const expand = byClass(tree, "pm-installed-expand")[0];
+		expand.props.onClick({ preventDefault() {}, stopPropagation() {} });
+		tree = mini.render(cardRoot.element);
+		assert.match(textOf(tree), /Registry lookup failed: source returned HTTP 404/);
 	} finally { fixture.restore(); }
 });
 
