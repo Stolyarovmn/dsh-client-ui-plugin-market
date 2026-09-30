@@ -161,6 +161,45 @@ test("self-embeds Plugin Registry after native Installed on stock DSH DOM", asyn
 	} finally { fixture.restore(); }
 });
 
+test("Installed metadata loads even when native BundleInfo.version is absent", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		domBridge: true,
+		domInstalledPackages: ["@stolyarovmn/dsh-client-ui-schedule-tab"],
+		bundlesValue: [
+			{ name: "@stolyarovmn/dsh-client-ui-schedule-tab", installed: true, enabled: true, rows: [], overrides: [] },
+		],
+		installedValue: {
+			plugins: [{
+				identity: { package: "@stolyarovmn/dsh-client-ui-schedule-tab", fallback: "npm:@stolyarovmn/dsh-client-ui-schedule-tab" },
+				name: "@stolyarovmn/dsh-client-ui-schedule-tab",
+				description: "Schedule tab registry metadata",
+				version: "0.6.1",
+				tags: ["schedule"],
+				evidence: { releaseChannel: "stable", installability: "bundle" },
+				install: { type: "npm", spec: "@stolyarovmn/dsh-client-ui-schedule-tab@0.6.1" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			errors: [],
+		},
+	});
+	try {
+		await settle();
+		await settle();
+		const installedCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/installed");
+		assert.deepEqual(installedCall?.payload?.packages, ["@stolyarovmn/dsh-client-ui-schedule-tab"]);
+
+		const cardRoot = fixture.reactDomRoots.find((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.ok(cardRoot);
+		const mini = new MiniReact({ document: fixture.document });
+		let tree = mini.render(cardRoot.element);
+		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
+		tree = mini.render(cardRoot.element);
+		assert.match(textOf(tree), /Registry 0\.6\.1/);
+		assert.match(textOf(tree), /Schedule tab registry metadata/);
+		assert.equal(textOf(tree).includes("No registry metadata found"), false);
+	} finally { fixture.restore(); }
+});
+
 test("shows an update badge on the matching native Installed card", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
 		domBridge: true,
