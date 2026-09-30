@@ -9,7 +9,7 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 test("package declares both DSH faces and required client services", async () => {
 	const pkg = JSON.parse(await read("package.json"));
 	assert.equal(pkg.name, "@stolyarovmn/dsh-ui-registry-aggregator");
-	assert.equal(pkg.version, "0.4.15");
+	assert.equal(pkg.version, "0.4.16");
 	assert.equal(pkg.type, "module");
 	assert.equal(pkg.main, "lib/index.js");
 	assert.equal(pkg.exports["./client"], "./lib/client.js");
@@ -70,6 +70,8 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("counts"\)\)/);
+	assert.match(host, /connection\.fetch\.register\(route\("installed"\)\)/);
+	assert.match(host, /lookupInstalledPackages/);
 	assert.match(host, /githubPluginDetails/);
 	assert.doesNotMatch(host, /export default apply/);
 	assert.doesNotMatch(client, /\bfetch\s*\(/);
@@ -82,7 +84,10 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /\.pm-source-list\{align-items:start\}/);
 	assert.match(client, /\.pm-status-ok\{[^}]*box-shadow:0 0 7px/s);
 	assert.match(client, /"data-open": open/);
+	assert.match(client, /\.pm-installed-registry-host\{[^}]*position:relative[^}]*z-index:2[^}]*pointer-events:auto/s);
+	assert.match(client, /\.pm-installed-expand\{[^}]*position:relative[^}]*z-index:3[^}]*pointer-events:auto/s);
 });
+
 
 test("all published documentation files exist", async () => {
 	await Promise.all(["README.md", "LICENSE", "icon.svg", "lib/index.js", "lib/client.js", "lib/core.js", "cordis.patch.yml"].map((path) => access(new URL(path, root))));

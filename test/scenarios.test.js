@@ -18,7 +18,7 @@ import {
 const settle = async (milliseconds = 0) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
-	const { exports, document } = await loadBundle();
+	const { exports, document, reactDomRoots, notifyMutation } = await loadBundle({ domBridge: options.domBridge === true });
 	const locale = makeLocale("en");
 	const scope = makeSettingsScope({ sources, sourceDefaultsVersion });
 	const calls = [];
@@ -40,6 +40,21 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 					if (typeof options.browseValue === "function") return { ok: true, value: options.browseValue(payload, scope) };
 					if (options.browseValue) return { ok: true, value: options.browseValue };
 					return { ok: true, value: { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }], total: 41, page: payload.page ?? 1, pageSize: payload.pageSize ?? 20, pageCount: 3, sources: [] } };
+				}
+				if (endpoint === "plugin-sources/installed") {
+					if (typeof options.installedValue === "function") return { ok: true, value: await options.installedValue(payload, scope, calls) };
+					if (options.installedValue && typeof options.installedValue === "object" && !Array.isArray(options.installedValue)) return { ok: true, value: options.installedValue };
+					if (Array.isArray(options.installedValue)) return { ok: true, value: { plugins: options.installedValue, errors: [] } };
+					const plugins = [];
+					for (const packageName of payload?.packages ?? []) {
+						let data;
+						if (typeof options.browseValue === "function") data = options.browseValue({ query: packageName, page: 1, pageSize: 20, sorts: [], stableOnly: false, freshnessDays: 0, tag: "", dshMetadata: "any" }, scope);
+						else if (options.browseValue) data = options.browseValue;
+						else data = { plugins: [{ identity: { package: "dsh-demo", fallback: "npm:dsh-demo" }, name: "dsh-demo", description: "Demo plugin with enough text to make the expandable details control visible for compatibility metadata.", version: "1.0.0", tags: ["ui", "schedule"], evidence: { releaseChannel: "stable", stars: 42, downloads30d: 1234, rating: 4.8, ratingCount: 12, releasedAt: "2026-09-20T10:00:00.000Z", installability: "bundle" }, install: { type: "npm", spec: "dsh-demo@1.0.0" }, sources: [{ id: "npm", name: "npm", type: "npm" }] }] };
+						const exact = (data?.plugins ?? []).find((plugin) => plugin.identity?.package === packageName);
+						if (exact) plugins.push(exact);
+					}
+					return { ok: true, value: { plugins, errors: [] } };
 				}
 				if (endpoint === "plugin-sources/details") return { ok: true, value: { dshCompatibility: ">=0.1.7-rc.1 <0.2.0" } };
 				if (endpoint === "plugin-sources/stars") {
@@ -99,23 +114,332 @@ async function setup(sources = [], sourceDefaultsVersion = 2, options = {}) {
 		},
 	};
 	const { ctx, recorded } = makeCtx(locale, { configForms: makeConfigFormsService(scope), slots, connection, remote });
+	const domCards = [];
+	if (options.domBridge === true) {
+		const page = document.createElement("section");
+		const installed = document.createElement("section");
+		installed.setAttribute("data-plugin-scope", "global");
+		installed.setAttribute("data-plugin-group", "bundles");
+		const list = document.createElement("ul");
+		for (const packageName of options.domInstalledPackages ?? []) {
+			const card = document.createElement("li");
+			card.setAttribute("data-plugin-package", packageName);
+			list.appendChild(card);
+			domCards.push(card);
+		}
+		installed.appendChild(list);
+		page.appendChild(installed);
+		document.body.appendChild(page);
+	}
 	exports.apply(ctx);
 	const section = recorded.find((row) => row.options.name === "plugins.bundle.config");
 	const activation = recorded.find((row) => row.options.name === "plugins.bundle.activation");
+	const listSection = recorded.find((row) => row.options.name === "plugins.list.section");
 	const mini = new MiniReact({ document });
 	const restore = mini.installGlobals();
 	const render = () => mini.render({ type: section.component, props: { t: locale.bind("registry-aggregator"), close: () => {} }, children: [] });
-	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, render, restore };
+	return { exports, locale, scope, calls, installs, inspections, cancellations, bundleLists, emitRemote, section, activation, listSection, mini, render, restore, document, reactDomRoots, notifyMutation, domCards };
 }
 
-test("registers Registry Aggregator inside the native DSH plugin manager", async () => {
+test("self-embeds Plugin Registry after native Installed on stock DSH DOM", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, { domBridge: true });
+	try {
+		await settle();
+		const installed = fixture.document.querySelector('[data-plugin-scope="global"][data-plugin-group="bundles"]');
+		assert.ok(installed);
+		assert.equal(fixture.reactDomRoots.length, 1);
+		const root = fixture.reactDomRoots[0];
+		assert.equal(root.container.previousElementSibling, installed);
+		assert.equal(root.container.attributes["data-registry-aggregator-plugin-section"], "");
+		assert.equal(root.unmounted, false);
+		assert.equal(typeof root.element?.type, "function");
+
+		installed.remove();
+		fixture.notifyMutation();
+		await settle();
+		assert.equal(root.unmounted, true);
+	} finally { fixture.restore(); }
+});
+
+test("Installed metadata loads even when native BundleInfo.version is absent", async () => {
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const plugin = {
+		identity: { package: packageName, fallback: `npm:${packageName}` },
+		name: packageName,
+		description: "Schedule tab registry metadata",
+		version: "0.6.1",
+		tags: ["schedule"],
+		evidence: { releaseChannel: "stable", installability: "bundle" },
+		install: { type: "npm", spec: `${packageName}@0.6.1` },
+		sources: [{ id: "npm", name: "npm", type: "npm" }],
+	};
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		domBridge: true,
+		domInstalledPackages: [packageName],
+		bundlesValue: [
+			{ name: packageName, installed: true, enabled: true, rows: [], overrides: [] },
+		],
+		installedValue: { plugins: [plugin], errors: [] },
+	});
+	try {
+		await settle();
+		const cardRoot = fixture.reactDomRoots.find((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.ok(cardRoot);
+		const mini = new MiniReact({ document: fixture.document });
+		let tree = mini.render(cardRoot.element);
+		assert.equal(byClass(tree, "pm-installed-loading").length, 1);
+		await settle();
+		tree = mini.render(cardRoot.element);
+
+		const installedCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/installed");
+		assert.deepEqual(installedCall?.payload?.packages, [packageName]);
+
+		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
+		tree = mini.render(cardRoot.element);
+		assert.match(textOf(tree), /Registry 0\.6\.1/);
+		assert.match(textOf(tree), /schedule/);
+		assert.equal(textOf(tree).includes("Schedule tab registry metadata"), false);
+		assert.equal(textOf(tree).includes("No registry metadata found"), false);
+	} finally { fixture.restore(); }
+});
+
+test("shows an update badge on the matching native Installed card", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		domBridge: true,
+		domInstalledPackages: ["dsh-demo", "dsh-current"],
+		bundlesValue: [
+			{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+			{ name: "dsh-current", version: "2.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+		],
+		installedValue: (payload) => ({
+			plugins: (payload?.packages ?? []).map((name) => {
+				const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
+				return {
+					identity: { package: name, fallback: `npm:${name}` },
+					name,
+					description: "Installed plugin",
+					version,
+					tags: ["ui"],
+					evidence: { releaseChannel: "stable", installability: "bundle" },
+					install: { type: "npm", spec: `${name}@${version}` },
+					sources: [{ id: "npm", name: "npm", type: "npm" }],
+				};
+			}),
+			errors: [],
+		}),
+	});
+	try {
+		await settle();
+		await settle();
+		assert.equal(fixture.reactDomRoots.length, 3);
+		const cardRoots = fixture.reactDomRoots.filter((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.equal(cardRoots.length, 2);
+
+		const demoRoot = cardRoots.find((root) => root.container.parentElement?.getAttribute("data-plugin-package") === "dsh-demo");
+		const currentRoot = cardRoots.find((root) => root.container.parentElement?.getAttribute("data-plugin-package") === "dsh-current");
+		assert.ok(demoRoot);
+		assert.ok(currentRoot);
+
+		const demoMini = new MiniReact({ document: fixture.document });
+		let demoTree = demoMini.render(demoRoot.element);
+		const currentMini = new MiniReact({ document: fixture.document });
+		let currentTree = currentMini.render(currentRoot.element);
+		assert.equal(byClass(demoTree, "pm-installed-loading").length, 1);
+		assert.equal(byClass(currentTree, "pm-installed-loading").length, 1);
+		await settle();
+		demoTree = demoMini.render(demoRoot.element);
+		currentTree = currentMini.render(currentRoot.element);
+		assert.match(textOf(demoTree), /Update 1\.2\.0/);
+		assert.equal(textOf(currentTree).includes("Update"), false);
+
+		const expand = byClass(demoTree, "pm-installed-expand")[0];
+		assert.ok(expand);
+		assert.equal(expand.props["aria-expanded"], false);
+		let pointerStopped = false;
+		expand.props.onPointerDown({ stopPropagation() { pointerStopped = true; } });
+		assert.equal(pointerStopped, true);
+		let clickPrevented = false;
+		let clickStopped = false;
+		expand.props.onClick({
+			preventDefault() { clickPrevented = true; },
+			stopPropagation() { clickStopped = true; },
+		});
+		assert.equal(clickPrevented, true);
+		assert.equal(clickStopped, true);
+		demoTree = demoMini.render(demoRoot.element);
+		assert.equal(byClass(demoTree, "pm-installed-expand")[0].props["aria-expanded"], true);
+		assert.match(textOf(demoTree), /Registry 1\.2\.0/);
+		assert.match(textOf(demoTree), /npm/);
+		assert.equal(textOf(demoTree).includes("Installed plugin"), false);
+	} finally { fixture.restore(); }
+});
+
+test("expanded Installed card surfaces exact registry lookup errors", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		domBridge: true,
+		domInstalledPackages: ["dsh-missing"],
+		bundlesValue: [{ name: "dsh-missing", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+		installedValue: {
+			plugins: [],
+			errors: [{ package: "dsh-missing", error: "npm: source returned HTTP 404" }],
+		},
+	});
+	try {
+		await settle();
+		await settle();
+		const cardRoot = fixture.reactDomRoots.find((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.ok(cardRoot);
+		const mini = new MiniReact({ document: fixture.document });
+		let tree = mini.render(cardRoot.element);
+		assert.equal(byClass(tree, "pm-installed-loading").length, 1);
+		await settle(2400);
+		tree = mini.render(cardRoot.element);
+		const expand = byClass(tree, "pm-installed-expand")[0];
+		expand.props.onClick({ preventDefault() {}, stopPropagation() {} });
+		tree = mini.render(cardRoot.element);
+		const rendered = textOf(tree);
+		assert.match(rendered, /Registry lookup failed: npm: source returned HTTP 404/);
+		assert.match(rendered, /Registry lookup diagnostics/);
+		assert.match(rendered, /package: dsh-missing/);
+		assert.match(rendered, /rpc: installed/);
+		assert.match(rendered, /plugins: 0/);
+		assert.match(rendered, /npm/);
+	} finally { fixture.restore(); }
+});
+
+test("Installed card re-queries itself when source configuration becomes ready", async () => {
+	let available = false;
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const plugin = {
+		identity: { package: packageName, fallback: `npm:${packageName}` },
+		name: packageName,
+		description: "Metadata arrived after sources became ready",
+		version: "0.6.1",
+		tags: ["schedule"],
+		evidence: { releaseChannel: "stable", installability: "bundle" },
+		install: { type: "npm", spec: `${packageName}@0.6.1` },
+		sources: [{ id: "npm", name: "npm", type: "npm" }],
+	};
+	const fixture = await setup([], 2, {
+		domBridge: true,
+		domInstalledPackages: [packageName],
+		bundlesValue: [{ name: packageName, installed: true, enabled: true, rows: [], overrides: [] }],
+		installedValue: () => available
+			? { plugins: [plugin], errors: [] }
+			: { plugins: [], errors: [] },
+	});
+	try {
+		await settle();
+		const cardRoot = fixture.reactDomRoots.find((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.ok(cardRoot);
+		const mini = new MiniReact({ document: fixture.document });
+		let tree = mini.render(cardRoot.element);
+		assert.equal(byClass(tree, "pm-installed-loading").length, 1);
+		await settle();
+		tree = mini.render(cardRoot.element);
+		assert.equal(textOf(tree).includes("Registry 0.6.1"), false);
+
+		available = true;
+		await fixture.scope.set("sources", [{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+		tree = mini.render(cardRoot.element);
+		await settle();
+		tree = mini.render(cardRoot.element);
+
+		const calls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/installed"
+			&& call.payload?.packages?.includes(packageName));
+		assert.ok(calls.length >= 2);
+		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
+		tree = mini.render(cardRoot.element);
+		assert.match(textOf(tree), /Registry 0\.6\.1/);
+		assert.match(textOf(tree), /schedule/);
+		assert.equal(textOf(tree).includes("Metadata arrived after sources became ready"), false);
+	} finally { fixture.restore(); }
+});
+
+test("registers one native Plugin Manager list section plus the legacy detail fallback", async () => {
 	const fixture = await setup();
 	try {
 		assert.equal(fixture.section.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
 		assert.equal(fixture.activation.options.key, "@stolyarovmn/dsh-ui-registry-aggregator");
+		assert.equal(fixture.listSection.options.id, "registry-aggregator");
+		assert.equal(fixture.listSection.options.order, 20);
 		assert.deepEqual(fixture.exports.inject, ["slots", "locale", "configForms", "connection", "remote", "remote.pluginManager"]);
-		assert.equal(fixture.locale.bind("registry-aggregator")("tab.browse"), "Browse");
 	} finally { fixture.restore(); }
+});
+
+test("native Plugin Registry section renders below Installed with internal Sources/Browse/Updates tabs", async () => {
+	const previousStorage = globalThis.localStorage;
+	const values = new Map();
+	globalThis.localStorage = {
+		getItem(key) { return values.has(key) ? values.get(key) : null; },
+		setItem(key, value) { values.set(key, String(value)); },
+		removeItem(key) { values.delete(key); },
+	};
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [
+			{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+			{ name: "dsh-current", version: "2.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+		],
+		browseValue: (payload) => {
+			if (payload.query === "dsh-demo" || payload.query === "dsh-current") {
+				const name = payload.query;
+				const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
+				return {
+					plugins: [{
+						identity: { package: name, fallback: `npm:${name}` },
+						name,
+						description: "Update candidate",
+						version,
+						tags: ["ui"],
+						evidence: { releaseChannel: "stable", installability: "bundle" },
+						install: { type: "npm", spec: `${name}@${version}` },
+						sources: [{ id: "npm", name: "npm", type: "npm" }],
+					}],
+					total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+				};
+			}
+			return {
+				plugins: [],
+				total: 0, page: 1, pageSize: 20, pageCount: 1, sources: [],
+			};
+		},
+	});
+	try {
+		let tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle(260);
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+
+		assert.match(textOf(tree), /Plugin Registry/);
+		assert.ok(byId(tree, "pm-search"));
+		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
+
+		const buttons = byClass(tree, "pm-native-section-tab");
+		assert.deepEqual(buttons.map((button) => textOf(button).replace(/\s+/g, " ").trim()), ["Sources", "Browse", "Updates"]);
+
+		buttons[0].props.onClick();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		assert.match(textOf(tree), /Connected sources/);
+		assert.equal(values.get("dsh.registry-aggregator.plugin-section.v1"), "sources");
+
+		byClass(tree, "pm-native-section-tab")[2].props.onClick();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+
+		assert.match(textOf(tree), /1 updates/);
+		assert.match(textOf(tree), /dsh-demo/);
+		assert.equal(textOf(tree).includes("dsh-current"), false);
+		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
+		assert.equal(values.get("dsh.registry-aggregator.plugin-section.v1"), "updates");
+	} finally {
+		fixture.restore();
+		if (previousStorage === undefined) delete globalThis.localStorage;
+		else globalThis.localStorage = previousStorage;
+	}
 });
 
 test("adds a typed source through the durable settings scope", async () => {
@@ -357,6 +681,46 @@ test("Browse calls Host RPC and renders normalized install metadata", async () =
 });
 
 
+test("Browse shows automatic runtime compatibility without a details request", async () => {
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		browseValue: {
+			plugins: [{
+				identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+				name: "dsh-demo",
+				description: "Demo plugin",
+				version: "1.0.0",
+				tags: ["ui"],
+				evidence: {
+					releaseChannel: "stable",
+					installability: "bundle",
+					dshRuntimeVersion: "0.1.7-rc.2",
+					dshCompatibilityStatus: "compatible",
+					dshMetadataResolved: true,
+					dshPeers: [{ dependency: "@deepseek-ai/dsh-client-ui-primitives", range: ">=0.1.7-rc.1 <0.2.0", compatible: true }],
+				},
+				install: { type: "npm", spec: "dsh-demo@1.0.0" },
+				sources: [{ id: "npm", name: "npm", type: "npm" }],
+			}],
+			total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
+		},
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		tree = fixture.render();
+
+		assert.match(textOf(tree), /DSH compatible/);
+		const compat = byClass(tree, "pm-compat-button")[0];
+		assert.equal(compat.props["data-status"], "compatible");
+		assert.match(compat.props.title, /@deepseek-ai\/dsh-client-ui-primitives >=0\.1\.7-rc\.1 <0\.2\.0/);
+		assert.match(compat.props.title, /0\.1\.7-rc\.2/);
+		assert.equal(fixture.calls.some((call) => call.endpoint === "plugin-sources/details"), false);
+	} finally { fixture.restore(); }
+});
+
 test("Browse asynchronously enriches npm results with exact GitHub evidence and source attribution", async () => {
 	const repository = "https://github.com/acme/star-hydration";
 	const fixture = await setup([
@@ -556,6 +920,36 @@ test("Browse combines independent ordered sort criteria and resolves DSH compati
 		tree = fixture.render();
 		assert.match(textOf(tree), /DSH >=0\.1\.7-rc\.1 <0\.2\.0/);
 		assert.ok(fixture.calls.some((call) => call.endpoint === "plugin-sources/details"));
+	} finally { fixture.restore(); }
+});
+
+test("Browse refreshes installed bundle state on plugin-manager/changed", async () => {
+	let bundles = [];
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: () => bundles,
+	});
+	try {
+		let tree = fixture.render();
+		byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+		fixture.render();
+		await settle(260);
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(fixture.bundleLists.length, 1);
+		assert.equal(textOf(tree).includes("Installed 1.0.0"), false);
+
+		bundles = [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }];
+		fixture.emitRemote("plugin-manager/changed", { name: "dsh-demo" });
+		fixture.render();
+		await settle();
+		await settle();
+		tree = fixture.render();
+
+		assert.equal(fixture.bundleLists.length, 2);
+		assert.match(textOf(tree), /Installed 1\.0\.0/);
+		assert.equal(byClass(tree, "pm-card-install")[0].props.disabled, true);
 	} finally { fixture.restore(); }
 });
 
@@ -854,6 +1248,41 @@ test("Browse sends page size and page changes to Host RPC", async () => {
 		assert.ok(browseCalls.some((call) => call.payload.pageSize === 50));
 		assert.ok(browseCalls.some((call) => call.payload.pageSize === 20));
 	} finally { fixture.restore(); }
+});
+
+test("Browse preferences persist across component openings", async () => {
+	const previousStorage = globalThis.localStorage;
+	const values = new Map();
+	globalThis.localStorage = {
+		getItem(key) { return values.has(key) ? values.get(key) : null; },
+		setItem(key, value) { values.set(key, String(value)); },
+		removeItem(key) { values.delete(key); },
+	};
+	try {
+		const first = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+		try {
+			let tree = first.render();
+			byTag(tree, "button").find((button) => textOf(button) === "Browse").props.onClick();
+			tree = first.render();
+			byId(tree, "pm-search").props.onChange({ target: { value: "schedule" } });
+			first.render();
+			await settle();
+			const saved = JSON.parse(values.get("dsh.registry-aggregator.browse.v1"));
+			assert.equal(saved.tab, "browse");
+			assert.equal(saved.query, "schedule");
+			assert.equal(saved.pageSize, 20);
+		} finally { first.restore(); }
+
+		const second = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+		try {
+			const tree = second.render();
+			assert.equal(byId(tree, "pm-tab-browse").props["aria-selected"], true);
+			assert.equal(byId(tree, "pm-search").props.value, "schedule");
+		} finally { second.restore(); }
+	} finally {
+		if (previousStorage === undefined) delete globalThis.localStorage;
+		else globalThis.localStorage = previousStorage;
+	}
 });
 
 test("activation guidance opens the native Registry Aggregator detail page", async () => {

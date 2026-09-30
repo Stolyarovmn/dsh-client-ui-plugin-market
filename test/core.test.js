@@ -5,9 +5,12 @@ import {
 	countSources,
 	createAdapter,
 	dedupePlugins,
+	dshCompatibilityStatus,
+	dshPeerCompatibility,
 	fetchJson,
 	githubPluginDetails,
 	githubRepositoryStats,
+	lookupInstalledPackages,
 	normalizePlugin,
 	npmPluginDetails,
 	searchPlugins,
@@ -59,6 +62,36 @@ test("normalizes display tags from explicit catalog, npm, and GitHub metadata", 
 		normalizePlugin({ name: "Schedule UI", package: "@acme/schedule", tags: ["integration", "tool"] }, source({ id: "other", name: "Other" })),
 	]);
 	assert.deepEqual(merged[0].tags, ["ui", "schedule", "theme", "provider", "workflow", "integration", "tool"]);
+});
+
+test("evaluates DSH compatibility with prerelease-aware semver", () => {
+	assert.equal(dshCompatibilityStatus(">=0.1.7-rc.1 <0.2.0", "0.1.7-rc.2"), "compatible");
+	assert.equal(dshCompatibilityStatus(">=0.1.7-rc.3 <0.2.0", "0.1.7-rc.2"), "incompatible");
+	assert.equal(dshCompatibilityStatus("^0.2.0", "0.1.7-rc.2"), "incompatible");
+	assert.equal(dshCompatibilityStatus("not-a-range", "0.1.7-rc.2"), "invalid");
+	assert.equal(dshCompatibilityStatus(undefined, "0.1.7-rc.2"), "unknown");
+});
+
+test("matches native DSH compatibility across all DSH peer dependencies", () => {
+	const compatible = dshPeerCompatibility({
+		"@deepseek-ai/dsh-client-ui-primitives": ">=0.1.7-rc.1 <0.2.0",
+		"@deepseek-ai/dsh-client-connection": "workspace:^",
+		"react": "^19.0.0",
+	}, "0.1.7-rc.2");
+	assert.equal(compatible.declared, true);
+	assert.equal(compatible.status, "compatible");
+	assert.equal(compatible.peers.length, 2);
+	assert.equal(compatible.peers.every((peer) => peer.compatible), true);
+
+	const incompatible = dshPeerCompatibility({
+		"@deepseek-ai/dsh-client-ui-primitives": ">=0.2.0",
+	}, "0.1.7-rc.2");
+	assert.equal(incompatible.status, "incompatible");
+	assert.equal(incompatible.peers[0].compatible, false);
+
+	const undeclared = dshPeerCompatibility({ react: "^19.0.0" }, "0.1.7-rc.2");
+	assert.equal(undeclared.status, "undeclared");
+	assert.equal(undeclared.declared, false);
 });
 
 test("classifies stable and prerelease versions", () => {
@@ -186,32 +219,26 @@ test("Browse matches a scoped npm package by its unscoped name fragment", async 
 	assert.deepEqual(result.plugins.map((plugin) => plugin.identity.package), [packageName]);
 });
 
-test("exact npm package search bypasses a stale npm search index via the package packument", async () => {
+test("exact npm package search uses only the compact latest manifest endpoint", async () => {
 	const requests = [];
 	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
 		fetchImpl: async (url) => {
 			const value = String(url);
 			requests.push(value);
-			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [] });
-			if (decodeURIComponent(value).endsWith(packageName)) {
+			if (value.includes("/-/v1/search")) throw new Error("exact package lookup must not use npm discovery search");
+			if (decodeURIComponent(value).endsWith(`${packageName}/latest`)) {
 				return jsonResponse({
 					name: packageName,
-					"dist-tags": { latest: "0.4.5" },
-					versions: {
-						"0.4.5": {
-							name: packageName,
-							version: "0.4.5",
-							description: "Global Schedule tab",
-							keywords: ["dsh", "dsh-plugin", "deepseek-harness"],
-							repository: { type: "git", url: "git+https://github.com/Stolyarovmn/dsh-schedule-tab.git" },
-							dsh: { bundle: { patch: "./cordis.patch.yml" } },
-							peerDependencies: { "@deepseek-ai/dsh": ">=0.1.5-rc.3 <0.1.7-rc.2" },
-						},
-					},
+					version: "0.4.5",
+					description: "Global Schedule tab",
+					keywords: ["dsh", "dsh-plugin", "deepseek-harness"],
+					repository: { type: "git", url: "git+https://github.com/Stolyarovmn/dsh-schedule-tab.git" },
+					dsh: { bundle: { patch: "./cordis.patch.yml" } },
+					peerDependencies: { "@deepseek-ai/dsh": ">=0.1.5-rc.3 <0.1.7-rc.2" },
 				});
 			}
-			return jsonResponse({});
+			throw new Error(`unexpected exact lookup URL ${value}`);
 		},
 		resolveHost: publicDns,
 	});
@@ -221,7 +248,92 @@ test("exact npm package search bypasses a stale npm search index via the package
 	assert.equal(plugins[0].version, "0.4.5");
 	assert.equal(plugins[0].evidence.installability, "bundle");
 	assert.equal(plugins[0].evidence.dshCompatibility, ">=0.1.5-rc.3 <0.1.7-rc.2");
-	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(packageName)));
+	assert.deepEqual(requests.map((url) => decodeURIComponent(url)), [`https://registry.npmjs.org/${packageName}/latest`]);
+});
+
+test("Browse exact npm package survives an independent GitHub 403", async () => {
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const github = { id: "github", name: "GitHub", type: "github", enabled: true };
+	const requests = [];
+	const result = await browseSources([npm, github], packageName, {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			requests.push(value);
+			if (value.startsWith("https://api.github.com")) return new Response("rate limited", { status: 403 });
+			if (decodeURIComponent(value).endsWith(`${packageName}/latest`)) {
+				return jsonResponse({
+					name: packageName,
+					version: "0.6.1",
+					description: "Schedule tab exact metadata",
+					keywords: ["dsh-plugin", "schedule"],
+					dsh: { bundle: { patch: "./cordis.patch.yml" } },
+				});
+			}
+			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [] });
+			throw new Error(`unexpected URL ${value}`);
+		},
+	});
+	assert.equal(result.total, 1);
+	assert.equal(result.plugins.length, 1);
+	assert.equal(result.plugins[0].identity.package, packageName);
+	assert.equal(result.plugins[0].version, "0.6.1");
+	assert.equal(result.plugins[0].evidence.installability, "bundle");
+	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(`${packageName}/latest`)));
+	const githubSource = result.sources.find((source) => source.type === "github");
+	assert.equal(githubSource?.health?.ok, false);
+	assert.match(githubSource?.health?.error ?? "", /HTTP 403/);
+});
+
+test("Installed exact lookup resolves scoped npm packages without Browse search", async () => {
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const requests = [];
+	const result = await lookupInstalledPackages([packageName], [], {
+		resolveHost: publicDns,
+		enrichDownloads: false,
+		runtimeVersion: "0.1.7-rc.2",
+		fetchImpl: async (url) => {
+			const value = String(url);
+			requests.push(value);
+			assert.equal(value.includes("/-/v1/search"), false);
+			if (value.includes("api.github.com/repos/")) return jsonResponse({});
+			return jsonResponse({
+				name: packageName,
+				version: "0.6.1",
+				description: "Schedule tab exact metadata",
+				keywords: ["dsh-plugin", "schedule"],
+				dsh: { bundle: { patch: "./cordis.patch.yml" } },
+				peerDependencies: {
+					"@deepseek-ai/dsh-client-ui-primitives": ">=0.1.7-rc.1 <0.2.0",
+				},
+			});
+		},
+	});
+	assert.equal(result.errors.length, 0);
+	assert.equal(result.plugins.length, 1);
+	assert.equal(result.plugins[0].identity.package, packageName);
+	assert.equal(result.plugins[0].version, "0.6.1");
+	assert.equal(result.plugins[0].description, "Schedule tab exact metadata");
+	assert.equal(result.plugins[0].evidence.installability, "bundle");
+	assert.equal(result.plugins[0].evidence.dshCompatibilityStatus, "compatible");
+	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(`${packageName}/latest`)));
+	assert.equal(requests.some((url) => url.includes("/-/v1/search")), false);
+});
+
+test("Installed exact lookup reports per-package npm errors instead of hiding them", async () => {
+	const packageName = "@acme/missing-installed";
+	const result = await lookupInstalledPackages([packageName], [], {
+		resolveHost: publicDns,
+		enrichDownloads: false,
+		fetchImpl: async () => new Response("missing", { status: 404 }),
+	});
+	assert.deepEqual(result.plugins, []);
+	assert.equal(result.errors.length, 1);
+	assert.equal(result.errors[0].package, packageName);
+	assert.match(result.errors[0].error, /HTTP 404/);
 });
 
 test("Browse merges query-specific GitHub discovery when canonical first-page discovery misses a low-ranked plugin", async () => {
@@ -647,6 +759,38 @@ test("sorts GitHub star evidence globally before slicing a page", async () => {
 	assert.deepEqual(result.plugins.map((plugin) => plugin.evidence?.stars), [50, 20, 5]);
 });
 
+test("resolves missing GitHub stars before star sorting and pagination", async () => {
+	const rows = [
+		{ name: "low", package: "sort-missing-low", version: "1.0.0", repository: "https://github.com/acme/sort-missing-low" },
+		{ name: "high", package: "sort-missing-high", version: "1.0.0", repository: "https://github.com/acme/sort-missing-high" },
+		{ name: "mid", package: "sort-missing-mid", version: "1.0.0", repository: "https://github.com/acme/sort-missing-mid" },
+	];
+	const stars = new Map([
+		["sort-missing-low", 2],
+		["sort-missing-high", 40],
+		["sort-missing-mid", 11],
+	]);
+	const result = await browseSources([source()], "", {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			if (value === "https://catalog.example/plugins.json") return jsonResponse(rows);
+			const repo = value.match(/api\.github\.com\/repos\/acme\/([^/?#]+)/u)?.[1];
+			if (repo && stars.has(repo)) return jsonResponse({ stargazers_count: stars.get(repo), html_url: `https://github.com/acme/${repo}` });
+			throw new Error(`unexpected URL ${value}`);
+		},
+		enrichDownloads: false,
+		page: 1,
+		pageSize: 20,
+		sorts: [{ key: "stars", direction: "desc" }],
+	});
+	assert.deepEqual(result.plugins.map((plugin) => [plugin.name, plugin.evidence?.stars]), [
+		["high", 40],
+		["mid", 11],
+		["low", 2],
+	]);
+});
+
 test("captures npm freshness, monthly downloads, and maintenance evidence from search", async () => {
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
 		resolveHost: publicDns,
@@ -686,6 +830,103 @@ test("reuses discovery rows across pagination and invalidates only on refresh re
 
 	await browseSources([cachedSource], "", { ...options, page: 2, refreshRevision: 1 });
 	assert.equal(calls, 2);
+});
+
+test("coalesces concurrent npm metadata loads into one request", async () => {
+	let calls = 0;
+	const packageName = `single-flight-${Date.now()}`;
+	const options = {
+		resolveHost: publicDns,
+		fetchImpl: async () => {
+			calls += 1;
+			await new Promise((resolve) => setTimeout(resolve, 10));
+			return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+		},
+	};
+	const results = await Promise.all([
+		npmPluginDetails(packageName, "1.0.0", options),
+		npmPluginDetails(packageName, "1.0.0", options),
+		npmPluginDetails(packageName, "1.0.0", options),
+	]);
+	assert.equal(calls, 1);
+	assert.equal(results.every((row) => row.installability === "bundle"), true);
+});
+
+test("aborting one single-flight waiter preserves Node's readonly AbortError and keeps the shared load alive", async () => {
+	let calls = 0;
+	let release;
+	const gate = new Promise((resolve) => { release = resolve; });
+	const packageName = `single-flight-abort-${Date.now()}`;
+	const controller = new AbortController();
+	const fetchImpl = async () => {
+		calls += 1;
+		await gate;
+		return jsonResponse({ dsh: { bundle: { patch: "./cordis.patch.yml" } } });
+	};
+	const first = npmPluginDetails(packageName, "1.0.0", {
+		resolveHost: publicDns,
+		fetchImpl,
+		signal: controller.signal,
+	});
+	const second = npmPluginDetails(packageName, "1.0.0", {
+		resolveHost: publicDns,
+		fetchImpl,
+	});
+	controller.abort();
+
+	await assert.rejects(first, (error) => error?.name === "AbortError");
+	release();
+	const result = await second;
+	assert.equal(result.installability, "bundle");
+	assert.equal(calls, 1);
+});
+
+test("bounds discovery cache instead of growing for every source key", async () => {
+	let calls = 0;
+	const fetchImpl = async () => {
+		calls += 1;
+		return jsonResponse({ plugins: [{ name: "one", package: "one", version: "1.0.0" }] });
+	};
+	const options = { fetchImpl, resolveHost: publicDns, cacheDiscovery: true, enrichDownloads: false };
+	const prefix = `bounded-discovery-${Date.now()}`;
+	for (let index = 0; index < 129; index += 1) {
+		await browseSources([source({ id: `${prefix}-${index}`, url: `https://catalog.example/${prefix}-${index}.json` })], "", options);
+	}
+	assert.equal(calls, 129);
+	await browseSources([source({ id: `${prefix}-0`, url: `https://catalog.example/${prefix}-0.json` })], "", options);
+	assert.equal(calls, 130);
+});
+
+test("DSH declared filter runs after manifest enrichment and includes dsh-* API peers", async () => {
+	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const packageName = `declared-peer-${Date.now()}`;
+	const result = await browseSources([npm], "", {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			if (value.includes("/-/v1/search")) {
+				return jsonResponse({ objects: [{ package: { name: packageName, version: "1.0.0", description: "Declared DSH peer" } }] });
+			}
+			return jsonResponse({
+				name: packageName,
+				version: "1.0.0",
+				dsh: { bundle: { patch: "./cordis.patch.yml" } },
+				peerDependencies: {
+					"@deepseek-ai/dsh-client-ui-primitives": ">=0.1.7-rc.1 <0.2.0",
+				},
+			});
+		},
+		cacheDiscovery: false,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		runtimeVersion: "0.1.7-rc.2",
+		dshMetadata: "declared",
+		pageSize: 20,
+	});
+	assert.equal(result.total, 1);
+	assert.equal(result.plugins[0].evidence.dshCompatibilityStatus, "compatible");
+	assert.equal(result.plugins[0].evidence.dshMetadataResolved, true);
+	assert.deepEqual(result.plugins[0].evidence.dshPeers.map((peer) => peer.dependency), ["@deepseek-ai/dsh-client-ui-primitives"]);
 });
 
 test("supports ordered multi-criteria ranking with independent directions", async () => {
@@ -787,7 +1028,10 @@ test("reads explicit DSH compatibility and DSH API peers from npm version metada
 		}),
 	});
 	assert.equal(explicit.dshCompatibility, ">=0.1.7-rc.1 <0.2.0");
-	assert.equal(explicit.dshPeers[0].dependency, "@deepseek-ai/dsh-client-ui-slots");
+	assert.deepEqual(explicit.dshPeers.map((peer) => peer.dependency), [
+		"@deepseek-ai/dsh",
+		"@deepseek-ai/dsh-client-ui-slots",
+	]);
 
 	const peersOnly = await npmPluginDetails("@acme/legacy", "2.0.0", {
 		resolveHost: publicDns,
