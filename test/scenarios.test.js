@@ -1157,9 +1157,9 @@ test("Browse shows update available when discovered version is newer than the in
 
 		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
 		const installed = byClass(tree, "pm-card-install")[0];
-		assert.equal(installed.props.disabled, true);
-		assert.equal(installed.props["data-state"], "installed");
-		assert.equal(installed.props["aria-label"], "Update available 1.0.0 → 1.2.0");
+		assert.equal(installed.props.disabled, false);
+		assert.equal(installed.props["data-state"], "update");
+		assert.equal(installed.props["aria-label"], "Update to 1.2.0");
 	} finally { fixture.restore(); }
 });
 
