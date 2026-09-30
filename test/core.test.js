@@ -759,6 +759,38 @@ test("sorts GitHub star evidence globally before slicing a page", async () => {
 	assert.deepEqual(result.plugins.map((plugin) => plugin.evidence?.stars), [50, 20, 5]);
 });
 
+test("resolves missing GitHub stars before star sorting and pagination", async () => {
+	const rows = [
+		{ name: "low", package: "sort-missing-low", version: "1.0.0", repository: "https://github.com/acme/sort-missing-low" },
+		{ name: "high", package: "sort-missing-high", version: "1.0.0", repository: "https://github.com/acme/sort-missing-high" },
+		{ name: "mid", package: "sort-missing-mid", version: "1.0.0", repository: "https://github.com/acme/sort-missing-mid" },
+	];
+	const stars = new Map([
+		["sort-missing-low", 2],
+		["sort-missing-high", 40],
+		["sort-missing-mid", 11],
+	]);
+	const result = await browseSources([source()], "", {
+		resolveHost: publicDns,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			if (value === "https://catalog.example/plugins.json") return jsonResponse(rows);
+			const repo = value.match(/api\.github\.com\/repos\/acme\/([^/?#]+)/u)?.[1];
+			if (repo && stars.has(repo)) return jsonResponse({ stargazers_count: stars.get(repo), html_url: `https://github.com/acme/${repo}` });
+			throw new Error(`unexpected URL ${value}`);
+		},
+		enrichDownloads: false,
+		page: 1,
+		pageSize: 20,
+		sorts: [{ key: "stars", direction: "desc" }],
+	});
+	assert.deepEqual(result.plugins.map((plugin) => [plugin.name, plugin.evidence?.stars]), [
+		["high", 40],
+		["mid", 11],
+		["low", 2],
+	]);
+});
+
 test("captures npm freshness, monthly downloads, and maintenance evidence from search", async () => {
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
 		resolveHost: publicDns,
