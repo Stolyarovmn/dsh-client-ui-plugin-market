@@ -184,14 +184,17 @@ test("Installed metadata loads even when native BundleInfo.version is absent", a
 	});
 	try {
 		await settle();
-		await settle();
-		const installedCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/installed");
-		assert.deepEqual(installedCall?.payload?.packages, ["@stolyarovmn/dsh-client-ui-schedule-tab"]);
-
 		const cardRoot = fixture.reactDomRoots.find((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
 		assert.ok(cardRoot);
 		const mini = new MiniReact({ document: fixture.document });
 		let tree = mini.render(cardRoot.element);
+		assert.equal(byClass(tree, "pm-installed-loading").length, 1);
+		await settle();
+		tree = mini.render(cardRoot.element);
+
+		const installedCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/installed");
+		assert.deepEqual(installedCall?.payload?.packages, ["@stolyarovmn/dsh-client-ui-schedule-tab"]);
+
 		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
 		tree = mini.render(cardRoot.element);
 		assert.match(textOf(tree), /Registry 0\.6\.1/);
@@ -241,7 +244,12 @@ test("shows an update badge on the matching native Installed card", async () => 
 		const demoMini = new MiniReact({ document: fixture.document });
 		let demoTree = demoMini.render(demoRoot.element);
 		const currentMini = new MiniReact({ document: fixture.document });
-		const currentTree = currentMini.render(currentRoot.element);
+		let currentTree = currentMini.render(currentRoot.element);
+		assert.equal(byClass(demoTree, "pm-installed-loading").length, 1);
+		assert.equal(byClass(currentTree, "pm-installed-loading").length, 1);
+		await settle();
+		demoTree = demoMini.render(demoRoot.element);
+		currentTree = currentMini.render(currentRoot.element);
 		assert.match(textOf(demoTree), /Update 1\.2\.0/);
 		assert.equal(textOf(currentTree).includes("Update"), false);
 
@@ -281,10 +289,57 @@ test("expanded Installed card surfaces exact registry lookup errors", async () =
 		assert.ok(cardRoot);
 		const mini = new MiniReact({ document: fixture.document });
 		let tree = mini.render(cardRoot.element);
+		assert.equal(byClass(tree, "pm-installed-loading").length, 1);
+		await settle(2400);
+		tree = mini.render(cardRoot.element);
 		const expand = byClass(tree, "pm-installed-expand")[0];
 		expand.props.onClick({ preventDefault() {}, stopPropagation() {} });
 		tree = mini.render(cardRoot.element);
 		assert.match(textOf(tree), /Registry lookup failed: source returned HTTP 404/);
+	} finally { fixture.restore(); }
+});
+
+test("Installed card re-queries itself when source configuration becomes ready", async () => {
+	let available = false;
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const plugin = {
+		identity: { package: packageName, fallback: `npm:${packageName}` },
+		name: packageName,
+		description: "Metadata arrived after sources became ready",
+		version: "0.6.1",
+		tags: ["schedule"],
+		evidence: { releaseChannel: "stable", installability: "bundle" },
+		install: { type: "npm", spec: `${packageName}@0.6.1` },
+		sources: [{ id: "npm", name: "npm", type: "npm" }],
+	};
+	const fixture = await setup([], 2, {
+		domBridge: true,
+		domInstalledPackages: [packageName],
+		bundlesValue: [{ name: packageName, installed: true, enabled: true, rows: [], overrides: [] }],
+		installedValue: () => available ? { plugins: [plugin], errors: [] } : { plugins: [], errors: [] },
+	});
+	try {
+		await settle();
+		const cardRoot = fixture.reactDomRoots.find((root) => root.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.ok(cardRoot);
+		const mini = new MiniReact({ document: fixture.document });
+		let tree = mini.render(cardRoot.element);
+		assert.equal(byClass(tree, "pm-installed-loading").length, 1);
+		await settle();
+		tree = mini.render(cardRoot.element);
+		assert.equal(textOf(tree).includes("Metadata arrived"), false);
+
+		available = true;
+		await fixture.scope.set("sources", [{ id: "npm", name: "npm", type: "npm", enabled: true }]);
+		tree = mini.render(cardRoot.element);
+		await settle();
+		tree = mini.render(cardRoot.element);
+
+		const calls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/installed");
+		assert.ok(calls.length >= 2);
+		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
+		tree = mini.render(cardRoot.element);
+		assert.match(textOf(tree), /Metadata arrived after sources became ready/);
 	} finally { fixture.restore(); }
 });
 
