@@ -219,32 +219,26 @@ test("Browse matches a scoped npm package by its unscoped name fragment", async 
 	assert.deepEqual(result.plugins.map((plugin) => plugin.identity.package), [packageName]);
 });
 
-test("exact npm package search bypasses a stale npm search index via the package packument", async () => {
+test("exact npm package search uses only the compact latest manifest endpoint", async () => {
 	const requests = [];
 	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
 	const adapter = createAdapter({ id: "npm", name: "npm", type: "npm", enabled: true }, {
 		fetchImpl: async (url) => {
 			const value = String(url);
 			requests.push(value);
-			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [] });
-			if (decodeURIComponent(value).endsWith(packageName)) {
+			if (value.includes("/-/v1/search")) throw new Error("exact package lookup must not use npm discovery search");
+			if (decodeURIComponent(value).endsWith(`${packageName}/latest`)) {
 				return jsonResponse({
 					name: packageName,
-					"dist-tags": { latest: "0.4.5" },
-					versions: {
-						"0.4.5": {
-							name: packageName,
-							version: "0.4.5",
-							description: "Global Schedule tab",
-							keywords: ["dsh", "dsh-plugin", "deepseek-harness"],
-							repository: { type: "git", url: "git+https://github.com/Stolyarovmn/dsh-schedule-tab.git" },
-							dsh: { bundle: { patch: "./cordis.patch.yml" } },
-							peerDependencies: { "@deepseek-ai/dsh": ">=0.1.5-rc.3 <0.1.7-rc.2" },
-						},
-					},
+					version: "0.4.5",
+					description: "Global Schedule tab",
+					keywords: ["dsh", "dsh-plugin", "deepseek-harness"],
+					repository: { type: "git", url: "git+https://github.com/Stolyarovmn/dsh-schedule-tab.git" },
+					dsh: { bundle: { patch: "./cordis.patch.yml" } },
+					peerDependencies: { "@deepseek-ai/dsh": ">=0.1.5-rc.3 <0.1.7-rc.2" },
 				});
 			}
-			return jsonResponse({});
+			throw new Error(`unexpected exact lookup URL ${value}`);
 		},
 		resolveHost: publicDns,
 	});
@@ -254,7 +248,44 @@ test("exact npm package search bypasses a stale npm search index via the package
 	assert.equal(plugins[0].version, "0.4.5");
 	assert.equal(plugins[0].evidence.installability, "bundle");
 	assert.equal(plugins[0].evidence.dshCompatibility, ">=0.1.5-rc.3 <0.1.7-rc.2");
-	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(packageName)));
+	assert.deepEqual(requests.map((url) => decodeURIComponent(url)), [`https://registry.npmjs.org/${packageName}/latest`]);
+});
+
+test("Browse exact npm package survives an independent GitHub 403", async () => {
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const npm = { id: "npm", name: "npm", type: "npm", enabled: true };
+	const github = { id: "github", name: "GitHub", type: "github", enabled: true };
+	const requests = [];
+	const result = await browseSources([npm, github], packageName, {
+		resolveHost: publicDns,
+		verifyInstallability: true,
+		enrichDownloads: false,
+		fetchImpl: async (url) => {
+			const value = String(url);
+			requests.push(value);
+			if (value.startsWith("https://api.github.com")) return new Response("rate limited", { status: 403 });
+			if (decodeURIComponent(value).endsWith(`${packageName}/latest`)) {
+				return jsonResponse({
+					name: packageName,
+					version: "0.6.1",
+					description: "Schedule tab exact metadata",
+					keywords: ["dsh-plugin", "schedule"],
+					dsh: { bundle: { patch: "./cordis.patch.yml" } },
+				});
+			}
+			if (value.includes("/-/v1/search")) return jsonResponse({ objects: [] });
+			throw new Error(`unexpected URL ${value}`);
+		},
+	});
+	assert.equal(result.total, 1);
+	assert.equal(result.plugins.length, 1);
+	assert.equal(result.plugins[0].identity.package, packageName);
+	assert.equal(result.plugins[0].version, "0.6.1");
+	assert.equal(result.plugins[0].evidence.installability, "bundle");
+	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(`${packageName}/latest`)));
+	const githubSource = result.sources.find((source) => source.type === "github");
+	assert.equal(githubSource?.health?.ok, false);
+	assert.match(githubSource?.health?.error ?? "", /HTTP 403/);
 });
 
 test("Installed exact lookup resolves scoped npm packages without Browse search", async () => {
