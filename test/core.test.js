@@ -260,7 +260,7 @@ test("exact npm package search bypasses a stale npm search index via the package
 test("Installed exact lookup resolves scoped npm packages without Browse search", async () => {
 	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
 	const requests = [];
-	const plugins = await lookupInstalledPackages([packageName], [], {
+	const result = await lookupInstalledPackages([packageName], [], {
 		resolveHost: publicDns,
 		enrichDownloads: false,
 		runtimeVersion: "0.1.7-rc.2",
@@ -271,32 +271,38 @@ test("Installed exact lookup resolves scoped npm packages without Browse search"
 			if (value.includes("api.github.com/repos/")) return jsonResponse({});
 			return jsonResponse({
 				name: packageName,
-				"dist-tags": { latest: "0.6.1" },
-				time: { "0.6.1": "2026-09-27T10:00:00.000Z" },
-				versions: {
-					"0.6.1": {
-						name: packageName,
-						version: "0.6.1",
-						description: "Schedule tab exact metadata",
-						keywords: ["dsh-plugin", "schedule"],
-						dsh: { bundle: { patch: "./cordis.patch.yml" } },
-						peerDependencies: {
-							"@deepseek-ai/dsh-client-ui-primitives": ">=0.1.7-rc.1 <0.2.0",
-						},
-					},
+				version: "0.6.1",
+				description: "Schedule tab exact metadata",
+				keywords: ["dsh-plugin", "schedule"],
+				dsh: { bundle: { patch: "./cordis.patch.yml" } },
+				peerDependencies: {
+					"@deepseek-ai/dsh-client-ui-primitives": ">=0.1.7-rc.1 <0.2.0",
 				},
 			});
 		},
 	});
-	assert.equal(plugins.length, 1);
-	assert.equal(plugins[0].identity.package, packageName);
-	assert.equal(plugins[0].version, "0.6.1");
-	assert.equal(plugins[0].description, "Schedule tab exact metadata");
-	assert.equal(plugins[0].evidence.installability, "bundle");
-	assert.equal(plugins[0].evidence.dshCompatibilityStatus, "compatible");
-	assert.equal(plugins[0].evidence.releasedAt, "2026-09-27T10:00:00.000Z");
-	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(packageName)));
+	assert.equal(result.errors.length, 0);
+	assert.equal(result.plugins.length, 1);
+	assert.equal(result.plugins[0].identity.package, packageName);
+	assert.equal(result.plugins[0].version, "0.6.1");
+	assert.equal(result.plugins[0].description, "Schedule tab exact metadata");
+	assert.equal(result.plugins[0].evidence.installability, "bundle");
+	assert.equal(result.plugins[0].evidence.dshCompatibilityStatus, "compatible");
+	assert.ok(requests.some((url) => decodeURIComponent(url).endsWith(`${packageName}/latest`)));
 	assert.equal(requests.some((url) => url.includes("/-/v1/search")), false);
+});
+
+test("Installed exact lookup reports per-package npm errors instead of hiding them", async () => {
+	const packageName = "@acme/missing-installed";
+	const result = await lookupInstalledPackages([packageName], [], {
+		resolveHost: publicDns,
+		enrichDownloads: false,
+		fetchImpl: async () => new Response("missing", { status: 404 }),
+	});
+	assert.deepEqual(result.plugins, []);
+	assert.equal(result.errors.length, 1);
+	assert.equal(result.errors[0].package, packageName);
+	assert.match(result.errors[0].error, /HTTP 404/);
 });
 
 test("Browse merges query-specific GitHub discovery when canonical first-page discovery misses a low-ranked plugin", async () => {
