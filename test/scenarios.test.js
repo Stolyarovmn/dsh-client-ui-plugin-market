@@ -162,25 +162,24 @@ test("self-embeds Plugin Registry after native Installed on stock DSH DOM", asyn
 });
 
 test("Installed metadata loads even when native BundleInfo.version is absent", async () => {
+	const packageName = "@stolyarovmn/dsh-client-ui-schedule-tab";
+	const plugin = {
+		identity: { package: packageName, fallback: `npm:${packageName}` },
+		name: packageName,
+		description: "Schedule tab registry metadata",
+		version: "0.6.1",
+		tags: ["schedule"],
+		evidence: { releaseChannel: "stable", installability: "bundle" },
+		install: { type: "npm", spec: `${packageName}@0.6.1` },
+		sources: [{ id: "npm", name: "npm", type: "npm" }],
+	};
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
 		domBridge: true,
-		domInstalledPackages: ["@stolyarovmn/dsh-client-ui-schedule-tab"],
+		domInstalledPackages: [packageName],
 		bundlesValue: [
-			{ name: "@stolyarovmn/dsh-client-ui-schedule-tab", installed: true, enabled: true, rows: [], overrides: [] },
+			{ name: packageName, installed: true, enabled: true, rows: [], overrides: [] },
 		],
-		browseValue: {
-			plugins: [{
-				identity: { package: "@stolyarovmn/dsh-client-ui-schedule-tab", fallback: "npm:@stolyarovmn/dsh-client-ui-schedule-tab" },
-				name: "@stolyarovmn/dsh-client-ui-schedule-tab",
-				description: "Schedule tab registry metadata",
-				version: "0.6.1",
-				tags: ["schedule"],
-				evidence: { releaseChannel: "stable", installability: "bundle" },
-				install: { type: "npm", spec: "@stolyarovmn/dsh-client-ui-schedule-tab@0.6.1" },
-				sources: [{ id: "npm", name: "npm", type: "npm" }],
-			}],
-			total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
-		},
+		installedValue: { plugins: [plugin], errors: [] },
 	});
 	try {
 		await settle();
@@ -192,14 +191,14 @@ test("Installed metadata loads even when native BundleInfo.version is absent", a
 		await settle();
 		tree = mini.render(cardRoot.element);
 
-		const browseCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/browse"
-			&& call.payload?.query === "@stolyarovmn/dsh-client-ui-schedule-tab");
-		assert.equal(browseCall?.payload?.query, "@stolyarovmn/dsh-client-ui-schedule-tab");
+		const installedCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/installed");
+		assert.deepEqual(installedCall?.payload?.packages, [packageName]);
 
 		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
 		tree = mini.render(cardRoot.element);
 		assert.match(textOf(tree), /Registry 0\.6\.1/);
-		assert.match(textOf(tree), /Schedule tab registry metadata/);
+		assert.match(textOf(tree), /schedule/);
+		assert.equal(textOf(tree).includes("Schedule tab registry metadata"), false);
 		assert.equal(textOf(tree).includes("No registry metadata found"), false);
 	} finally { fixture.restore(); }
 });
@@ -212,11 +211,10 @@ test("shows an update badge on the matching native Installed card", async () => 
 			{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
 			{ name: "dsh-current", version: "2.0.0", installed: true, enabled: true, rows: [], overrides: [] },
 		],
-		browseValue: (payload) => {
-			const name = payload.query;
-			const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
-			return {
-				plugins: [{
+		installedValue: (payload) => ({
+			plugins: (payload?.packages ?? []).map((name) => {
+				const version = name === "dsh-demo" ? "1.2.0" : "2.0.0";
+				return {
 					identity: { package: name, fallback: `npm:${name}` },
 					name,
 					description: "Installed plugin",
@@ -225,10 +223,10 @@ test("shows an update badge on the matching native Installed card", async () => 
 					evidence: { releaseChannel: "stable", installability: "bundle" },
 					install: { type: "npm", spec: `${name}@${version}` },
 					sources: [{ id: "npm", name: "npm", type: "npm" }],
-				}],
-				total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
-			};
-		},
+				};
+			}),
+			errors: [],
+		}),
 	});
 	try {
 		await settle();
@@ -271,8 +269,8 @@ test("shows an update badge on the matching native Installed card", async () => 
 		demoTree = demoMini.render(demoRoot.element);
 		assert.equal(byClass(demoTree, "pm-installed-expand")[0].props["aria-expanded"], true);
 		assert.match(textOf(demoTree), /Registry 1\.2\.0/);
-		assert.match(textOf(demoTree), /Installed plugin/);
 		assert.match(textOf(demoTree), /npm/);
+		assert.equal(textOf(demoTree).includes("Installed plugin"), false);
 	} finally { fixture.restore(); }
 });
 
@@ -281,10 +279,9 @@ test("expanded Installed card surfaces exact registry lookup errors", async () =
 		domBridge: true,
 		domInstalledPackages: ["dsh-missing"],
 		bundlesValue: [{ name: "dsh-missing", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
-		browseValue: {
+		installedValue: {
 			plugins: [],
-			total: 0, page: 1, pageSize: 20, pageCount: 1,
-			sources: [{ id: "npm", name: "npm", type: "npm", health: { ok: false, error: "source returned HTTP 404" } }],
+			errors: [{ package: "dsh-missing", error: "npm: source returned HTTP 404" }],
 		},
 	});
 	try {
@@ -304,7 +301,7 @@ test("expanded Installed card surfaces exact registry lookup errors", async () =
 		assert.match(rendered, /Registry lookup failed: npm: source returned HTTP 404/);
 		assert.match(rendered, /Registry lookup diagnostics/);
 		assert.match(rendered, /package: dsh-missing/);
-		assert.match(rendered, /rpc: browse/);
+		assert.match(rendered, /rpc: installed/);
 		assert.match(rendered, /plugins: 0/);
 		assert.match(rendered, /npm/);
 	} finally { fixture.restore(); }
@@ -327,9 +324,9 @@ test("Installed card re-queries itself when source configuration becomes ready",
 		domBridge: true,
 		domInstalledPackages: [packageName],
 		bundlesValue: [{ name: packageName, installed: true, enabled: true, rows: [], overrides: [] }],
-		browseValue: () => available
-			? { plugins: [plugin], total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [] }
-			: { plugins: [], total: 0, page: 1, pageSize: 20, pageCount: 1, sources: [] },
+		installedValue: () => available
+			? { plugins: [plugin], errors: [] }
+			: { plugins: [], errors: [] },
 	});
 	try {
 		await settle();
@@ -340,7 +337,7 @@ test("Installed card re-queries itself when source configuration becomes ready",
 		assert.equal(byClass(tree, "pm-installed-loading").length, 1);
 		await settle();
 		tree = mini.render(cardRoot.element);
-		assert.equal(textOf(tree).includes("Metadata arrived"), false);
+		assert.equal(textOf(tree).includes("Registry 0.6.1"), false);
 
 		available = true;
 		await fixture.scope.set("sources", [{ id: "npm", name: "npm", type: "npm", enabled: true }]);
@@ -348,11 +345,14 @@ test("Installed card re-queries itself when source configuration becomes ready",
 		await settle();
 		tree = mini.render(cardRoot.element);
 
-		const calls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/browse" && call.payload?.query === packageName);
+		const calls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/installed"
+			&& call.payload?.packages?.includes(packageName));
 		assert.ok(calls.length >= 2);
 		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
 		tree = mini.render(cardRoot.element);
-		assert.match(textOf(tree), /Metadata arrived after sources became ready/);
+		assert.match(textOf(tree), /Registry 0\.6\.1/);
+		assert.match(textOf(tree), /schedule/);
+		assert.equal(textOf(tree).includes("Metadata arrived after sources became ready"), false);
 	} finally { fixture.restore(); }
 });
 
