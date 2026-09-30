@@ -168,7 +168,7 @@ test("Installed metadata loads even when native BundleInfo.version is absent", a
 		bundlesValue: [
 			{ name: "@stolyarovmn/dsh-client-ui-schedule-tab", installed: true, enabled: true, rows: [], overrides: [] },
 		],
-		installedValue: {
+		browseValue: {
 			plugins: [{
 				identity: { package: "@stolyarovmn/dsh-client-ui-schedule-tab", fallback: "npm:@stolyarovmn/dsh-client-ui-schedule-tab" },
 				name: "@stolyarovmn/dsh-client-ui-schedule-tab",
@@ -179,7 +179,7 @@ test("Installed metadata loads even when native BundleInfo.version is absent", a
 				install: { type: "npm", spec: "@stolyarovmn/dsh-client-ui-schedule-tab@0.6.1" },
 				sources: [{ id: "npm", name: "npm", type: "npm" }],
 			}],
-			errors: [],
+			total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [],
 		},
 	});
 	try {
@@ -192,8 +192,9 @@ test("Installed metadata loads even when native BundleInfo.version is absent", a
 		await settle();
 		tree = mini.render(cardRoot.element);
 
-		const installedCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/installed");
-		assert.deepEqual(installedCall?.payload?.packages, ["@stolyarovmn/dsh-client-ui-schedule-tab"]);
+		const browseCall = fixture.calls.find((call) => call.endpoint === "plugin-sources/browse"
+			&& call.payload?.query === "@stolyarovmn/dsh-client-ui-schedule-tab");
+		assert.equal(browseCall?.payload?.query, "@stolyarovmn/dsh-client-ui-schedule-tab");
 
 		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
 		tree = mini.render(cardRoot.element);
@@ -280,7 +281,11 @@ test("expanded Installed card surfaces exact registry lookup errors", async () =
 		domBridge: true,
 		domInstalledPackages: ["dsh-missing"],
 		bundlesValue: [{ name: "dsh-missing", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
-		installedValue: { plugins: [], errors: [{ package: "dsh-missing", error: "source returned HTTP 404" }] },
+		browseValue: {
+			plugins: [],
+			total: 0, page: 1, pageSize: 20, pageCount: 1,
+			sources: [{ id: "npm", name: "npm", type: "npm", health: { ok: false, error: "source returned HTTP 404" } }],
+		},
 	});
 	try {
 		await settle();
@@ -316,7 +321,9 @@ test("Installed card re-queries itself when source configuration becomes ready",
 		domBridge: true,
 		domInstalledPackages: [packageName],
 		bundlesValue: [{ name: packageName, installed: true, enabled: true, rows: [], overrides: [] }],
-		installedValue: () => available ? { plugins: [plugin], errors: [] } : { plugins: [], errors: [] },
+		browseValue: () => available
+			? { plugins: [plugin], total: 1, page: 1, pageSize: 20, pageCount: 1, sources: [] }
+			: { plugins: [], total: 0, page: 1, pageSize: 20, pageCount: 1, sources: [] },
 	});
 	try {
 		await settle();
@@ -335,7 +342,7 @@ test("Installed card re-queries itself when source configuration becomes ready",
 		await settle();
 		tree = mini.render(cardRoot.element);
 
-		const calls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/installed");
+		const calls = fixture.calls.filter((call) => call.endpoint === "plugin-sources/browse" && call.payload?.query === packageName);
 		assert.ok(calls.length >= 2);
 		byClass(tree, "pm-installed-expand")[0].props.onClick({ preventDefault() {}, stopPropagation() {} });
 		tree = mini.render(cardRoot.element);
