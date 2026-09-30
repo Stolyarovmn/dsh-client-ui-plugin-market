@@ -300,7 +300,7 @@ test("expanded Installed card surfaces exact registry lookup errors", async () =
 		const expand = byClass(tree, "pm-installed-expand")[0];
 		expand.props.onClick({ preventDefault() {}, stopPropagation() {} });
 		tree = mini.render(cardRoot.element);
-		assert.match(textOf(tree), /Registry lookup failed: source returned HTTP 404/);
+		assert.match(textOf(tree), /Registry lookup failed: npm: source returned HTTP 404/);
 	} finally { fixture.restore(); }
 });
 
