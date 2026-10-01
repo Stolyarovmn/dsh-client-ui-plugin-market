@@ -7,8 +7,10 @@ window.__ModuleLoader__.load({
     const PACKAGE = '@stolyarovmn/dsh-ui-registry-aggregator'
     const CHANNEL = '/api'
     const RPC_PREFIX = 'plugin-sources'
+    const HOST_ENTRY = 'registry-aggregator'
     const SOURCE_TYPES = ['npm', 'github', 'custom-json', 'corporate']
     let connection
+    let sourceConfigForm
 
     const en = {
       sources: 'Sources',
@@ -515,8 +517,17 @@ window.__ModuleLoader__.load({
       )
     }
 
-    function RegistryAggregator({ t, view, form }) {
+    function RegistryAggregator({ t, view }) {
       const [tab, setTab] = React.useState('sources')
+      const formState = React.useSyncExternalStore(
+        listener => sourceConfigForm.subscribe(listener),
+        () => sourceConfigForm.getSnapshot(),
+        () => sourceConfigForm.getSnapshot(),
+      )
+      const form = React.useMemo(() => ({
+        state: formState,
+        mutate: (operations, expectedRevision) => sourceConfigForm.mutate(operations, expectedRevision),
+      }), [formState])
       if (view !== 'page') return null
       const tabs = [
         ['sources', t('sources')],
@@ -561,15 +572,17 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'connection'],
+      inject: ['slots', 'locale', 'connection', 'configForms'],
       apply(ctx) {
         connection = ctx.connection
+        sourceConfigForm = ctx.configForms.get(HOST_ENTRY)
         ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'registry-aggregator: locale')
-        ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
-          name: 'plugins.bundle.config',
-          key: PACKAGE,
-          locale: NS,
-        }, RegistryAggregator))
+        ctx.effect(() => ctx.configForms.whileServed([HOST_ENTRY], () =>
+          ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
+            name: 'plugins.bundle.config',
+            key: PACKAGE,
+            locale: NS,
+          }, RegistryAggregator))), 'registry-aggregator: bundle page')
       },
     }
   },
