@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.3`  
+Current test version: `0.5.0-rc.4`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -17,17 +17,20 @@ Implemented in this milestone:
 - built-in npm and GitHub sources;
 - custom JSON and corporate catalog sources;
 - Host-side health checks and discovered-item counts;
-- per-source enable/disable, add, remove, refresh, latency, and error state;
+- per-source enable/disable, add, remove, refresh, copy-address, count, and error state;
+- DSH 0.2-native switch geometry and icon-action sizing copied under the plugin namespace;
 - authenticated Host RPC over the DSH Connection service;
 - bounded responses, request timeouts, redirect validation, DNS pinning, and private-network blocking;
 - no duplicate `Installed` view;
+- live federated Browse search across enabled npm, GitHub, custom JSON, and corporate sources;
+- popular/default Browse results when the query is empty;
 - no runtime import of Harness Client implementation packages;
 - Harness-provided React and DSH theme tokens.
 
 Not migrated yet:
 
-- Browse discovery results, filters, ranking, stars/downloads/freshness;
-- compatibility evidence;
+- advanced Browse filters, pagination, downloads enrichment, and compatibility evidence;
+- install/update actions from Browse;
 - update discovery and Update all.
 
 ## Architecture
@@ -46,7 +49,7 @@ Sources UI
   │    ├─ snapshot subscription
   │    └─ form.mutate(...) → Host Config.sources
   └─ ctx.connection.rpc.call
-       └─ /api/plugin-sources/{health,counts}
+       └─ /api/plugin-sources/{health,counts,browse}
             └─ Host source adapters
                  ├─ npm
                  ├─ GitHub

@@ -1,5 +1,5 @@
 import z from '@deepseek-ai/schemastery'
-import { countSources, healthSources, SOURCE_TYPES } from './source-core.js'
+import { browseSources, countSources, healthSources, SOURCE_TYPES } from './source-core.js'
 
 export const name = 'registry-aggregator'
 export const RPC_CHANNEL = '/api'
@@ -94,6 +94,15 @@ export function apply(ctx, config = {}) {
           }
           return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
         }
+        if (endpoint === 'browse') {
+          const query = typeof payload?.query === 'string' ? payload.query.trim().slice(0, 160) : ''
+          const limit = Number.isInteger(payload?.limit) ? Math.max(1, Math.min(payload.limit, 100)) : 60
+          const value = {
+            ...(await browseSources(sources, query, { ...requestOptions, limit })),
+            generatedAt: new Date().toISOString(),
+          }
+          return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
+        }
         return failure('plugin-sources/not-found', 'unknown endpoint ' + endpoint, { endpoint })
       } catch (error) {
         return failure('plugin-sources/invalid-request', error)
@@ -131,6 +140,10 @@ export function apply(ctx, config = {}) {
     rpcCtx.effect(
       () => rpcCtx.connection.fetch.register(route('counts')),
       'registry-aggregator: source counts route',
+    )
+    rpcCtx.effect(
+      () => rpcCtx.connection.fetch.register(route('browse')),
+      'registry-aggregator: browse route',
     )
   })
 }

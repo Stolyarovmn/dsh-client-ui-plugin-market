@@ -320,6 +320,152 @@ function githubRows(value) {
   return value.items.map(entry => entry?.full_name ?? entry?.name).filter(name => typeof name === 'string' && name.trim())
 }
 
+function cleanUrl(value) {
+  const candidate = text(value)
+  if (!candidate) return undefined
+  try {
+    const url = new URL(candidate.replace(/^git\+/, '').replace(/\.git$/u, ''))
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined
+    return url.toString().replace(/\/$/u, '')
+  } catch {
+    return undefined
+  }
+}
+
+function npmPlugin(entry, source) {
+  const pkg = entry?.package
+  const name = text(pkg?.name)
+  if (!name) return undefined
+  const repository = cleanUrl(pkg?.links?.repository)
+  const npmUrl = cleanUrl(pkg?.links?.npm)
+  return {
+    key: repository ? 'repo:' + repository.toLowerCase() : 'npm:' + name.toLowerCase(),
+    name,
+    packageName: name,
+    ...(text(pkg?.version) ? { version: text(pkg.version) } : {}),
+    ...(text(pkg?.description) ? { description: text(pkg.description) } : {}),
+    ...(repository ? { repository } : {}),
+    ...(npmUrl ? { npmUrl } : {}),
+    ...(text(pkg?.date) ? { updatedAt: text(pkg.date) } : {}),
+    ...(Number.isFinite(entry?.score?.final) ? { score: entry.score.final } : {}),
+    installSpec: name,
+    sources: [{ id: source.id, name: source.name, type: source.type }],
+  }
+}
+
+function githubPlugin(entry, source) {
+  const fullName = text(entry?.full_name)
+  if (!fullName) return undefined
+  const repository = cleanUrl(entry?.html_url) ?? ('https://github.com/' + fullName)
+  return {
+    key: 'repo:' + repository.toLowerCase(),
+    name: text(entry?.name) ?? fullName,
+    fullName,
+    ...(text(entry?.description) ? { description: text(entry.description) } : {}),
+    repository,
+    ...(Number.isFinite(entry?.stargazers_count) ? { stars: entry.stargazers_count } : {}),
+    ...(text(entry?.updated_at) ? { updatedAt: text(entry.updated_at) } : {}),
+    ...(Array.isArray(entry?.topics) ? { tags: entry.topics.filter(item => typeof item === 'string').slice(0, 12) } : {}),
+    installSpec: 'github:' + fullName,
+    sources: [{ id: source.id, name: source.name, type: source.type }],
+  }
+}
+
+function catalogPlugin(entry, source, index) {
+  if (typeof entry === 'string') {
+    const name = text(entry)
+    if (!name) return undefined
+    return {
+      key: source.id + ':' + name.toLowerCase(),
+      name,
+      packageName: name,
+      installSpec: name,
+      sources: [{ id: source.id, name: source.name, type: source.type }],
+    }
+  }
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return undefined
+  const name = text(entry.name ?? entry.package ?? entry.packageName ?? entry.id)
+  if (!name) return undefined
+  const repository = cleanUrl(entry.repository ?? entry.repo ?? entry.github)
+  const installSpec = text(entry.installSpec ?? entry.spec ?? entry.packageName ?? entry.package ?? name)
+  return {
+    key: repository ? 'repo:' + repository.toLowerCase() : source.id + ':' + name.toLowerCase() + ':' + index,
+    name,
+    ...(text(entry.packageName ?? entry.package) ? { packageName: text(entry.packageName ?? entry.package) } : {}),
+    ...(text(entry.version) ? { version: text(entry.version) } : {}),
+    ...(text(entry.description ?? entry.summary) ? { description: text(entry.description ?? entry.summary) } : {}),
+    ...(repository ? { repository } : {}),
+    ...(Number.isFinite(entry.stars) ? { stars: entry.stars } : {}),
+    ...(Number.isFinite(entry.downloads30d) ? { downloads30d: entry.downloads30d } : {}),
+    ...(text(entry.updatedAt ?? entry.updated_at ?? entry.date) ? { updatedAt: text(entry.updatedAt ?? entry.updated_at ?? entry.date) } : {}),
+    ...(Array.isArray(entry.tags) ? { tags: entry.tags.filter(item => typeof item === 'string').slice(0, 12) } : {}),
+    ...(installSpec ? { installSpec } : {}),
+    sources: [{ id: source.id, name: source.name, type: source.type }],
+  }
+}
+
+function pluginSearchText(plugin) {
+  return [
+    plugin.name,
+    plugin.packageName,
+    plugin.fullName,
+    plugin.description,
+    plugin.repository,
+    ...(plugin.tags ?? []),
+  ].filter(Boolean).join(' ').toLowerCase()
+}
+
+function mergeBrowsePlugins(plugins) {
+  const merged = new Map()
+  for (const plugin of plugins) {
+    if (!plugin?.key) continue
+    const existing = merged.get(plugin.key)
+    if (!existing) {
+      merged.set(plugin.key, plugin)
+      continue
+    }
+    const sources = [...(existing.sources ?? [])]
+    for (const source of plugin.sources ?? []) {
+      if (!sources.some(item => item.id === source.id)) sources.push(source)
+    }
+    merged.set(plugin.key, {
+      ...existing,
+      ...plugin,
+      name: existing.packageName ? existing.name : plugin.name,
+      ...(existing.packageName ? { packageName: existing.packageName } : {}),
+      ...(existing.version ? { version: existing.version } : {}),
+      ...(existing.description ? { description: existing.description } : {}),
+      ...(existing.repository ? { repository: existing.repository } : {}),
+      ...(existing.packageName && existing.installSpec ? { installSpec: existing.installSpec } : {}),
+      stars: Math.max(existing.stars ?? 0, plugin.stars ?? 0) || undefined,
+      downloads30d: Math.max(existing.downloads30d ?? 0, plugin.downloads30d ?? 0) || undefined,
+      score: Math.max(existing.score ?? 0, plugin.score ?? 0) || undefined,
+      sources,
+    })
+  }
+  return [...merged.values()]
+}
+
+function browseRank(plugin, query) {
+  const needle = text(query)?.toLowerCase()
+  let rank = 0
+  if (needle) {
+    const haystack = pluginSearchText(plugin)
+    if (plugin.name.toLowerCase() === needle) rank += 10000
+    else if (plugin.name.toLowerCase().startsWith(needle)) rank += 5000
+    else if (haystack.includes(needle)) rank += 1000
+  }
+  rank += Math.log10((plugin.stars ?? 0) + 1) * 120
+  rank += Math.log10((plugin.downloads30d ?? 0) + 1) * 80
+  rank += (plugin.score ?? 0) * 100
+  const freshness = Date.parse(plugin.updatedAt ?? '')
+  if (Number.isFinite(freshness)) {
+    const ageDays = Math.max(0, (Date.now() - freshness) / 86400000)
+    rank += Math.max(0, 50 - Math.min(50, ageDays / 30))
+  }
+  return rank
+}
+
 function uniqueCount(values) {
   return new Set(values.map(value => String(value).toLowerCase())).size
 }
@@ -399,7 +545,52 @@ export function createSourceAdapter(sourceInput, options = {}) {
     }
   }
 
-  return { source, health, count }
+  async function browse(query = '') {
+    const needle = text(query)
+    if (source.type === 'npm') {
+      const queries = needle
+        ? NPM_DISCOVERY_KEYWORDS.map(keyword => needle + ' keywords:' + keyword)
+        : NPM_DISCOVERY_KEYWORDS.map(keyword => 'keywords:' + keyword)
+      const batches = await Promise.all(queries.map(async search => {
+        const url = npmSearchUrl(source)
+        url.searchParams.set('text', search)
+        url.searchParams.set('size', String(Math.min(maxPlugins, needle ? 40 : 80)))
+        const value = await request(url)
+        if (!value || !Array.isArray(value.objects)) throw new Error('npm search returned an invalid response')
+        return value.objects.map(entry => npmPlugin(entry, source)).filter(Boolean)
+      }))
+      return mergeBrowsePlugins(batches.flat())
+    }
+
+    if (source.type === 'github') {
+      const queries = needle
+        ? [
+            needle + ' topic:deepseek-harness',
+            needle + ' topic:deepseek-harness-plugin',
+            needle + ' topic:dsh-plugin',
+          ]
+        : GITHUB_DISCOVERY_QUERIES
+      const batches = await Promise.all(queries.map(async search => {
+        const url = githubSearchUrl(source)
+        url.searchParams.set('q', search)
+        url.searchParams.set('per_page', String(Math.min(maxPlugins, needle ? 30 : 50)))
+        const value = await request(url)
+        if (!value || !Array.isArray(value.items)) throw new Error('GitHub search returned an invalid response')
+        return value.items.map(entry => githubPlugin(entry, source)).filter(Boolean)
+      }))
+      return mergeBrowsePlugins(batches.flat())
+    }
+
+    if (!source.url) throw new Error(source.type + ' source requires a catalog URL')
+    const rows = catalogRows(await request(source.url))
+      .map((entry, index) => catalogPlugin(entry, source, index))
+      .filter(Boolean)
+    if (!needle) return rows
+    const lower = needle.toLowerCase()
+    return rows.filter(plugin => pluginSearchText(plugin).includes(lower))
+  }
+
+  return { source, health, count, browse }
 }
 
 function validateSources(sourceInputs, options) {
@@ -447,4 +638,36 @@ export async function countSources(sourceInputs, options = {}) {
       return { source: attribution, error: String(error?.message ?? error) }
     }
   })
+}
+
+export async function browseSources(sourceInputs, query = '', options = {}) {
+  const sources = validateSources(sourceInputs, options).filter(source => source.enabled)
+  const limit = Math.max(1, Math.min(Number(options.limit) || 60, 100))
+  const rows = await mapConcurrent(sources, options.concurrency ?? 4, async source => {
+    const attribution = { id: source.id, name: source.name, type: source.type, ...(source.url ? { url: source.url } : {}) }
+    try {
+      return {
+        source: attribution,
+        ok: true,
+        plugins: await createSourceAdapter(source, options).browse(query),
+      }
+    } catch (error) {
+      return {
+        source: attribution,
+        ok: false,
+        error: String(error?.message ?? error),
+        plugins: [],
+      }
+    }
+  })
+
+  const plugins = mergeBrowsePlugins(rows.flatMap(row => row.plugins))
+    .map(plugin => ({ ...plugin, rank: browseRank(plugin, query) }))
+    .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
+
+  return {
+    plugins: plugins.slice(0, limit).map(({ rank: _rank, ...plugin }) => plugin),
+    total: plugins.length,
+    sources: rows.map(({ plugins: _plugins, ...row }) => row),
+  }
 }

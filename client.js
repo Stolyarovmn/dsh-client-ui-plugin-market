@@ -45,11 +45,18 @@ window.__ModuleLoader__.load({
       sourceReadOnly: 'Plugin source configuration is read-only.',
       sourceUnavailable: 'Plugin source configuration is unavailable.',
       sourceSaveFailed: 'Could not save source configuration.',
+      sourceCopy: 'Copy source address',
+      copied: 'Copied',
       browseTitle: 'Browse plugins',
-      browseLead: 'Search and ranking are migrated after the source layer is verified.',
+      browseLead: 'Search enabled registries and catalogs.',
       browsePlaceholder: 'Search plugins',
-      browseEmptyTitle: 'Discovery is the next migration step',
-      browseEmptyBody: 'Search, filters, stars, downloads, freshness, and compatibility evidence will be connected to these sources.',
+      browseRefresh: 'Refresh results',
+      browseLoading: 'Searching plugins…',
+      browsePopular: 'Popular plugins',
+      browseResults: '{count} results',
+      browseNoResults: 'No plugins found',
+      browseNoResultsBody: 'Try another query or enable another source.',
+      browseSourceFailures: 'Some sources could not be searched.',
       updatesTitle: 'Plugin updates',
       updatesLead: 'Update discovery complements the native DSH Plugin Manager instead of replacing it.',
       updatesEmptyTitle: 'Update discovery is not connected yet',
@@ -89,11 +96,18 @@ window.__ModuleLoader__.load({
       sourceReadOnly: '插件来源配置为只读。',
       sourceUnavailable: '插件来源配置不可用。',
       sourceSaveFailed: '无法保存来源配置。',
+      sourceCopy: '复制来源地址',
+      copied: '已复制',
       browseTitle: '浏览插件',
-      browseLead: '来源层验证后再迁移搜索与排序。',
+      browseLead: '搜索已启用的注册表和目录。',
       browsePlaceholder: '搜索插件',
-      browseEmptyTitle: '下一步迁移插件发现',
-      browseEmptyBody: '搜索、筛选、Stars、下载量、新鲜度和兼容性信息将连接到这些来源。',
+      browseRefresh: '刷新结果',
+      browseLoading: '正在搜索插件…',
+      browsePopular: '热门插件',
+      browseResults: '{count} 个结果',
+      browseNoResults: '未找到插件',
+      browseNoResultsBody: '尝试其他关键词或启用其他来源。',
+      browseSourceFailures: '部分来源无法搜索。',
       updatesTitle: '插件更新',
       updatesLead: '更新发现用于补充原生 DSH Plugin Manager，而不是替代它。',
       updatesEmptyTitle: '更新发现尚未连接',
@@ -112,7 +126,7 @@ window.__ModuleLoader__.load({
       '.ra-heading{margin:0;font-size:14px;line-height:20px;font-weight:600;color:var(--dsw-alias-label-primary)}',
       '.ra-lead{margin:2px 0 0;color:var(--dsw-alias-label-tertiary)}',
       '.ra-actions{display:flex;align-items:center;gap:8px;flex:none}',
-      '.ra-button{box-sizing:border-box;min-height:32px;padding:0 11px;border:.5px solid var(--dsw-alias-border-l3);border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}',
+      '.ra-button{box-sizing:border-box;min-height:32px;padding:0 11px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}',
       '.ra-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.ra-button:focus-visible,.ra-input:focus-visible,.ra-select:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:1px}',
       '.ra-button:disabled{opacity:.5;cursor:not-allowed}',
@@ -140,20 +154,40 @@ window.__ModuleLoader__.load({
       '.ra-dot[data-state=bad]{background:var(--dsw-alias-state-error-primary)}',
       '.ra-dot[data-state=wait]{background:var(--dsw-alias-state-warn-primary)}',
       '.ra-source-controls{display:flex;align-items:center;gap:6px;flex:none}',
-      '.ra-icon-button{display:grid;place-items:center;width:30px;height:30px;padding:0;border:0;border-radius:8px;background:transparent;color:var(--dsw-alias-label-tertiary);font:inherit;cursor:pointer}',
-      '.ra-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-      '.ra-icon-button[data-danger=true]:hover:not(:disabled){color:var(--dsw-alias-state-error-primary)}',
-      '.ra-switch{position:relative;width:34px;height:20px;padding:0;border:0;border-radius:999px;background:var(--dsw-alias-bg-layer-3);cursor:pointer}',
-      '.ra-switch::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--dsw-alias-label-primary-foreground);transition:transform .12s ease}',
-      '.ra-switch[aria-checked=true]{background:var(--dsw-alias-state-business-primary)}',
-      '.ra-switch[aria-checked=true]::after{transform:translateX(14px)}',
-      '.ra-switch:disabled{opacity:.45;cursor:not-allowed}',
-      '.ra-source-url{margin-top:10px;padding-top:9px;border-top:.5px solid var(--dsw-alias-border-l4);color:var(--dsw-alias-label-tertiary);font:11px/17px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.ra-icon-button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--dsw-radius-sm);background:transparent;color:var(--dsw-alias-label-caption);font:inherit;cursor:pointer}',
+      '.ra-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}',
+      '.ra-icon-button:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
+      '.ra-icon-button:disabled{opacity:.5;cursor:default}',
+      '.ra-icon-button[data-danger=true]{color:var(--dsw-alias-state-error-primary)}',
+      '.ra-icon-button[data-danger=true]:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger,var(--dsw-alias-interactive-bg-hover))}',
+      '.ra-switch{box-sizing:border-box;position:relative;flex:0 0 auto;width:36px;height:20px;padding:2px;border:0;border-radius:999px;corner-shape:round;background:var(--dsw-alias-border-l3);cursor:pointer}',
+      '.ra-switch[aria-checked=true]{background:var(--dsw-alias-brand-primary)}',
+      '.ra-switch:disabled{cursor:default;opacity:.5}',
+      '.ra-switch:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px}',
+      '.ra-switch-thumb{display:block;width:16px;height:16px;border-radius:50%;corner-shape:round;background:var(--dsw-alias-switch-thumb);transition:transform 120ms ease}',
+      '.ra-switch[aria-checked=true] .ra-switch-thumb{transform:translateX(16px);background:var(--dsw-alias-label-primary-foreground)}',
+      '.ra-source-url{display:flex;align-items:center;gap:4px;margin-top:10px;padding-top:9px;border-top:.5px solid var(--dsw-alias-border-l4)}',
+      '.ra-source-url code{min-width:0;flex:1;color:var(--dsw-alias-label-tertiary);font:11px/17px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.ra-meta-icon{display:inline-flex;align-items:center;gap:4px}',
+      '.ra-spin{animation:ra-spin .8s linear infinite}',
+      '@keyframes ra-spin{to{transform:rotate(360deg)}}',
       '.ra-source-error{margin-top:7px;color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px}',
       '.ra-empty{padding:18px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;color:var(--dsw-alias-label-tertiary)}',
       '.ra-empty strong{display:block;margin-bottom:3px;color:var(--dsw-alias-label-primary)}',
-      '.ra-search{box-sizing:border-box;width:100%;height:36px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:8px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}',
-      '.ra-search:disabled{opacity:.62;cursor:not-allowed}',
+      '.ra-search{box-sizing:border-box;width:100%;height:36px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}',
+      '.ra-search::placeholder{color:var(--dsw-alias-label-caption)}',
+      '.ra-browse-list{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}',
+      '.ra-plugin-card{display:flex;align-items:center;gap:14px;min-width:0;margin:0 -8px;padding:8px;border-radius:var(--dsw-radius-xl)}',
+      '.ra-plugin-card:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.ra-plugin-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);color:var(--dsw-alias-label-secondary)}',
+      '.ra-plugin-main{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}',
+      '.ra-plugin-title-row{display:flex;align-items:center;gap:8px;min-width:0}',
+      '.ra-plugin-title{font-size:13.5px;line-height:20px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.ra-plugin-version{flex:none;font-size:11px;line-height:18px;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-desc{font-size:12.5px;line-height:18px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.ra-plugin-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-link{flex:none;color:var(--dsw-alias-label-tertiary);text-decoration:none}',
+      '.ra-plugin-link:hover{color:var(--dsw-alias-link);text-decoration:underline;text-underline-offset:3px}',
       '@media(max-width:900px){.ra-source-grid{grid-template-columns:1fr}.ra-add-form{grid-template-columns:1fr 160px}.ra-add-form .ra-url-field{grid-column:1/-1}.ra-form-actions{grid-column:1/-1;justify-content:flex-end}}',
       '@media(max-width:560px){.ra-tabs{width:100%}.ra-tab{padding:0 8px}.ra-section-head{align-items:stretch;flex-direction:column}.ra-actions{justify-content:flex-end}.ra-add-form{grid-template-columns:1fr}.ra-add-form .ra-url-field,.ra-form-actions{grid-column:1}}',
     ].join('\n')
@@ -200,6 +234,100 @@ window.__ModuleLoader__.load({
       return value
     }
 
+    function SvgIcon({ size = 16, children, className, strokeWidth = 1 }) {
+      return h('svg', {
+        width: size,
+        height: size,
+        className,
+        viewBox: '0 0 16 16',
+        fill: 'none',
+        xmlns: 'http://www.w3.org/2000/svg',
+        'aria-hidden': true,
+        strokeWidth,
+      }, ...children)
+    }
+
+    function IconRefresh({ size = 16, className }) {
+      return h(SvgIcon, { size, className, children: [
+        h('path', { d: 'M14.5001 8C14.5 9.28552 14.1188 10.5422 13.4045 11.611C12.6903 12.6799 11.6752 13.5129 10.4875 14.0049C9.29982 14.4968 7.99295 14.6255 6.73212 14.3747C5.4713 14.124 4.31314 13.505 3.4041 12.596C2.49514 11.687 1.87614 10.5288 1.62537 9.26798C1.37459 8.00716 1.50331 6.70028 1.99525 5.51261C2.48719 4.32494 3.32025 3.30981 4.3891 2.59557C5.45795 1.88134 6.71458 1.50008 8.0001 1.5C9.9001 1.5 11.7001 2.3 13.0001 3.6L14.5001 5.1', stroke: 'currentColor' }),
+        h('path', { d: 'M14.4999 1.5V5.1H10.8999', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconPlus({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M8 2V14', stroke: 'currentColor' }),
+        h('path', { d: 'M2 8H14', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconClose({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M2.5 2.5L13.5 13.5', stroke: 'currentColor' }),
+        h('path', { d: 'M13.5 2.5L2.5 13.5', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconTrash({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M1.28149 3.88831H14.7187', stroke: 'currentColor' }),
+        h('path', { d: 'M5.41602 3.88833V2.47962C5.41602 2.29282 5.52492 2.11366 5.71876 1.98157C5.9126 1.84948 6.17551 1.77527 6.44964 1.77527H9.55053C9.82466 1.77527 10.0876 1.84948 10.2814 1.98157C10.4753 2.11366 10.5842 2.29282 10.5842 2.47962V3.88833', stroke: 'currentColor' }),
+        h('path', { d: 'M2.57349 3.88831L3.19366 13.2943C3.21937 13.5502 3.33952 13.7872 3.53065 13.9593C3.72178 14.1313 3.97016 14.2259 4.22729 14.2246H11.7728C12.0299 14.2259 12.2783 14.1313 12.4694 13.9593C12.6605 13.7872 12.7807 13.5502 12.8064 13.2943L13.4266 3.88831', stroke: 'currentColor' }),
+        h('path', { d: 'M6.44946 6.98926V11.1238', stroke: 'currentColor' }),
+        h('path', { d: 'M9.55054 6.98926V11.1238', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconCopy({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('rect', { x: '1.52075', y: '4.07373', width: '10.3932', height: '10.3932', rx: '2', stroke: 'currentColor' }),
+        h('path', { d: 'M11.9792 1.53296C13.36 1.53296 14.4792 2.65225 14.4792 4.03296V9.42847C14.4792 10.3756 13.9521 11.1987 13.1755 11.6228V10.3298C13.3652 10.0787 13.4792 9.7674 13.4792 9.42847V4.03296C13.4792 3.20453 12.8077 2.53296 11.9792 2.53296H6.58374C6.27966 2.53301 5.99684 2.6235 5.7605 2.77905H4.42358C4.85652 2.03463 5.66056 1.53304 6.58374 1.53296H11.9792Z', fill: 'currentColor' }),
+      ] })
+    }
+
+    function IconCheck({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M2.25 8.5L5.49732 11.7473C5.90519 12.1552 6.57263 12.1344 6.95426 11.7018L13.75 4', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconArchive({ size = 14 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M13.5 2.5H2.5C1.94772 2.5 1.5 2.94772 1.5 3.5V4.5C1.5 5.05228 1.94772 5.5 2.5 5.5H13.5C14.0523 5.5 14.5 5.05228 14.5 4.5V3.5C14.5 2.94772 14.0523 2.5 13.5 2.5Z', stroke: 'currentColor' }),
+        h('path', { d: 'M2.5 5.5V13.5C2.5 13.7652 2.60536 14.0196 2.79289 14.2071C2.98043 14.3946 3.23478 14.5 3.5 14.5H12.5C12.7652 14.5 13.0196 14.3946 13.2071 14.2071C13.3946 14.0196 13.5 13.7652 13.5 13.5V5.5', stroke: 'currentColor' }),
+        h('path', { d: 'M6.5 9.5H9.5', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconPlugin({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M3.16143 6.59068L1.75205 8.00006L3.10619 9.35419L2.39908 10.0613L0.832948 8.49517C0.559581 8.2218 0.559582 7.77831 0.832948 7.50494L2.45432 5.88357L3.16143 6.59068ZM8.49511 15.1671C8.22176 15.4405 7.77826 15.4404 7.50489 15.1671L5.93461 13.5968L6.64172 12.8897L8 14.248L9.40938 12.8386L10.1165 13.5457L8.49511 15.1671ZM15.1671 7.50494C15.4403 7.7782 15.4401 8.22179 15.1671 8.49517L13.652 10.0102L12.9449 9.30309L14.248 8.00006L12.8897 6.64178L13.5968 5.93467L15.1671 7.50494ZM9.35414 3.10624L8 1.7521L6.69696 3.05514L5.98986 2.34803L7.50489 0.833003C7.77828 0.559981 8.22186 0.559752 8.49511 0.833003L10.0612 2.39913L9.35414 3.10624Z', fill: 'currentColor' }),
+        h('circle', { cx: '8', cy: '8', r: '1.76221', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconButton({ label, icon, disabled = false, danger = false, onClick }) {
+      return h('button', {
+        type: 'button',
+        className: 'ra-icon-button',
+        title: label,
+        'aria-label': label,
+        'data-danger': danger || undefined,
+        disabled,
+        onClick,
+      }, icon)
+    }
+
+    async function copyText(value) {
+      if (!navigator.clipboard?.writeText) return false
+      try {
+        await navigator.clipboard.writeText(value)
+        return true
+      } catch {
+        return false
+      }
+    }
+
     function Empty({ title, body }) {
       return h('div', { className: 'ra-empty' },
         h('strong', null, title),
@@ -217,7 +345,7 @@ window.__ModuleLoader__.load({
         title: label,
         disabled,
         onClick: onChange,
-      })
+      }, h('span', { className: 'ra-switch-thumb' }))
     }
 
     function AddSource({ t, sources, busy, writable, onSave }) {
@@ -257,13 +385,12 @@ window.__ModuleLoader__.load({
       return h('section', { className: 'ra-panel' },
         h('div', { className: 'ra-add-head' },
           h('div', null, h('div', { className: 'ra-heading' }, t('sourceAddTitle'))),
-          h('button', {
-            type: 'button',
-            className: 'ra-button',
+          h(IconButton, {
+            label: open ? t('sourceCancel') : t('sourceAdd'),
             disabled: !writable || busy,
-            'aria-expanded': open,
             onClick: () => setOpen(value => !value),
-          }, open ? t('sourceCancel') : t('sourceAdd')),
+            icon: open ? h(IconClose, { size: 14 }) : h(IconPlus, { size: 14 }),
+          }),
         ),
         open ? h('form', { className: 'ra-add-form', onSubmit: submit },
           h('div', { className: 'ra-field' },
@@ -308,8 +435,13 @@ window.__ModuleLoader__.load({
             }),
           ),
           h('div', { className: 'ra-form-actions' },
-            h('button', { type: 'button', className: 'ra-button', disabled: busy, onClick: reset }, t('sourceCancel')),
-            h('button', { type: 'submit', className: 'ra-button ra-button-primary', disabled: busy }, t('sourceSave')),
+            h('button', {
+              type: 'submit',
+              className: 'ra-icon-button',
+              title: t('sourceSave'),
+              'aria-label': t('sourceSave'),
+              disabled: busy,
+            }, h(IconPlus, { size: 15 })),
           ),
           error ? h('p', { className: 'ra-error', role: 'alert' }, error) : null,
         ) : null,
@@ -317,6 +449,7 @@ window.__ModuleLoader__.load({
     }
 
     function SourceCard({ source, health, countState, t, busy, writable, onToggle, onRemove }) {
+      const [copied, setCopied] = React.useState(false)
       const disabled = source.enabled === false
       const state = disabled ? 'off' : health?.ok === true ? 'ok' : health?.ok === false ? 'bad' : 'wait'
       const statusText = disabled
@@ -327,16 +460,15 @@ window.__ModuleLoader__.load({
             ? t('sourceOffline')
             : t('sourceChecking')
       const count = Number.isFinite(countState?.count) ? countState.count : undefined
-      const countText = count === undefined
-        ? countState?.loading ? t('sourceCounting') : ''
-        : format(t,
-          source.type === 'github' ? 'sourceRepositories' : source.type === 'npm' ? 'sourcePackages' : 'sourceItems',
-          { count: String(count) + (countState?.truncated ? '+' : '') })
-      const latency = Number.isFinite(health?.latencyMs)
-        ? format(t, 'sourceLatency', { value: health.latencyMs })
-        : ''
       const endpoint = endpointFor(source)
       const error = health?.error || countState?.error
+
+      const copy = async () => {
+        const ok = await copyText(endpoint)
+        if (!ok) return
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1200)
+      }
 
       return h('article', { className: 'ra-source-card' },
         h('div', { className: 'ra-source-top' },
@@ -349,9 +481,15 @@ window.__ModuleLoader__.load({
                   h('span', { className: 'ra-dot', 'data-state': state }),
                   h('span', null, statusText),
                 ),
-                h('span', null, source.type),
-                latency ? h('span', null, latency) : null,
-                countText ? h('span', null, countText) : null,
+                countState?.loading
+                  ? h('span', { className: 'ra-meta-icon', title: t('sourceCounting') },
+                    h(IconRefresh, { size: 12, className: 'ra-spin' }))
+                  : count === undefined
+                    ? null
+                    : h('span', { className: 'ra-meta-icon' },
+                      h(IconArchive, { size: 12 }),
+                      h('span', null, String(count) + (countState?.truncated ? '+' : '')),
+                    ),
               ),
             ),
           ),
@@ -362,18 +500,23 @@ window.__ModuleLoader__.load({
               label: !disabled ? t('sourceEnabled') : t('sourceDisabled'),
               onChange: () => onToggle(source.id),
             }),
-            h('button', {
-              type: 'button',
-              className: 'ra-icon-button',
-              'data-danger': true,
-              title: t('sourceRemove'),
-              'aria-label': t('sourceRemove'),
+            h(IconButton, {
+              label: t('sourceRemove'),
+              danger: true,
               disabled: !writable || busy,
               onClick: () => onRemove(source.id),
-            }, '×'),
+              icon: h(IconTrash, { size: 15 }),
+            }),
           ),
         ),
-        h('div', { className: 'ra-source-url', title: endpoint }, endpoint),
+        h('div', { className: 'ra-source-url' },
+          h('code', { title: endpoint }, endpoint),
+          h(IconButton, {
+            label: copied ? t('copied') : t('sourceCopy'),
+            onClick: copy,
+            icon: copied ? h(IconCheck, { size: 14 }) : h(IconCopy, { size: 14 }),
+          }),
+        ),
         error ? h('div', { className: 'ra-source-error', title: error }, error) : null,
       )
     }
@@ -455,12 +598,12 @@ window.__ModuleLoader__.load({
             h('p', { className: 'ra-lead' }, t('sourcesLead')),
           ),
           h('div', { className: 'ra-actions' },
-            h('button', {
-              type: 'button',
-              className: 'ra-button',
+            h(IconButton, {
+              label: t('sourceRefresh'),
               disabled: healthState.loading || countState.loading,
               onClick: () => setRevision(value => value + 1),
-            }, t('sourceRefresh')),
+              icon: h(IconRefresh, { size: 16, className: healthState.loading || countState.loading ? 'ra-spin' : undefined }),
+            }),
           ),
         ),
         h(AddSource, { t, sources, busy, writable, onSave: mutate }),
@@ -491,19 +634,91 @@ window.__ModuleLoader__.load({
     }
 
     function BrowseView({ t }) {
+      const [query, setQuery] = React.useState('')
+      const [revision, setRevision] = React.useState(0)
+      const [state, setState] = React.useState({ loading: true, data: null, error: '' })
+
+      React.useEffect(() => {
+        const controller = new AbortController()
+        const timer = setTimeout(() => {
+          setState(current => ({ ...current, loading: true, error: '' }))
+          rpc('browse', { query, limit: 60 }, controller.signal).then(data => {
+            setState({ loading: false, data, error: '' })
+          }, error => {
+            if (!controller.signal.aborted) {
+              setState({ loading: false, data: null, error: String(error?.message ?? error) })
+            }
+          })
+        }, 220)
+        return () => {
+          clearTimeout(timer)
+          controller.abort()
+        }
+      }, [query, revision])
+
+      const plugins = state.data?.plugins ?? []
+      const sourceRows = state.data?.sources ?? []
+      const failedSources = sourceRows.filter(row => row?.ok === false)
+      const resultLabel = state.loading
+        ? t('browseLoading')
+        : query.trim()
+          ? format(t, 'browseResults', { count: state.data?.total ?? plugins.length })
+          : t('browsePopular')
+
       return h('section', { className: 'ra-section', 'aria-labelledby': 'ra-browse-title' },
-        h('div', null,
-          h('h3', { id: 'ra-browse-title', className: 'ra-heading' }, t('browseTitle')),
-          h('p', { className: 'ra-lead' }, t('browseLead')),
+        h('div', { className: 'ra-section-head' },
+          h('div', null,
+            h('h3', { id: 'ra-browse-title', className: 'ra-heading' }, t('browseTitle')),
+            h('p', { className: 'ra-lead' }, t('browseLead')),
+          ),
+          h('div', { className: 'ra-actions' },
+            h(IconButton, {
+              label: t('browseRefresh'),
+              disabled: state.loading,
+              onClick: () => setRevision(value => value + 1),
+              icon: h(IconRefresh, { size: 16, className: state.loading ? 'ra-spin' : undefined }),
+            }),
+          ),
         ),
         h('input', {
           className: 'ra-search',
           type: 'search',
-          disabled: true,
+          value: query,
           placeholder: t('browsePlaceholder'),
           'aria-label': t('browsePlaceholder'),
+          onChange: event => setQuery(event.target.value),
         }),
-        h(Empty, { title: t('browseEmptyTitle'), body: t('browseEmptyBody') }),
+        h('div', { className: 'ra-plugin-meta', role: 'status', 'aria-live': 'polite' }, resultLabel),
+        state.error ? h('p', { className: 'ra-notice', role: 'alert' }, state.error) : null,
+        failedSources.length ? h('p', { className: 'ra-notice' },
+          t('browseSourceFailures') + ' ' + failedSources.map(row => row?.source?.name ?? row?.source?.id).filter(Boolean).join(', '),
+        ) : null,
+        !state.loading && !state.error && plugins.length === 0
+          ? h(Empty, { title: t('browseNoResults'), body: t('browseNoResultsBody') })
+          : h('ul', { className: 'ra-browse-list' },
+            ...plugins.map(plugin => h('li', { key: plugin.key ?? plugin.installSpec ?? plugin.name, className: 'ra-plugin-card' },
+              h('span', { className: 'ra-plugin-icon', 'aria-hidden': true }, h(IconPlugin, { size: 16 })),
+              h('div', { className: 'ra-plugin-main' },
+                h('div', { className: 'ra-plugin-title-row' },
+                  h('span', { className: 'ra-plugin-title', title: plugin.name }, plugin.name),
+                  plugin.version ? h('span', { className: 'ra-plugin-version' }, plugin.version) : null,
+                ),
+                plugin.description ? h('div', { className: 'ra-plugin-desc', title: plugin.description }, plugin.description) : null,
+                h('div', { className: 'ra-plugin-meta' },
+                  ...(plugin.sources ?? []).map(source => h('span', { key: source.id }, source.name)),
+                  Number.isFinite(plugin.stars) ? h('span', null, '★ ' + plugin.stars) : null,
+                  plugin.installSpec ? h('code', null, plugin.installSpec) : null,
+                ),
+              ),
+              plugin.repository ? h('a', {
+                className: 'ra-plugin-link',
+                href: plugin.repository,
+                target: '_blank',
+                rel: 'noreferrer',
+                title: plugin.repository,
+              }, '↗') : null,
+            )),
+          ),
       )
     }
 

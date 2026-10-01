@@ -40,7 +40,18 @@ test('source RPC is Host-owned and client uses the Connection service', () => {
   assert.match(host, /connection\.fetch\.register/)
   assert.match(host, /route\('health'\)/)
   assert.match(host, /route\('counts'\)/)
+  assert.match(host, /route\('browse'\)/)
   assert.match(client, /connection\.rpc\.call/)
+  assert.match(client, /rpc\('browse'/)
+})
+
+test('copies the DSH 0.2 native switch geometry and uses icon actions', () => {
+  assert.match(client, /width:36px;height:20px;padding:2px/)
+  assert.match(client, /ra-switch-thumb/)
+  assert.match(client, /--dsw-alias-brand-primary/)
+  assert.match(client, /width:28px;height:28px/)
+  assert.match(client, /function IconRefresh/)
+  assert.match(client, /function IconCopy/)
 })
 
 test('styles use DSH theme tokens and no feature gradient', () => {
