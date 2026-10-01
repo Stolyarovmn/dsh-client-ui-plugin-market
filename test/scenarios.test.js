@@ -470,7 +470,8 @@ test("native Plugin Registry section renders below Installed with internal Sourc
 		assert.ok(byId(tree, "pm-search"));
 		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
 
-		const buttons = byClass(tree, "pm-native-section-tab");
+		const buttons = ["sources", "browse", "updates"].map((id) => byId(tree, `pm-native-tab-${id}`));
+		assert.ok(buttons.every(Boolean));
 		assert.deepEqual(buttons.map((button) => textOf(button).replace(/\s+/g, " ").trim()), ["Sources", "Browse", "Updates"]);
 
 		buttons[0].props.onClick();
@@ -480,7 +481,7 @@ test("native Plugin Registry section renders below Installed with internal Sourc
 		assert.match(textOf(tree), /Connected sources/);
 		assert.equal(values.get("dsh.registry-aggregator.plugin-section.v1"), "sources");
 
-		byClass(tree, "pm-native-section-tab")[2].props.onClick();
+		byId(tree, "pm-native-tab-updates").props.onClick();
 		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
 		await settle();
 		await settle();
@@ -522,7 +523,7 @@ test("Updates card performs a native package update without inspect", async () =
 		let tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
 		await settle();
 		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
-		byClass(tree, "pm-native-section-tab")[2].props.onClick();
+		byId(tree, "pm-native-tab-updates").props.onClick();
 		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
 		await settle();
 		await settle();
@@ -564,7 +565,7 @@ test("Update all runs sequentially and cancellation stops the remaining queue", 
 		let tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
 		await settle();
 		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
-		byClass(tree, "pm-native-section-tab")[2].props.onClick();
+		byId(tree, "pm-native-tab-updates").props.onClick();
 		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
 		await settle();
 		await settle();
@@ -628,7 +629,7 @@ test("source cards omit redundant Enabled text and label GitHub counts as reposi
 		const tree = fixture.render();
 		assert.equal(textOf(tree).includes("Enabled"), false);
 		assert.match(textOf(tree), /1 repositories/);
-		assert.equal(byClass(tree, "pm-status").length >= 1, true);
+		assert.ok(byClass(tree, "mock-state-dot").some((dot) => dot.props["data-state"] === "done"));
 	} finally { fixture.restore(); }
 });
 
