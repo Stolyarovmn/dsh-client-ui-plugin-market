@@ -274,6 +274,62 @@ test("shows an update badge on the matching native Installed card", async () => 
 	} finally { fixture.restore(); }
 });
 
+test("Installed update button starts the native update flow and can cancel it", async () => {
+	const plugin = {
+		identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+		name: "dsh-demo",
+		description: "Installed plugin",
+		version: "1.2.0",
+		tags: ["ui"],
+		evidence: { releaseChannel: "stable", installability: "bundle" },
+		install: { type: "npm", spec: "dsh-demo@1.2.0" },
+		sources: [{ id: "npm", name: "npm", type: "npm" }],
+	};
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		domBridge: true,
+		domInstalledPackages: ["dsh-demo"],
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+		installedValue: { plugins: [plugin], errors: [] },
+		installDelayMs: 45,
+	});
+	try {
+		await settle();
+		await settle();
+		const root = fixture.reactDomRoots.find((row) => row.container.attributes["data-registry-aggregator-installed-tools"] === "");
+		assert.ok(root);
+		const mini = new MiniReact({ document: fixture.document });
+		let tree = mini.render(root.element);
+		await settle();
+		tree = mini.render(root.element);
+
+		const update = byClass(tree, "pm-installed-update-badge")[0];
+		assert.ok(update);
+		assert.equal(update.props["aria-label"], "Update 1.2.0");
+		update.props.onClick({ preventDefault() {}, stopPropagation() {} });
+		await settle();
+
+		assert.equal(fixture.inspections.length, 0);
+		assert.equal(fixture.installs.length, 1);
+		assert.equal(fixture.installs[0].spec, "dsh-demo@1.2.0");
+		assert.equal(fixture.installs[0].options.enabled, true);
+		assert.equal(fixture.installs[0].options.registry, null);
+		assert.equal(typeof fixture.installs[0].options.requestId, "string");
+
+		tree = mini.render(root.element);
+		const cancel = byClass(tree, "pm-installed-update-cancel")[0];
+		assert.ok(cancel);
+		assert.equal(cancel.props["aria-label"], "Cancel update");
+		cancel.props.onClick({ preventDefault() {}, stopPropagation() {} });
+		await settle();
+		assert.deepEqual(fixture.cancellations, [fixture.installs[0].options.requestId]);
+
+		await settle(55);
+		tree = mini.render(root.element);
+		assert.equal(byClass(tree, "pm-installed-update-badge")[0].props["aria-label"], "Update 1.2.0");
+		assert.equal(textOf(tree).includes("Update failed"), false);
+	} finally { fixture.restore(); }
+});
+
 test("expanded Installed card surfaces exact registry lookup errors", async () => {
 	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
 		domBridge: true,
@@ -414,7 +470,8 @@ test("native Plugin Registry section renders below Installed with internal Sourc
 		assert.ok(byId(tree, "pm-search"));
 		assert.equal(textOf(tree).includes("Registry Aggregator"), false);
 
-		const buttons = byClass(tree, "pm-native-section-tab");
+		const buttons = ["sources", "browse", "updates"].map((id) => byId(tree, `pm-native-tab-${id}`));
+		assert.ok(buttons.every(Boolean));
 		assert.deepEqual(buttons.map((button) => textOf(button).replace(/\s+/g, " ").trim()), ["Sources", "Browse", "Updates"]);
 
 		buttons[0].props.onClick();
@@ -424,7 +481,7 @@ test("native Plugin Registry section renders below Installed with internal Sourc
 		assert.match(textOf(tree), /Connected sources/);
 		assert.equal(values.get("dsh.registry-aggregator.plugin-section.v1"), "sources");
 
-		byClass(tree, "pm-native-section-tab")[2].props.onClick();
+		byId(tree, "pm-native-tab-updates").props.onClick();
 		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
 		await settle();
 		await settle();
@@ -434,12 +491,103 @@ test("native Plugin Registry section renders below Installed with internal Sourc
 		assert.match(textOf(tree), /dsh-demo/);
 		assert.equal(textOf(tree).includes("dsh-current"), false);
 		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
+		const updateAction = byClass(tree, "pm-card-install")[0];
+		assert.ok(updateAction);
+		assert.equal(updateAction.props["aria-label"], "Update to 1.2.0");
+		assert.equal(updateAction.props.disabled, false);
+		assert.ok(byClass(tree, "pm-update-all")[0]);
 		assert.equal(values.get("dsh.registry-aggregator.plugin-section.v1"), "updates");
 	} finally {
 		fixture.restore();
 		if (previousStorage === undefined) delete globalThis.localStorage;
 		else globalThis.localStorage = previousStorage;
 	}
+});
+
+test("Updates card performs a native package update without inspect", async () => {
+	const plugin = {
+		identity: { package: "dsh-demo", fallback: "npm:dsh-demo" },
+		name: "dsh-demo",
+		description: "Update candidate",
+		version: "1.2.0",
+		tags: ["ui"],
+		evidence: { releaseChannel: "stable", installability: "bundle" },
+		install: { type: "npm", spec: "dsh-demo@1.2.0" },
+		sources: [{ id: "npm", name: "npm", type: "npm" }],
+	};
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [{ name: "dsh-demo", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] }],
+		installedValue: { plugins: [plugin], errors: [] },
+	});
+	try {
+		let tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		byId(tree, "pm-native-tab-updates").props.onClick();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+
+		const update = byClass(tree, "pm-card-install")[0];
+		assert.equal(update.props["aria-label"], "Update to 1.2.0");
+		await update.props.onClick();
+		await settle();
+
+		assert.equal(fixture.inspections.length, 0);
+		assert.equal(fixture.installs.length, 1);
+		assert.equal(fixture.installs[0].spec, "dsh-demo@1.2.0");
+		assert.equal(fixture.installs[0].options.enabled, true);
+		assert.equal(fixture.installs[0].options.registry, null);
+	} finally { fixture.restore(); }
+});
+
+test("Update all runs sequentially and cancellation stops the remaining queue", async () => {
+	const plugins = ["dsh-alpha", "dsh-beta"].map((name, index) => ({
+		identity: { package: name, fallback: `npm:${name}` },
+		name,
+		description: "Update candidate",
+		version: `1.${index + 1}.0`,
+		tags: ["ui"],
+		evidence: { releaseChannel: "stable", installability: "bundle" },
+		install: { type: "npm", spec: `${name}@1.${index + 1}.0` },
+		sources: [{ id: "npm", name: "npm", type: "npm" }],
+	}));
+	const fixture = await setup([{ id: "npm", name: "npm", type: "npm", enabled: true }], 2, {
+		bundlesValue: [
+			{ name: "dsh-alpha", version: "1.0.0", installed: true, enabled: true, rows: [], overrides: [] },
+			{ name: "dsh-beta", version: "1.0.0", installed: true, enabled: false, rows: [], overrides: [] },
+		],
+		installedValue: { plugins, errors: [] },
+		installDelayMs: 55,
+	});
+	try {
+		let tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		byId(tree, "pm-native-tab-updates").props.onClick();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		await settle();
+		await settle();
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+
+		const updateAll = byClass(tree, "pm-update-all")[0];
+		assert.ok(updateAll);
+		updateAll.props.onClick();
+		await settle();
+		assert.equal(fixture.installs.length, 1);
+
+		tree = fixture.mini.render({ type: fixture.listSection.component, props: { t: fixture.locale.bind("registry-aggregator") }, children: [] });
+		const cancel = byClass(tree, "pm-update-all-cancel")[0];
+		assert.ok(cancel);
+		cancel.props.onClick();
+		await settle();
+		assert.deepEqual(fixture.cancellations, [fixture.installs[0].options.requestId]);
+
+		await settle(70);
+		assert.equal(fixture.installs.length, 1);
+		assert.equal(fixture.inspections.length, 0);
+	} finally { fixture.restore(); }
 });
 
 test("adds a typed source through the durable settings scope", async () => {
@@ -481,7 +629,7 @@ test("source cards omit redundant Enabled text and label GitHub counts as reposi
 		const tree = fixture.render();
 		assert.equal(textOf(tree).includes("Enabled"), false);
 		assert.match(textOf(tree), /1 repositories/);
-		assert.equal(byClass(tree, "pm-status").length >= 1, true);
+		assert.ok(byClass(tree, "mock-state-dot").some((dot) => dot.props["data-state"] === "done"));
 	} finally { fixture.restore(); }
 });
 
@@ -1010,9 +1158,9 @@ test("Browse shows update available when discovered version is newer than the in
 
 		assert.match(textOf(tree), /Update available 1\.0\.0 → 1\.2\.0/);
 		const installed = byClass(tree, "pm-card-install")[0];
-		assert.equal(installed.props.disabled, true);
-		assert.equal(installed.props["data-state"], "installed");
-		assert.equal(installed.props["aria-label"], "Update available 1.0.0 → 1.2.0");
+		assert.equal(installed.props.disabled, false);
+		assert.equal(installed.props["data-state"], "update");
+		assert.equal(installed.props["aria-label"], "Update to 1.2.0");
 	} finally { fixture.restore(); }
 });
 

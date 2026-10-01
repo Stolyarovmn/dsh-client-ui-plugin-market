@@ -1,7 +1,7 @@
 {
 	"name": "@stolyarovmn/dsh-ui-registry-aggregator",
 	"description": "Federated plugin registry aggregator for DeepSeek Harness: combine trusted sources, search one index, and install through the native Plugin Manager.",
-	"version": "0.4.16",
+	"version": "0.4.17-rc.3",
 	"author": {
 		"name": "Stolyarovmn",
 		"url": "https://github.com/Stolyarovmn"
@@ -38,11 +38,11 @@
 		"federated-search"
 	],
 	"dependencies": {
-		"@deepseek-ai/dsh-client-connection": "0.1.7-rc.1",
+		"@deepseek-ai/dsh-client-connection": "0.1.7-rc.2",
 		"@deepseek-ai/schemastery": "^3.18.2",
 		"ipaddr.js": "^2.2.0",
 		"undici": "^7.16.0",
-		"@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.1",
+		"@deepseek-ai/dsh-client-ui-primitives": "0.1.7-rc.2",
 		"semver": "^7.8.5"
 	},
 	"dsh": {
@@ -63,8 +63,8 @@
 		"catalog": {
 			"category": "ui",
 			"summary": {
-				"en": "Registry Aggregator for DSH 0.1.7+: combine trusted plugin sources, search them as one index, and install through the native Plugin Manager.",
-				"zh": "DeepSeek Harness 0.1.7+ 插件注册源聚合器：聚合可信来源、统一搜索，并通过原生 Plugin Manager 安装。"
+				"en": "Registry Aggregator for DSH 0.1.7-rc.2+: combine trusted plugin sources, search them as one index, and install through the native Plugin Manager.",
+				"zh": "DeepSeek Harness 0.1.7-rc.2+ 插件注册源聚合器：聚合可信来源、统一搜索，并通过原生 Plugin Manager 安装。"
 			},
 			"capabilities": [
 				"slots",
@@ -79,7 +79,7 @@
 		"access": "public"
 	},
 	"peerDependencies": {
-		"@deepseek-ai/dsh": ">=0.1.7-rc.1 <0.2.0"
+		"@deepseek-ai/dsh": ">=0.1.7-rc.2 <0.2.0"
 	},
 	"icon": "./icon.svg",
 	"repository": {

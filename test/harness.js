@@ -327,7 +327,26 @@ export async function loadBundle({ resolver, domBridge = false } = {}) {
 	};
 	const Icon = (props) => ({ type: "svg", props, children: [] });
 	const primitives = {
-		Button: (props) => ({ type: "button", props, children: childrenOf(props) }),
+		Button: (props) => ({ type: "button", props, children: [props.icon, ...childrenOf(props)].filter(Boolean) }),
+		Input: (props) => ({ type: "input", props, children: [props.icon].filter(Boolean) }),
+		Tag: (props) => ({ type: "span", props, children: childrenOf(props) }),
+		Pill: (props) => ({ type: props.onClick ? "button" : "span", props, children: childrenOf(props) }),
+		SegmentedTabs: (props) => ({
+			type: "div",
+			props: { className: props.className, role: "tablist", "aria-label": props.label },
+			children: (props.items ?? []).map((item) => ({
+				type: "button",
+				props: {
+					id: item.id, role: "tab", "aria-selected": item.value === props.value,
+					"aria-controls": item.panelId, tabIndex: item.value === props.value ? 0 : -1,
+					onClick: () => props.onChange?.(item.value),
+				},
+				children: [item.label],
+			})),
+		}),
+		Tooltip: (props) => props.children,
+		LinkIconRegular: Icon,
+		writeClipboard: async () => true,
 		Modal: (props) => ({ type: "div", props: { ...props, role: "dialog" }, children: childrenOf(props) }),
 		Switch: (props) => ({ type: "button", props: { ...props, role: "switch", "aria-checked": props.checked }, children: [] }),
 		Menu: (props) => ({
