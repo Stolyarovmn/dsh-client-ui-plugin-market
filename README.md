@@ -29,19 +29,17 @@ Search across connected sources, filter results, inspect evidence, and install a
 - **Fallback command** — installable results also expose their `dsh plugin add …` command.
 - **Responsive popularity metadata** — missing GitHub star counts are hydrated after Browse renders, so GitHub metadata cannot block the initial search result.
 
-## What's new in 0.4.16
+## What's new in 0.4.17
 
-0.4.16 brings Registry Aggregator directly into the native DSH Plugins page and hardens Installed/Browse metadata behavior.
+0.4.17 promotes the tested `0.4.17-rc.3` build and adds native plugin update workflows while preserving the Plugins-page integration introduced in 0.4.16.
 
-- Registry UI self-embeds below native **Installed** on stock DSH; no manual DSH UI patch is required.
-- Native Installed cards gain expandable registry metadata and advisory update badges without replacing DSH controls.
-- Installed metadata uses exact npm package lookup with 30-day downloads, GitHub stars/freshness, bundle verification, and DSH compatibility.
-- Expanded Installed cards reuse the same visual card primitives as Browse while suppressing information already shown by the native card.
-- Missing GitHub stars are resolved before **Stars** sorting, so displayed values and server-side order stay consistent.
-- GitHub stars use the same warning/yellow treatment in Browse and Installed.
-- Browse preferences persist across openings, including query, filters, ordered sorts, and page size.
-- DSH compatibility is resolved from the active runtime and declared DSH peer ranges.
-- Source metadata/evidence caches are bounded and identical in-flight requests are coalesced.
+- Installed bundles and Registry **Updates** cards can start updates through the native DSH Plugin Manager.
+- **Update all** runs available updates sequentially and can cancel the active/remaining queue.
+- Individual update operations expose native progress/cancellation through Plugin Manager request ids.
+- Installed Browse results with a newer discovered version expose **Update** instead of a disabled install action.
+- **Add a new source** is substantially more compact, with icon-only Cancel/Add actions inline with the fields on desktop.
+- Registry controls, borders, radii, links, and state colors are aligned with the DSH `0.1.7-rc.2` visual language used by this release.
+- DSH runtime dependencies, declared compatibility, and the install smoke test target `0.1.7-rc.2`.
 
 Tested with DSH `0.1.7-rc.2`.
 
