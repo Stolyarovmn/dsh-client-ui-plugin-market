@@ -1,18 +1,57 @@
-# Registry Aggregator for DeepSeek Harness
+# Registry Aggregator for DeepSeek Harness 0.2.x
 
-This repository is being reorganized for the DSH 0.2.x plugin architecture.
+This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-## Branch policy
+Current test version: `0.5.0-rc.1`  
+Target: DSH `v0.2.0-rc.2`
 
-- `main` — neutral project landing branch. It intentionally contains no installable plugin package or legacy runtime implementation.
-- `dsh-0.2.0` — active development line targeting DSH `v0.2.0-rc.2` and newer compatible 0.2.x releases. No backward compatibility with DSH 0.1.x is carried into this branch.
-- `dsh-0.1.7` — historical/maintenance line for DSH 0.1.7.x. The preserved stable baseline is Registry Aggregator `v0.4.17`, tested with DSH `0.1.7-rc.2`.
-- `dsh-0.1.5` — historical compatibility line for DSH `0.1.5-rc.3`.
+## Current milestone
 
-Published releases and tags remain the authoritative snapshots for released versions.
+The first milestone is intentionally small and installable:
 
-## Development policy
+- native `plugins.bundle.config` integration;
+- `Sources | Browse | Updates` navigation;
+- no duplicate `Installed` view;
+- no runtime import of Harness Client implementation packages;
+- Harness-provided React only;
+- DSH theme tokens only for ordinary UI styling;
+- plugin lifecycle remains owned by the native DSH Plugin Manager.
 
-For each DSH target, use the `cordis-plugin-development` skill, references, templates, live Slots/Theme inspection, and native Harness UI from that exact DSH version. Do not carry old Client API workarounds or visual assumptions into a newer DSH release without re-verification.
+The source adapters, discovery engine, ranking/evidence, and update orchestration are migrated only after this skeleton is verified in the real DSH `0.2.0-rc.2` UI.
 
-Do not install the plugin from `main`. Use the branch or published release that matches the target DSH version.
+## Architecture direction
+
+```text
+DSH Plugins
+  └─ Installed
+      └─ @stolyarovmn/dsh-ui-registry-aggregator
+          └─ plugins.bundle.config
+              ├─ Sources
+              ├─ Browse
+              └─ Updates
+
+Install / enable / disable / uninstall
+  └─ native DSH Plugin Manager
+
+Registry Aggregator
+  └─ discovery + registry evidence + update discovery
+```
+
+## Test from GitHub
+
+Use a commit SHA from this branch rather than publishing a test package:
+
+```powershell
+$DSH_VERSION = "0.2.0-rc.2"
+$COMMIT = "<commit-sha>"
+pnpm dlx "@deepseek-ai/dsh@$DSH_VERSION" plugin --profile registry-test add "github:Stolyarovmn/dsh-ui-registry-aggregator#$COMMIT"
+pnpm dlx "@deepseek-ai/dsh@$DSH_VERSION" registry-test
+```
+
+Then open **Plugins → Installed → Registry Aggregator** and verify all three tabs in the real Harness UI.
+
+## Historical lines
+
+- `dsh-0.1.7` — stable `v0.4.17` line for DSH `0.1.7-rc.2`.
+- `dsh-0.1.5` — historical DSH `0.1.5-rc.3` compatibility line.
+- `main` — neutral project landing branch.
