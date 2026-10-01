@@ -173,7 +173,7 @@ The order in which criteria are enabled defines priority.
 
 ## Compatibility
 
-- DSH: `>=0.1.7-rc.1 <0.2.0`
+- DSH: `>=0.1.7-rc.2 <0.2.0`
 - Tested with DSH `0.1.7-rc.2`
 
 Exact package compatibility is read from package metadata when a publisher declares it. Installation is validated again by the native DSH Plugin Manager.
