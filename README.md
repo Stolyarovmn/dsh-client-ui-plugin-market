@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.5`  
+Current test version: `0.5.0-rc.6`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -23,8 +23,9 @@ Implemented in this milestone:
 - bounded responses, request timeouts, redirect validation, DNS pinning, and private-network blocking;
 - no duplicate `Installed` view;
 - live federated Browse search across enabled npm, GitHub, custom JSON, and corporate sources;
-- source/release/freshness/tag filters, multi-source metadata, sorting and 20/50/100 pagination;
-- npm 30-day download enrichment plus GitHub stars when available;
+- compact icon-led source/release/freshness/tag/page-size filters, multi-source metadata, and 20/50/100 pagination;
+- combinable multi-sort criteria for relevance, stars, downloads, freshness, and name with per-criterion direction and priority;
+- npm 30-day download enrichment plus GitHub stars when available; GitHub-only entries intentionally have no npm download count;
 - popular/default Browse results when the query is empty;
 - real npm/GitHub source marks and a package icon exposed through the DSH 0.2 manifest contract;
 - horizontal layout containment for narrow Plugin Manager detail panes;

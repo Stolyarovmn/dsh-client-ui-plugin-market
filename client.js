@@ -65,6 +65,10 @@ window.__ModuleLoader__.load({
       sortDownloads: 'Downloads',
       sortFreshness: 'Freshness',
       sortName: 'Name',
+      sortPriority: 'Sort priority {priority}',
+      sortOff: 'Not active',
+      sortAsc: 'Ascending',
+      sortDesc: 'Descending',
       filterRelease: 'Release',
       releaseAll: 'All releases',
       releaseStable: 'Stable only',
@@ -140,6 +144,10 @@ window.__ModuleLoader__.load({
       sortDownloads: '下载量',
       sortFreshness: '新鲜度',
       sortName: '名称',
+      sortPriority: '排序优先级 {priority}',
+      sortOff: '未启用',
+      sortAsc: '升序',
+      sortDesc: '降序',
       filterRelease: '版本',
       releaseAll: '全部版本',
       releaseStable: '仅稳定版',
@@ -224,11 +232,21 @@ window.__ModuleLoader__.load({
       '.ra-empty strong{display:block;margin-bottom:3px;color:var(--dsw-alias-label-primary)}',
       '.ra-search{box-sizing:border-box;min-width:0;max-width:100%;width:100%;height:36px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}',
       '.ra-search::placeholder{color:var(--dsw-alias-label-caption)}',
-      '.ra-filter-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;min-width:0}',
-      '.ra-filter{display:grid;gap:3px;min-width:0}',
-      '.ra-filter-label{font-size:10px;line-height:14px;color:var(--dsw-alias-label-caption)}',
-      '.ra-filter-select{box-sizing:border-box;height:30px;max-width:180px;padding:0 24px 0 8px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px}',
-      '.ra-filter-select:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
+      '.ra-filter-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}',
+      '.ra-compact-filter{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 4px 0 7px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-tertiary)}',
+      '.ra-compact-filter[data-active=true]{background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-border-l4)}',
+      '.ra-compact-filter-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 14px;width:14px;height:14px}',
+      '.ra-compact-filter select{height:27px;max-width:132px;padding:0 18px 0 2px;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-secondary);font:500 11px/1 inherit}',
+      '.ra-sort-row{display:inline-flex;align-items:center;gap:3px;padding:2px;border:.5px solid var(--dsw-alias-border-l3);border-radius:9px;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-bg-layer-2))}',
+      '.ra-sort-criterion{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:30px;height:26px;padding:0 6px;border:.5px solid transparent;border-radius:7px;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/1 inherit;cursor:pointer}',
+      '.ra-sort-criterion:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}',
+      '.ra-sort-criterion[data-active=true]{border-color:var(--dsw-alias-border-l3);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary)}',
+      '.ra-sort-criterion:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
+      '.ra-sort-symbol{display:inline-flex;align-items:center;justify-content:center;min-width:14px;height:14px}',
+      '.ra-sort-direction{display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-caption);font-size:9px;line-height:1}',
+      '.ra-sort-criterion[data-active=true] .ra-sort-direction{color:var(--dsw-alias-brand-primary)}',
+      '.ra-sort-priority{position:absolute;top:-5px;right:-4px;display:flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:99px;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground);font:700 8px/13px ui-monospace,SFMono-Regular,Consolas,monospace}',
+      '.ra-star{color:var(--dsw-alias-state-warn-primary);font-weight:800}',
       '.ra-browse-list{display:flex;flex-direction:column;gap:2px;box-sizing:border-box;min-width:0;max-width:100%;margin:0;padding:0;overflow:hidden;list-style:none}',
       '.ra-plugin-card{display:flex;align-items:center;gap:14px;box-sizing:border-box;min-width:0;max-width:100%;width:100%;margin:0;padding:8px;border-radius:var(--dsw-radius-xl)}',
       '.ra-plugin-card:hover{background:var(--dsw-alias-interactive-bg-hover)}',
@@ -236,9 +254,11 @@ window.__ModuleLoader__.load({
       '.ra-plugin-main{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}',
       '.ra-plugin-title-row{display:flex;align-items:center;gap:8px;min-width:0}',
       '.ra-plugin-title{font-size:13.5px;line-height:20px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.ra-plugin-version{flex:none;font-size:11px;line-height:18px;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-version{display:inline-flex;align-items:center;flex:none;font:500 10px/16px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--dsw-alias-label-caption)}',
       '.ra-plugin-desc{font-size:12.5px;line-height:18px;color:var(--dsw-alias-label-tertiary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}',
-      '.ra-plugin-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-stats{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0;margin-top:1px;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0;margin-top:2px}',
       '.ra-plugin-meta-item{display:inline-flex;align-items:center;gap:4px;min-width:0;white-space:nowrap}',
       '.ra-source-mark{display:inline-flex;align-items:center;justify-content:center;flex:none;color:currentColor}',
       '.ra-tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border:.5px solid var(--dsw-alias-border-l3);border-radius:999px;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:1;white-space:nowrap}',
@@ -328,6 +348,44 @@ window.__ModuleLoader__.load({
         }, h('path', { d: path, fill: 'currentColor' }))
       }
       return type === 'corporate' ? h(IconPlugin, { size }) : h(IconArchive, { size })
+    }
+
+    function IconClock({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M8 14C11.3137 14 14 11.3137 14 8C14 4.68629 11.3137 2 8 2C4.68629 2 2 4.68629 2 8C2 11.3137 4.68629 14 8 14Z', stroke: 'currentColor' }),
+        h('path', { d: 'M8 4.31V8.46L11 10.08', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconDatabase({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('ellipse', { cx: '8', cy: '3.8', rx: '6', ry: '2.7', stroke: 'currentColor' }),
+        h('path', { d: 'M2 3.8V11.8C2 13.3 4.7 14.9 8 14.9C11.3 14.9 14 13.3 14 11.8V3.8', stroke: 'currentColor' }),
+        h('path', { d: 'M2 7.8C2 9.3 4.7 10.8 8 10.8C11.3 10.8 14 9.3 14 7.8', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconTag({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M2 3.5V7.1L8.9 14L14 8.9L7.1 2H3.5C2.7 2 2 2.7 2 3.5Z', stroke: 'currentColor' }),
+        h('circle', { cx: '5.1', cy: '5.1', r: '1', fill: 'currentColor' }),
+      ] })
+    }
+
+    function IconList({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M5 4H14M5 8H14M5 12H14', stroke: 'currentColor' }),
+        h('circle', { cx: '2.2', cy: '4', r: '.7', fill: 'currentColor' }),
+        h('circle', { cx: '2.2', cy: '8', r: '.7', fill: 'currentColor' }),
+        h('circle', { cx: '2.2', cy: '12', r: '.7', fill: 'currentColor' }),
+      ] })
+    }
+
+    function IconSearch({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('circle', { cx: '7', cy: '7', r: '4.5', stroke: 'currentColor' }),
+        h('path', { d: 'M10.5 10.5L14 14', stroke: 'currentColor' }),
+      ] })
     }
 
     function IconDownload({ size = 16 }) {
@@ -752,7 +810,7 @@ window.__ModuleLoader__.load({
       const [query, setQuery] = React.useState('')
       const [revision, setRevision] = React.useState(0)
       const [sourceFilter, setSourceFilter] = React.useState('all')
-      const [sort, setSort] = React.useState('relevance')
+      const [sorts, setSorts] = React.useState([])
       const [releaseFilter, setReleaseFilter] = React.useState('all')
       const [freshness, setFreshness] = React.useState('any')
       const [tagFilter, setTagFilter] = React.useState('all')
@@ -778,13 +836,15 @@ window.__ModuleLoader__.load({
         }
       }, [query, revision])
 
-      React.useEffect(() => { setPage(1) }, [query, sourceFilter, sort, releaseFilter, freshness, tagFilter, pageSize])
+      const sortSignature = sorts.map(item => item.key + ':' + item.direction).join('|')
+      React.useEffect(() => { setPage(1) }, [query, sourceFilter, sortSignature, releaseFilter, freshness, tagFilter, pageSize])
 
       const plugins = state.data?.plugins ?? []
       const sourceRows = state.data?.sources ?? []
       const failedSources = sourceRows.filter(row => row?.ok === false)
       const availableSources = [...new Map(plugins.flatMap(plugin => plugin.sources ?? []).map(source => [source.type, source])).values()]
       const availableTags = [...new Set(plugins.flatMap(plugin => plugin.tags ?? []).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+      const baseOrder = new Map(plugins.map((plugin, index) => [plugin.key ?? plugin.installSpec ?? plugin.name, index]))
 
       const filtered = plugins.filter(plugin => {
         if (sourceFilter !== 'all' && !(plugin.sources ?? []).some(source => source.type === sourceFilter)) return false
@@ -801,11 +861,41 @@ window.__ModuleLoader__.load({
         return true
       })
 
+      const valueForSort = (plugin, key) => {
+        if (key === 'stars') return plugin.stars ?? 0
+        if (key === 'downloads') return plugin.downloads30d ?? 0
+        if (key === 'freshness') return Date.parse(plugin.updatedAt ?? '') || 0
+        if (key === 'name') return plugin.name.toLocaleLowerCase()
+        return baseOrder.get(plugin.key ?? plugin.installSpec ?? plugin.name) ?? Number.MAX_SAFE_INTEGER
+      }
+
       const sorted = [...filtered]
-      if (sort === 'stars') sorted.sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0) || a.name.localeCompare(b.name))
-      else if (sort === 'downloads') sorted.sort((a, b) => (b.downloads30d ?? 0) - (a.downloads30d ?? 0) || a.name.localeCompare(b.name))
-      else if (sort === 'freshness') sorted.sort((a, b) => (Date.parse(b.updatedAt ?? '') || 0) - (Date.parse(a.updatedAt ?? '') || 0) || a.name.localeCompare(b.name))
-      else if (sort === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name))
+      if (sorts.length) {
+        sorted.sort((a, b) => {
+          for (const criterion of sorts) {
+            const left = valueForSort(a, criterion.key)
+            const right = valueForSort(b, criterion.key)
+            let delta
+            if (typeof left === 'string' || typeof right === 'string') delta = String(left).localeCompare(String(right))
+            else delta = left - right
+            if (delta !== 0) return criterion.direction === 'asc' ? delta : -delta
+          }
+          return (baseOrder.get(a.key ?? a.installSpec ?? a.name) ?? 0) - (baseOrder.get(b.key ?? b.installSpec ?? b.name) ?? 0)
+        })
+      }
+
+      const cycleSort = key => {
+        setSorts(current => {
+          const index = current.findIndex(item => item.key === key)
+          if (index < 0) return [...current, { key, direction: key === 'name' ? 'asc' : 'desc' }]
+          if (current[index].direction === (key === 'name' ? 'asc' : 'desc')) {
+            return current.map((item, at) => at === index
+              ? { ...item, direction: key === 'name' ? 'desc' : 'asc' }
+              : item)
+          }
+          return current.filter((_, at) => at !== index)
+        })
+      }
 
       const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
       const currentPage = Math.min(page, pageCount)
@@ -816,14 +906,41 @@ window.__ModuleLoader__.load({
           ? format(t, 'browseResults', { count: sorted.length })
           : t('browsePopular')
 
-      const filter = (label, value, onChange, options) => h('label', { className: 'ra-filter' },
-        h('span', { className: 'ra-filter-label' }, label),
+      const compactFilter = (label, icon, value, onChange, options, active = false) => h('label', {
+        className: 'ra-compact-filter',
+        'data-active': active || undefined,
+        title: label,
+      },
+        h('span', { className: 'ra-compact-filter-icon', 'aria-hidden': true }, icon),
         h('select', {
-          className: 'ra-filter-select',
           value,
+          'aria-label': label,
           onChange: event => onChange(event.target.value),
         }, ...options.map(option => h('option', { key: option.value, value: option.value }, option.label))),
       )
+
+      const sortCriterion = (key, label, icon) => {
+        const index = sorts.findIndex(item => item.key === key)
+        const active = index >= 0
+        const direction = active ? sorts[index].direction : undefined
+        const stateLabel = active ? t(direction === 'asc' ? 'sortAsc' : 'sortDesc') : t('sortOff')
+        const title = active
+          ? label + ' · ' + stateLabel + ' · ' + format(t, 'sortPriority', { priority: index + 1 })
+          : label + ' · ' + stateLabel
+        return h('button', {
+          key,
+          type: 'button',
+          className: 'ra-sort-criterion',
+          'data-active': active || undefined,
+          title,
+          'aria-label': title,
+          onClick: () => cycleSort(key),
+        },
+          h('span', { className: 'ra-sort-symbol' }, icon),
+          active ? h('span', { className: 'ra-sort-direction', 'aria-hidden': true }, direction === 'asc' ? '↑' : '↓') : null,
+          active ? h('span', { className: 'ra-sort-priority', 'aria-hidden': true }, String(index + 1)) : null,
+        )
+      }
 
       const pageButtons = []
       const from = Math.max(1, Math.min(currentPage - 2, pageCount - 4))
@@ -863,37 +980,37 @@ window.__ModuleLoader__.load({
           onChange: event => setQuery(event.target.value),
         }),
         h('div', { className: 'ra-filter-row' },
-          filter(t('filterSource'), sourceFilter, setSourceFilter, [
+          compactFilter(t('filterSource'), h(IconDatabase, { size: 14 }), sourceFilter, setSourceFilter, [
             { value: 'all', label: t('filterAllSources') },
             ...availableSources.map(source => ({ value: source.type, label: source.name })),
-          ]),
-          filter(t('filterSort'), sort, setSort, [
-            { value: 'relevance', label: t('sortRelevance') },
-            { value: 'stars', label: t('sortStars') },
-            { value: 'downloads', label: t('sortDownloads') },
-            { value: 'freshness', label: t('sortFreshness') },
-            { value: 'name', label: t('sortName') },
-          ]),
-          filter(t('filterRelease'), releaseFilter, setReleaseFilter, [
+          ], sourceFilter !== 'all'),
+          compactFilter(t('filterRelease'), h(IconArchive, { size: 14 }), releaseFilter, setReleaseFilter, [
             { value: 'all', label: t('releaseAll') },
             { value: 'stable', label: t('releaseStable') },
             { value: 'prerelease', label: t('releasePrerelease') },
-          ]),
-          filter(t('filterFreshness'), freshness, setFreshness, [
+          ], releaseFilter !== 'all'),
+          compactFilter(t('filterFreshness'), h(IconClock, { size: 14 }), freshness, setFreshness, [
             { value: 'any', label: t('freshnessAny') },
-            { value: '30', label: t('freshness30') },
-            { value: '90', label: t('freshness90') },
-            { value: '365', label: t('freshness365') },
-          ]),
-          filter(t('filterTag'), tagFilter, setTagFilter, [
+            { value: '30', label: '30d' },
+            { value: '90', label: '90d' },
+            { value: '365', label: '1y' },
+          ], freshness !== 'any'),
+          compactFilter(t('filterTag'), h(IconTag, { size: 14 }), tagFilter, setTagFilter, [
             { value: 'all', label: t('filterAllTags') },
             ...availableTags.map(tag => ({ value: tag, label: tag })),
-          ]),
-          filter(t('pageSize'), String(pageSize), value => setPageSize(Number(value)), [
+          ], tagFilter !== 'all'),
+          h('div', { className: 'ra-sort-row', role: 'group', 'aria-label': t('filterSort') },
+            sortCriterion('relevance', t('sortRelevance'), h(IconSearch, { size: 13 })),
+            sortCriterion('stars', t('sortStars'), h('span', { className: 'ra-star' }, '★')),
+            sortCriterion('downloads', t('sortDownloads'), h(IconDownload, { size: 13 })),
+            sortCriterion('freshness', t('sortFreshness'), h(IconClock, { size: 13 })),
+            sortCriterion('name', t('sortName'), h('span', null, 'A')),
+          ),
+          compactFilter(t('pageSize'), h(IconList, { size: 14 }), String(pageSize), value => setPageSize(Number(value)), [
             { value: '20', label: '20' },
             { value: '50', label: '50' },
             { value: '100', label: '100' },
-          ]),
+          ], pageSize !== 20),
         ),
         h('div', { className: 'ra-plugin-meta', role: 'status', 'aria-live': 'polite' }, resultLabel),
         state.error ? h('p', { className: 'ra-notice', role: 'alert' }, state.error) : null,
@@ -911,22 +1028,28 @@ window.__ModuleLoader__.load({
                 h('div', { className: 'ra-plugin-main' },
                   h('div', { className: 'ra-plugin-title-row' },
                     h('span', { className: 'ra-plugin-title', title: plugin.name }, plugin.name),
-                    plugin.version ? h('span', { className: 'ra-plugin-version' }, plugin.version) : null,
-                    prerelease ? h('span', { className: 'ra-tag' }, t('prerelease')) : null,
                   ),
                   plugin.description ? h('div', { className: 'ra-plugin-desc', title: plugin.description }, plugin.description) : null,
-                  h('div', { className: 'ra-plugin-meta' },
+                  h('div', { className: 'ra-plugin-stats' },
                     ...(plugin.sources ?? []).map(source => h('span', { key: source.id, className: 'ra-plugin-meta-item', title: source.name },
                       h(SourceMark, { type: source.type, size: 12 }),
                       h('span', null, source.name),
                     )),
-                    Number.isFinite(plugin.stars) ? h('span', { className: 'ra-plugin-meta-item' }, '★ ', compactNumber(plugin.stars)) : null,
-                    Number.isFinite(plugin.downloads30d) ? h('span', { className: 'ra-plugin-meta-item', title: '30d' },
-                      h(IconDownload, { size: 12 }), compactNumber(plugin.downloads30d) + ' / 30d',
+                    plugin.version ? h('span', { className: 'ra-plugin-version' }, plugin.version) : null,
+                    prerelease ? h('span', { className: 'ra-tag' }, t('prerelease')) : null,
+                    Number.isFinite(plugin.stars) ? h('span', { className: 'ra-plugin-meta-item' },
+                      h('span', { className: 'ra-star' }, '★'), compactNumber(plugin.stars),
                     ) : null,
-                    updated ? h('span', { className: 'ra-plugin-meta-item' }, format(t, 'updated', { value: updated })) : null,
-                    ...(plugin.tags ?? []).slice(0, 4).map(tag => h('span', { key: tag, className: 'ra-tag' }, tag)),
+                    plugin.packageName ? h('span', { className: 'ra-plugin-meta-item', title: 'npm downloads / 30d' },
+                      h(IconDownload, { size: 12 }), Number.isFinite(plugin.downloads30d) ? compactNumber(plugin.downloads30d) + ' / 30d' : '— / 30d',
+                    ) : null,
+                    updated ? h('span', { className: 'ra-plugin-meta-item' },
+                      h(IconClock, { size: 12 }), format(t, 'updated', { value: updated }),
+                    ) : null,
                   ),
+                  (plugin.tags ?? []).length ? h('div', { className: 'ra-plugin-tags' },
+                    ...(plugin.tags ?? []).slice(0, 6).map(tag => h('span', { key: tag, className: 'ra-tag' }, tag)),
+                  ) : null,
                 ),
                 plugin.repository ? h('a', {
                   className: 'ra-plugin-link',

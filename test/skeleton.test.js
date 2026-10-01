@@ -54,10 +54,16 @@ test('copies the DSH 0.2 native switch geometry and uses icon actions', () => {
   assert.match(client, /function IconCopy/)
 })
 
-test('ships source marks, Browse filters, pagination, and horizontal containment', () => {
+test('ships source marks, compact Browse filters, multi-sort, and pagination', () => {
   assert.match(client, /SOURCE_MARK_PATHS/)
-  assert.match(client, /filterSource/)
-  assert.match(client, /sortDownloads/)
+  assert.match(client, /ra-compact-filter/)
+  assert.match(client, /ra-sort-row/)
+  assert.match(client, /const \[sorts, setSorts\] = React\.useState\(\[\]\)/)
+  assert.match(client, /cycleSort/)
+  assert.match(client, /ra-sort-priority/)
+  assert.match(client, /sortCriterion\('stars'/)
+  assert.match(client, /sortCriterion\('downloads'/)
+  assert.match(client, /sortCriterion\('freshness'/)
   assert.match(client, /pageSize/)
   assert.match(client, /overflow-x:hidden/)
   assert.match(client, /max-width:100%/)
@@ -72,4 +78,13 @@ test('declares a Plugin Manager icon through the DSH 0.2 manifest contract', () 
 test('styles use DSH theme tokens and no feature gradient', () => {
   assert.match(client, /--dsw-alias-/)
   assert.doesNotMatch(client, /linear-gradient|radial-gradient/i)
+})
+
+
+test('Browse separates statistics from tags and uses the warning token for stars', () => {
+  assert.match(client, /ra-plugin-stats/)
+  assert.match(client, /ra-plugin-tags/)
+  assert.match(client, /ra-star/)
+  assert.match(client, /--dsw-alias-state-warn-primary/)
+  assert.match(client, /plugin\.packageName \? h\('span'.*— \/ 30d/s)
 })
