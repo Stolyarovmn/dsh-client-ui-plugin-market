@@ -60,11 +60,20 @@ jobs:
         run: |
           VERSION="$(node -p "require('./package.json').version")"
           NOTES=".github/release-notes/v$VERSION.md"
-          if [ -f "$NOTES" ]; then
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "GitHub release v$VERSION already exists"
+          elif [ -f "$NOTES" ]; then
             gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file "$NOTES"
           else
             gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --generate-notes
           fi
 
       - name: Publish
-        run: npm publish --access public --provenance
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$VERSION" == *-* ]]; then
+            npm publish --access public --provenance --tag next
+          else
+            npm publish --access public --provenance
+          fi
