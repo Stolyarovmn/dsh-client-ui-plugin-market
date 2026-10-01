@@ -137,3 +137,39 @@ test('browse filters a custom catalog by query', async () => {
   assert.equal(result.total, 1)
   assert.equal(result.plugins[0].name, 'scheduler-tools')
 })
+
+
+test('browse can enrich npm packages with 30-day downloads', async () => {
+  const fetchImpl = async input => {
+    const url = new URL(input)
+    if (url.hostname === 'api.npmjs.org') {
+      return Response.json({ downloads: 12345, package: '@acme/dsh-alpha' })
+    }
+    return Response.json({
+      objects: [{
+        package: {
+          name: '@acme/dsh-alpha',
+          version: '1.2.3',
+          description: 'Alpha plugin',
+          date: '2026-09-29T00:00:00Z',
+          keywords: ['dsh-plugin', 'automation'],
+          links: { npm: 'https://www.npmjs.com/package/@acme/dsh-alpha' },
+        },
+        score: { final: 0.9 },
+      }],
+    })
+  }
+
+  const result = await browseSources([
+    { id: 'npm', name: 'npm', type: 'npm', enabled: true },
+  ], 'alpha', {
+    fetchImpl,
+    resolveHost: publicResolver,
+    enrichDownloads: true,
+    limit: 20,
+  })
+
+  assert.equal(result.plugins[0].downloads30d, 12345)
+  assert.equal(result.plugins[0].channel, 'stable')
+  assert.ok(result.plugins[0].tags.includes('automation'))
+})

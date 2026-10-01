@@ -57,6 +57,30 @@ window.__ModuleLoader__.load({
       browseNoResults: 'No plugins found',
       browseNoResultsBody: 'Try another query or enable another source.',
       browseSourceFailures: 'Some sources could not be searched.',
+      filterSource: 'Source',
+      filterAllSources: 'All sources',
+      filterSort: 'Sort',
+      sortRelevance: 'Relevance',
+      sortStars: 'Stars',
+      sortDownloads: 'Downloads',
+      sortFreshness: 'Freshness',
+      sortName: 'Name',
+      filterRelease: 'Release',
+      releaseAll: 'All releases',
+      releaseStable: 'Stable only',
+      releasePrerelease: 'Pre-release only',
+      filterFreshness: 'Updated',
+      freshnessAny: 'Any time',
+      freshness30: 'Last 30 days',
+      freshness90: 'Last 90 days',
+      freshness365: 'Last year',
+      filterTag: 'Tag',
+      filterAllTags: 'All tags',
+      pageSize: 'Per page',
+      previousPage: 'Previous page',
+      nextPage: 'Next page',
+      updated: 'updated {value}',
+      prerelease: 'pre-release',
       updatesTitle: 'Plugin updates',
       updatesLead: 'Update discovery complements the native DSH Plugin Manager instead of replacing it.',
       updatesEmptyTitle: 'Update discovery is not connected yet',
@@ -108,6 +132,30 @@ window.__ModuleLoader__.load({
       browseNoResults: '未找到插件',
       browseNoResultsBody: '尝试其他关键词或启用其他来源。',
       browseSourceFailures: '部分来源无法搜索。',
+      filterSource: '来源',
+      filterAllSources: '全部来源',
+      filterSort: '排序',
+      sortRelevance: '相关度',
+      sortStars: 'Stars',
+      sortDownloads: '下载量',
+      sortFreshness: '新鲜度',
+      sortName: '名称',
+      filterRelease: '版本',
+      releaseAll: '全部版本',
+      releaseStable: '仅稳定版',
+      releasePrerelease: '仅预发布版',
+      filterFreshness: '更新时间',
+      freshnessAny: '不限',
+      freshness30: '最近 30 天',
+      freshness90: '最近 90 天',
+      freshness365: '最近一年',
+      filterTag: '标签',
+      filterAllTags: '全部标签',
+      pageSize: '每页',
+      previousPage: '上一页',
+      nextPage: '下一页',
+      updated: '{value}前更新',
+      prerelease: '预发布',
       updatesTitle: '插件更新',
       updatesLead: '更新发现用于补充原生 DSH Plugin Manager，而不是替代它。',
       updatesEmptyTitle: '更新发现尚未连接',
@@ -115,13 +163,13 @@ window.__ModuleLoader__.load({
     }
 
     const css = [
-      '.ra-root{color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;padding:2px 0 8px}',
+      '.ra-root{box-sizing:border-box;min-width:0;max-width:100%;overflow-x:hidden;color:var(--dsw-alias-label-primary);font-size:13px;line-height:20px;padding:2px 0 8px}',
       '.ra-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:min(100%,440px);padding:4px;margin:12px 0 24px;border-radius:12px;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-bg-layer-2))}',
       '.ra-tab{height:34px;padding:0 14px;border:.5px solid transparent;border-radius:8px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;cursor:pointer}',
       '.ra-tab:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.ra-tab:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary);outline-offset:2px}',
       '.ra-tab[aria-selected=true]{border-color:var(--dsw-alias-border-l3);background:var(--dsw-alias-bg-layer-3,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);font-weight:600}',
-      '.ra-section{display:grid;gap:14px}',
+      '.ra-section{display:grid;gap:14px;box-sizing:border-box;min-width:0;max-width:100%;overflow:hidden}',
       '.ra-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}',
       '.ra-heading{margin:0;font-size:14px;line-height:20px;font-weight:600;color:var(--dsw-alias-label-primary)}',
       '.ra-lead{margin:2px 0 0;color:var(--dsw-alias-label-tertiary)}',
@@ -144,7 +192,7 @@ window.__ModuleLoader__.load({
       '.ra-source-card{min-width:0;padding:12px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;background:transparent}',
       '.ra-source-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}',
       '.ra-source-main{display:flex;align-items:flex-start;gap:10px;min-width:0}',
-      '.ra-source-logo{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;color:var(--dsw-alias-label-secondary);font-weight:700}',
+      '.ra-source-logo{display:grid;place-items:center;flex:0 0 34px;width:34px;height:34px;border:.5px solid var(--dsw-alias-border-l4);border-radius:10px;color:var(--dsw-alias-label-secondary)}',
       '.ra-source-copy{min-width:0}',
       '.ra-source-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.ra-source-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:2px;color:var(--dsw-alias-label-tertiary);font-size:11px}',
@@ -174,20 +222,34 @@ window.__ModuleLoader__.load({
       '.ra-source-error{margin-top:7px;color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px}',
       '.ra-empty{padding:18px;border:.5px solid var(--dsw-alias-border-l4);border-radius:12px;color:var(--dsw-alias-label-tertiary)}',
       '.ra-empty strong{display:block;margin-bottom:3px;color:var(--dsw-alias-label-primary)}',
-      '.ra-search{box-sizing:border-box;width:100%;height:36px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}',
+      '.ra-search{box-sizing:border-box;min-width:0;max-width:100%;width:100%;height:36px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}',
       '.ra-search::placeholder{color:var(--dsw-alias-label-caption)}',
-      '.ra-browse-list{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}',
-      '.ra-plugin-card{display:flex;align-items:center;gap:14px;min-width:0;margin:0 -8px;padding:8px;border-radius:var(--dsw-radius-xl)}',
+      '.ra-filter-row{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;min-width:0}',
+      '.ra-filter{display:grid;gap:3px;min-width:0}',
+      '.ra-filter-label{font-size:10px;line-height:14px;color:var(--dsw-alias-label-caption)}',
+      '.ra-filter-select{box-sizing:border-box;height:30px;max-width:180px;padding:0 24px 0 8px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px}',
+      '.ra-filter-select:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
+      '.ra-browse-list{display:flex;flex-direction:column;gap:2px;box-sizing:border-box;min-width:0;max-width:100%;margin:0;padding:0;overflow:hidden;list-style:none}',
+      '.ra-plugin-card{display:flex;align-items:center;gap:14px;box-sizing:border-box;min-width:0;max-width:100%;width:100%;margin:0;padding:8px;border-radius:var(--dsw-radius-xl)}',
       '.ra-plugin-card:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.ra-plugin-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);color:var(--dsw-alias-label-secondary)}',
       '.ra-plugin-main{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}',
       '.ra-plugin-title-row{display:flex;align-items:center;gap:8px;min-width:0}',
       '.ra-plugin-title{font-size:13.5px;line-height:20px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.ra-plugin-version{flex:none;font-size:11px;line-height:18px;color:var(--dsw-alias-label-caption)}',
-      '.ra-plugin-desc{font-size:12.5px;line-height:18px;color:var(--dsw-alias-label-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '.ra-plugin-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
-      '.ra-plugin-link{flex:none;color:var(--dsw-alias-label-tertiary);text-decoration:none}',
-      '.ra-plugin-link:hover{color:var(--dsw-alias-link);text-decoration:underline;text-underline-offset:3px}',
+      '.ra-plugin-desc{font-size:12.5px;line-height:18px;color:var(--dsw-alias-label-tertiary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}',
+      '.ra-plugin-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-meta-item{display:inline-flex;align-items:center;gap:4px;min-width:0;white-space:nowrap}',
+      '.ra-source-mark{display:inline-flex;align-items:center;justify-content:center;flex:none;color:currentColor}',
+      '.ra-tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border:.5px solid var(--dsw-alias-border-l3);border-radius:999px;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:1;white-space:nowrap}',
+      '.ra-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding-top:4px}',
+      '.ra-pages{display:flex;align-items:center;gap:4px;min-width:0}',
+      '.ra-page-button{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 7px;border:0;border-radius:var(--dsw-radius-sm);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}',
+      '.ra-page-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.ra-page-button[data-active=true]{background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary);font-weight:600}',
+      '.ra-page-button:disabled{opacity:.45;cursor:default}',
+      '.ra-plugin-link{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:var(--dsw-radius-sm);color:var(--dsw-alias-label-tertiary);text-decoration:none}',
+      '.ra-plugin-link:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-link)}',
       '@media(max-width:900px){.ra-source-grid{grid-template-columns:1fr}.ra-add-form{grid-template-columns:1fr 160px}.ra-add-form .ra-url-field{grid-column:1/-1}.ra-form-actions{grid-column:1/-1;justify-content:flex-end}}',
       '@media(max-width:560px){.ra-tabs{width:100%}.ra-tab{padding:0 8px}.ra-section-head{align-items:stretch;flex-direction:column}.ra-actions{justify-content:flex-end}.ra-add-form{grid-template-columns:1fr}.ra-add-form .ra-url-field,.ra-form-actions{grid-column:1}}',
     ].join('\n')
@@ -245,6 +307,59 @@ window.__ModuleLoader__.load({
         'aria-hidden': true,
         strokeWidth,
       }, ...children)
+    }
+
+    const SOURCE_MARK_PATHS = {
+      npm: 'M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z',
+      github: 'M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12',
+    }
+
+    function SourceMark({ type, size = 16 }) {
+      const path = SOURCE_MARK_PATHS[type]
+      if (path) {
+        return h('svg', {
+          width: size,
+          height: size,
+          className: 'ra-source-mark',
+          viewBox: '-2 -2 28 28',
+          fill: 'none',
+          xmlns: 'http://www.w3.org/2000/svg',
+          'aria-hidden': true,
+        }, h('path', { d: path, fill: 'currentColor' }))
+      }
+      return type === 'corporate' ? h(IconPlugin, { size }) : h(IconArchive, { size })
+    }
+
+    function IconDownload({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M8 1.95317V10.0469', stroke: 'currentColor' }),
+        h('path', { d: 'M4.25 6.29688L8 10.0469L11.75 6.29688', stroke: 'currentColor' }),
+        h('path', { d: 'M1.5 10.0469V13.158C1.5 13.3937 1.60536 13.6198 1.79289 13.7865C1.98043 13.9532 2.23478 14.0469 2.5 14.0469H13.5C13.7652 14.0469 14.0196 13.9532 14.2071 13.7865C14.3946 13.6198 14.5 13.3937 14.5 13.158V10.0469', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconRightUp({ size = 16 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', { d: 'M11.7256 2.77441C12.5538 2.77469 13.2256 3.44616 13.2256 4.27441V10.1416H12.2256V4.27441C12.2256 3.99844 12.0015 3.77469 11.7256 3.77441H5.7207V2.77441H11.7256Z', fill: 'currentColor' }),
+        h('path', { d: 'M2.77441 13.2255L12.3756 3.62427', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function compactNumber(value) {
+      if (!Number.isFinite(value)) return ''
+      if (value < 1000) return String(value)
+      if (value < 1_000_000) return (value / 1000).toFixed(value >= 10_000 ? 0 : 1).replace(/\.0$/, '') + 'k'
+      return (value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1).replace(/\.0$/, '') + 'm'
+    }
+
+    function ageShort(value) {
+      const stamp = Date.parse(value ?? '')
+      if (!Number.isFinite(stamp)) return ''
+      const days = Math.max(0, Math.floor((Date.now() - stamp) / 86_400_000))
+      if (days === 0) return 'today'
+      if (days < 30) return days + 'd'
+      if (days < 365) return Math.floor(days / 30) + 'mo'
+      return Math.floor(days / 365) + 'y'
     }
 
     function IconRefresh({ size = 16, className }) {
@@ -473,7 +588,7 @@ window.__ModuleLoader__.load({
       return h('article', { className: 'ra-source-card' },
         h('div', { className: 'ra-source-top' },
           h('div', { className: 'ra-source-main' },
-            h('div', { className: 'ra-source-logo', 'aria-hidden': true }, sourceInitial(source)),
+            h('div', { className: 'ra-source-logo', 'aria-hidden': true }, h(SourceMark, { type: source.type, size: 18 })),
             h('div', { className: 'ra-source-copy' },
               h('div', { className: 'ra-source-name', title: source.name }, source.name),
               h('div', { className: 'ra-source-meta' },
@@ -636,13 +751,20 @@ window.__ModuleLoader__.load({
     function BrowseView({ t }) {
       const [query, setQuery] = React.useState('')
       const [revision, setRevision] = React.useState(0)
+      const [sourceFilter, setSourceFilter] = React.useState('all')
+      const [sort, setSort] = React.useState('relevance')
+      const [releaseFilter, setReleaseFilter] = React.useState('all')
+      const [freshness, setFreshness] = React.useState('any')
+      const [tagFilter, setTagFilter] = React.useState('all')
+      const [page, setPage] = React.useState(1)
+      const [pageSize, setPageSize] = React.useState(20)
       const [state, setState] = React.useState({ loading: true, data: null, error: '' })
 
       React.useEffect(() => {
         const controller = new AbortController()
         const timer = setTimeout(() => {
           setState(current => ({ ...current, loading: true, error: '' }))
-          rpc('browse', { query, limit: 60 }, controller.signal).then(data => {
+          rpc('browse', { query, limit: 100 }, controller.signal).then(data => {
             setState({ loading: false, data, error: '' })
           }, error => {
             if (!controller.signal.aborted) {
@@ -656,14 +778,66 @@ window.__ModuleLoader__.load({
         }
       }, [query, revision])
 
+      React.useEffect(() => { setPage(1) }, [query, sourceFilter, sort, releaseFilter, freshness, tagFilter, pageSize])
+
       const plugins = state.data?.plugins ?? []
       const sourceRows = state.data?.sources ?? []
       const failedSources = sourceRows.filter(row => row?.ok === false)
+      const availableSources = [...new Map(plugins.flatMap(plugin => plugin.sources ?? []).map(source => [source.type, source])).values()]
+      const availableTags = [...new Set(plugins.flatMap(plugin => plugin.tags ?? []).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+
+      const filtered = plugins.filter(plugin => {
+        if (sourceFilter !== 'all' && !(plugin.sources ?? []).some(source => source.type === sourceFilter)) return false
+        const prerelease = plugin.channel === 'prerelease' || String(plugin.version ?? '').includes('-')
+        if (releaseFilter === 'stable' && prerelease) return false
+        if (releaseFilter === 'prerelease' && !prerelease) return false
+        if (tagFilter !== 'all' && !(plugin.tags ?? []).includes(tagFilter)) return false
+        if (freshness !== 'any') {
+          const stamp = Date.parse(plugin.updatedAt ?? '')
+          if (!Number.isFinite(stamp)) return false
+          const maxDays = Number(freshness)
+          if ((Date.now() - stamp) / 86_400_000 > maxDays) return false
+        }
+        return true
+      })
+
+      const sorted = [...filtered]
+      if (sort === 'stars') sorted.sort((a, b) => (b.stars ?? 0) - (a.stars ?? 0) || a.name.localeCompare(b.name))
+      else if (sort === 'downloads') sorted.sort((a, b) => (b.downloads30d ?? 0) - (a.downloads30d ?? 0) || a.name.localeCompare(b.name))
+      else if (sort === 'freshness') sorted.sort((a, b) => (Date.parse(b.updatedAt ?? '') || 0) - (Date.parse(a.updatedAt ?? '') || 0) || a.name.localeCompare(b.name))
+      else if (sort === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name))
+
+      const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
+      const currentPage = Math.min(page, pageCount)
+      const visible = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
       const resultLabel = state.loading
         ? t('browseLoading')
         : query.trim()
-          ? format(t, 'browseResults', { count: state.data?.total ?? plugins.length })
+          ? format(t, 'browseResults', { count: sorted.length })
           : t('browsePopular')
+
+      const filter = (label, value, onChange, options) => h('label', { className: 'ra-filter' },
+        h('span', { className: 'ra-filter-label' }, label),
+        h('select', {
+          className: 'ra-filter-select',
+          value,
+          onChange: event => onChange(event.target.value),
+        }, ...options.map(option => h('option', { key: option.value, value: option.value }, option.label))),
+      )
+
+      const pageButtons = []
+      const from = Math.max(1, Math.min(currentPage - 2, pageCount - 4))
+      const to = Math.min(pageCount, Math.max(currentPage + 2, 5))
+      for (let value = from; value <= to; value += 1) {
+        pageButtons.push(h('button', {
+          key: value,
+          type: 'button',
+          className: 'ra-page-button',
+          'data-active': value === currentPage || undefined,
+          'aria-current': value === currentPage ? 'page' : undefined,
+          onClick: () => setPage(value),
+        }, String(value)))
+      }
 
       return h('section', { className: 'ra-section', 'aria-labelledby': 'ra-browse-title' },
         h('div', { className: 'ra-section-head' },
@@ -688,37 +862,103 @@ window.__ModuleLoader__.load({
           'aria-label': t('browsePlaceholder'),
           onChange: event => setQuery(event.target.value),
         }),
+        h('div', { className: 'ra-filter-row' },
+          filter(t('filterSource'), sourceFilter, setSourceFilter, [
+            { value: 'all', label: t('filterAllSources') },
+            ...availableSources.map(source => ({ value: source.type, label: source.name })),
+          ]),
+          filter(t('filterSort'), sort, setSort, [
+            { value: 'relevance', label: t('sortRelevance') },
+            { value: 'stars', label: t('sortStars') },
+            { value: 'downloads', label: t('sortDownloads') },
+            { value: 'freshness', label: t('sortFreshness') },
+            { value: 'name', label: t('sortName') },
+          ]),
+          filter(t('filterRelease'), releaseFilter, setReleaseFilter, [
+            { value: 'all', label: t('releaseAll') },
+            { value: 'stable', label: t('releaseStable') },
+            { value: 'prerelease', label: t('releasePrerelease') },
+          ]),
+          filter(t('filterFreshness'), freshness, setFreshness, [
+            { value: 'any', label: t('freshnessAny') },
+            { value: '30', label: t('freshness30') },
+            { value: '90', label: t('freshness90') },
+            { value: '365', label: t('freshness365') },
+          ]),
+          filter(t('filterTag'), tagFilter, setTagFilter, [
+            { value: 'all', label: t('filterAllTags') },
+            ...availableTags.map(tag => ({ value: tag, label: tag })),
+          ]),
+          filter(t('pageSize'), String(pageSize), value => setPageSize(Number(value)), [
+            { value: '20', label: '20' },
+            { value: '50', label: '50' },
+            { value: '100', label: '100' },
+          ]),
+        ),
         h('div', { className: 'ra-plugin-meta', role: 'status', 'aria-live': 'polite' }, resultLabel),
         state.error ? h('p', { className: 'ra-notice', role: 'alert' }, state.error) : null,
         failedSources.length ? h('p', { className: 'ra-notice' },
           t('browseSourceFailures') + ' ' + failedSources.map(row => row?.source?.name ?? row?.source?.id).filter(Boolean).join(', '),
         ) : null,
-        !state.loading && !state.error && plugins.length === 0
+        !state.loading && !state.error && visible.length === 0
           ? h(Empty, { title: t('browseNoResults'), body: t('browseNoResultsBody') })
           : h('ul', { className: 'ra-browse-list' },
-            ...plugins.map(plugin => h('li', { key: plugin.key ?? plugin.installSpec ?? plugin.name, className: 'ra-plugin-card' },
-              h('span', { className: 'ra-plugin-icon', 'aria-hidden': true }, h(IconPlugin, { size: 16 })),
-              h('div', { className: 'ra-plugin-main' },
-                h('div', { className: 'ra-plugin-title-row' },
-                  h('span', { className: 'ra-plugin-title', title: plugin.name }, plugin.name),
-                  plugin.version ? h('span', { className: 'ra-plugin-version' }, plugin.version) : null,
+            ...visible.map(plugin => {
+              const updated = ageShort(plugin.updatedAt)
+              const prerelease = plugin.channel === 'prerelease' || String(plugin.version ?? '').includes('-')
+              return h('li', { key: plugin.key ?? plugin.installSpec ?? plugin.name, className: 'ra-plugin-card' },
+                h('span', { className: 'ra-plugin-icon', 'aria-hidden': true }, h(IconPlugin, { size: 16 })),
+                h('div', { className: 'ra-plugin-main' },
+                  h('div', { className: 'ra-plugin-title-row' },
+                    h('span', { className: 'ra-plugin-title', title: plugin.name }, plugin.name),
+                    plugin.version ? h('span', { className: 'ra-plugin-version' }, plugin.version) : null,
+                    prerelease ? h('span', { className: 'ra-tag' }, t('prerelease')) : null,
+                  ),
+                  plugin.description ? h('div', { className: 'ra-plugin-desc', title: plugin.description }, plugin.description) : null,
+                  h('div', { className: 'ra-plugin-meta' },
+                    ...(plugin.sources ?? []).map(source => h('span', { key: source.id, className: 'ra-plugin-meta-item', title: source.name },
+                      h(SourceMark, { type: source.type, size: 12 }),
+                      h('span', null, source.name),
+                    )),
+                    Number.isFinite(plugin.stars) ? h('span', { className: 'ra-plugin-meta-item' }, '★ ', compactNumber(plugin.stars)) : null,
+                    Number.isFinite(plugin.downloads30d) ? h('span', { className: 'ra-plugin-meta-item', title: '30d' },
+                      h(IconDownload, { size: 12 }), compactNumber(plugin.downloads30d) + ' / 30d',
+                    ) : null,
+                    updated ? h('span', { className: 'ra-plugin-meta-item' }, format(t, 'updated', { value: updated })) : null,
+                    ...(plugin.tags ?? []).slice(0, 4).map(tag => h('span', { key: tag, className: 'ra-tag' }, tag)),
+                  ),
                 ),
-                plugin.description ? h('div', { className: 'ra-plugin-desc', title: plugin.description }, plugin.description) : null,
-                h('div', { className: 'ra-plugin-meta' },
-                  ...(plugin.sources ?? []).map(source => h('span', { key: source.id }, source.name)),
-                  Number.isFinite(plugin.stars) ? h('span', null, '★ ' + plugin.stars) : null,
-                  plugin.installSpec ? h('code', null, plugin.installSpec) : null,
-                ),
-              ),
-              plugin.repository ? h('a', {
-                className: 'ra-plugin-link',
-                href: plugin.repository,
-                target: '_blank',
-                rel: 'noreferrer',
-                title: plugin.repository,
-              }, '↗') : null,
-            )),
+                plugin.repository ? h('a', {
+                  className: 'ra-plugin-link',
+                  href: plugin.repository,
+                  target: '_blank',
+                  rel: 'noreferrer',
+                  title: plugin.repository,
+                  'aria-label': plugin.repository,
+                }, h(IconRightUp, { size: 14 })) : null,
+              )
+            }),
           ),
+        sorted.length > pageSize ? h('div', { className: 'ra-pagination' },
+          h('div', { className: 'ra-pages' },
+            h('button', {
+              type: 'button',
+              className: 'ra-page-button',
+              disabled: currentPage <= 1,
+              'aria-label': t('previousPage'),
+              onClick: () => setPage(value => Math.max(1, value - 1)),
+            }, '‹'),
+            ...pageButtons,
+            h('button', {
+              type: 'button',
+              className: 'ra-page-button',
+              disabled: currentPage >= pageCount,
+              'aria-label': t('nextPage'),
+              onClick: () => setPage(value => Math.min(pageCount, value + 1)),
+            }, '›'),
+          ),
+          h('span', { className: 'ra-plugin-meta' }, currentPage + ' / ' + pageCount),
+        ) : null,
       )
     }
 

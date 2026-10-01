@@ -54,6 +54,21 @@ test('copies the DSH 0.2 native switch geometry and uses icon actions', () => {
   assert.match(client, /function IconCopy/)
 })
 
+test('ships source marks, Browse filters, pagination, and horizontal containment', () => {
+  assert.match(client, /SOURCE_MARK_PATHS/)
+  assert.match(client, /filterSource/)
+  assert.match(client, /sortDownloads/)
+  assert.match(client, /pageSize/)
+  assert.match(client, /overflow-x:hidden/)
+  assert.match(client, /max-width:100%/)
+  assert.doesNotMatch(client, /ra-plugin-card[^']*margin:0 -8px/)
+})
+
+test('declares a Plugin Manager icon through the DSH 0.2 manifest contract', () => {
+  assert.equal(pkg.icon, './icon.svg')
+  assert.ok(pkg.files.includes('icon.svg'))
+})
+
 test('styles use DSH theme tokens and no feature gradient', () => {
   assert.match(client, /--dsw-alias-/)
   assert.doesNotMatch(client, /linear-gradient|radial-gradient/i)

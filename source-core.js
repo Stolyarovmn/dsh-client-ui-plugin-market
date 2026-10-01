@@ -11,6 +11,8 @@ const GITHUB_MAX_ATTEMPTS = 3
 const GITHUB_RETRY_BASE_DELAY_MS = 250
 const GITHUB_RETRY_TIMEOUT_MS = 5000
 const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504])
+const BROWSE_CACHE_TTL_MS = 60_000
+const browseCache = new Map()
 
 export const SOURCE_TYPES = Object.freeze(['npm', 'github', 'custom-json', 'corporate'])
 export const NPM_DISCOVERY_KEYWORDS = Object.freeze(['dsh-plugin', 'deepseek-harness', 'deepseek-harness-plugin', 'dsh-plugins'])
@@ -22,6 +24,28 @@ export const GITHUB_DISCOVERY_QUERIES = Object.freeze([
 
 function text(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function cachedBrowse(key) {
+  const entry = browseCache.get(key)
+  if (!entry) return undefined
+  if (entry.expiresAt <= Date.now()) {
+    browseCache.delete(key)
+    return undefined
+  }
+  return entry.value
+}
+
+function cacheBrowse(key, value) {
+  browseCache.set(key, { value, expiresAt: Date.now() + BROWSE_CACHE_TTL_MS })
+  if (browseCache.size <= 64) return
+  const first = browseCache.keys().next().value
+  if (first !== undefined) browseCache.delete(first)
+}
+
+function releaseChannel(version) {
+  const value = text(version)
+  return value && value.includes('-') ? 'prerelease' : 'stable'
 }
 
 export function normalizeSource(value) {
@@ -347,7 +371,9 @@ function npmPlugin(entry, source) {
     ...(repository ? { repository } : {}),
     ...(npmUrl ? { npmUrl } : {}),
     ...(text(pkg?.date) ? { updatedAt: text(pkg.date) } : {}),
+    ...(Array.isArray(pkg?.keywords) ? { tags: pkg.keywords.filter(item => typeof item === 'string').map(item => item.toLowerCase()).slice(0, 8) } : {}),
     ...(Number.isFinite(entry?.score?.final) ? { score: entry.score.final } : {}),
+    channel: releaseChannel(pkg?.version),
     installSpec: name,
     sources: [{ id: source.id, name: source.name, type: source.type }],
   }
@@ -365,7 +391,8 @@ function githubPlugin(entry, source) {
     repository,
     ...(Number.isFinite(entry?.stargazers_count) ? { stars: entry.stargazers_count } : {}),
     ...(text(entry?.updated_at) ? { updatedAt: text(entry.updated_at) } : {}),
-    ...(Array.isArray(entry?.topics) ? { tags: entry.topics.filter(item => typeof item === 'string').slice(0, 12) } : {}),
+    ...(Array.isArray(entry?.topics) ? { tags: entry.topics.filter(item => typeof item === 'string').map(item => item.toLowerCase()).slice(0, 12) } : {}),
+    channel: 'stable',
     installSpec: 'github:' + fullName,
     sources: [{ id: source.id, name: source.name, type: source.type }],
   }
@@ -444,6 +471,44 @@ function mergeBrowsePlugins(plugins) {
     })
   }
   return [...merged.values()]
+}
+
+async function enrichNpmDownloads(plugins, options = {}) {
+  const enabled = options.enrichDownloads === true || (options.enrichDownloads !== false && options.fetchImpl === undefined)
+  if (!enabled) return plugins
+  const packages = [...new Set(plugins.map(plugin => plugin.packageName).filter(Boolean))]
+    .slice(0, Math.max(1, Math.min(options.maxEvidencePackages ?? 60, 100)))
+  if (!packages.length) return plugins
+
+  const source = { id: 'npm-downloads', name: 'npm downloads', type: 'npm', enabled: true }
+  const requestOptions = { ...options, authToken: undefined, allowPrivateNetwork: false }
+  const counts = new Map()
+  const unscoped = packages.filter(name => !name.startsWith('@'))
+  const scoped = packages.filter(name => name.startsWith('@'))
+  const tasks = []
+  for (let index = 0; index < unscoped.length; index += 64) tasks.push(unscoped.slice(index, index + 64))
+  for (const name of scoped) tasks.push([name])
+
+  await mapConcurrent(tasks, Math.min(options.concurrency ?? 4, 6), async chunk => {
+    try {
+      const encoded = chunk.map(name => encodeURIComponent(name)).join(',')
+      const value = await fetchJson('https://api.npmjs.org/downloads/point/last-month/' + encoded, source, requestOptions)
+      if (chunk.length === 1 && Number.isFinite(value?.downloads)) {
+        counts.set(chunk[0], value.downloads)
+        return
+      }
+      for (const name of chunk) {
+        const downloads = value?.[name]?.downloads
+        if (Number.isFinite(downloads)) counts.set(name, downloads)
+      }
+    } catch {
+      // Popularity evidence is optional; discovery results stay usable without it.
+    }
+  })
+
+  return plugins.map(plugin => counts.has(plugin.packageName)
+    ? { ...plugin, downloads30d: counts.get(plugin.packageName) }
+    : plugin)
 }
 
 function browseRank(plugin, query) {
@@ -547,47 +612,44 @@ export function createSourceAdapter(sourceInput, options = {}) {
 
   async function browse(query = '') {
     const needle = text(query)
+    const cacheKey = [source.id, source.type, source.url ?? '', needle ?? ''].join('|')
+    const cached = cachedBrowse(cacheKey)
+    if (cached !== undefined) return cached
+
+    let result
     if (source.type === 'npm') {
-      const queries = needle
-        ? NPM_DISCOVERY_KEYWORDS.map(keyword => needle + ' keywords:' + keyword)
-        : NPM_DISCOVERY_KEYWORDS.map(keyword => 'keywords:' + keyword)
-      const batches = await Promise.all(queries.map(async search => {
-        const url = npmSearchUrl(source)
-        url.searchParams.set('text', search)
-        url.searchParams.set('size', String(Math.min(maxPlugins, needle ? 40 : 80)))
-        const value = await request(url)
-        if (!value || !Array.isArray(value.objects)) throw new Error('npm search returned an invalid response')
-        return value.objects.map(entry => npmPlugin(entry, source)).filter(Boolean)
-      }))
-      return mergeBrowsePlugins(batches.flat())
+      const search = needle ? needle + ' keywords:' + NPM_DISCOVERY_KEYWORDS[0] : 'keywords:' + NPM_DISCOVERY_KEYWORDS[0]
+      const url = npmSearchUrl(source)
+      url.searchParams.set('text', search)
+      url.searchParams.set('size', String(Math.min(maxPlugins, needle ? 100 : 100)))
+      const value = await request(url)
+      if (!value || !Array.isArray(value.objects)) throw new Error('npm search returned an invalid response')
+      result = mergeBrowsePlugins(value.objects.map(entry => npmPlugin(entry, source)).filter(Boolean))
+    } else if (source.type === 'github') {
+      // One GitHub Search request per query avoids exhausting unauthenticated search quota while typing.
+      const search = needle ? needle + ' topic:deepseek-harness' : 'topic:deepseek-harness'
+      const url = githubSearchUrl(source)
+      url.searchParams.set('q', search)
+      url.searchParams.set('sort', 'stars')
+      url.searchParams.set('order', 'desc')
+      url.searchParams.set('per_page', String(Math.min(maxPlugins, 100)))
+      const value = await request(url)
+      if (!value || !Array.isArray(value.items)) throw new Error('GitHub search returned an invalid response')
+      result = mergeBrowsePlugins(value.items.map(entry => githubPlugin(entry, source)).filter(Boolean))
+    } else {
+      if (!source.url) throw new Error(source.type + ' source requires a catalog URL')
+      const rows = catalogRows(await request(source.url))
+        .map((entry, index) => catalogPlugin(entry, source, index))
+        .filter(Boolean)
+      if (!needle) result = rows
+      else {
+        const lower = needle.toLowerCase()
+        result = rows.filter(plugin => pluginSearchText(plugin).includes(lower))
+      }
     }
 
-    if (source.type === 'github') {
-      const queries = needle
-        ? [
-            needle + ' topic:deepseek-harness',
-            needle + ' topic:deepseek-harness-plugin',
-            needle + ' topic:dsh-plugin',
-          ]
-        : GITHUB_DISCOVERY_QUERIES
-      const batches = await Promise.all(queries.map(async search => {
-        const url = githubSearchUrl(source)
-        url.searchParams.set('q', search)
-        url.searchParams.set('per_page', String(Math.min(maxPlugins, needle ? 30 : 50)))
-        const value = await request(url)
-        if (!value || !Array.isArray(value.items)) throw new Error('GitHub search returned an invalid response')
-        return value.items.map(entry => githubPlugin(entry, source)).filter(Boolean)
-      }))
-      return mergeBrowsePlugins(batches.flat())
-    }
-
-    if (!source.url) throw new Error(source.type + ' source requires a catalog URL')
-    const rows = catalogRows(await request(source.url))
-      .map((entry, index) => catalogPlugin(entry, source, index))
-      .filter(Boolean)
-    if (!needle) return rows
-    const lower = needle.toLowerCase()
-    return rows.filter(plugin => pluginSearchText(plugin).includes(lower))
+    cacheBrowse(cacheKey, result)
+    return result
   }
 
   return { source, health, count, browse }
@@ -661,7 +723,14 @@ export async function browseSources(sourceInputs, query = '', options = {}) {
     }
   })
 
-  const plugins = mergeBrowsePlugins(rows.flatMap(row => row.plugins))
+  const merged = mergeBrowsePlugins(rows.flatMap(row => row.plugins))
+    .map(plugin => ({ ...plugin, rank: browseRank(plugin, query) }))
+    .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
+
+  const enriched = await enrichNpmDownloads(merged.slice(0, Math.max(limit, 60)), options)
+  const byKey = new Map(enriched.map(plugin => [plugin.key, plugin]))
+  const plugins = merged
+    .map(plugin => byKey.get(plugin.key) ?? plugin)
     .map(plugin => ({ ...plugin, rank: browseRank(plugin, query) }))
     .sort((a, b) => b.rank - a.rank || a.name.localeCompare(b.name))
 
