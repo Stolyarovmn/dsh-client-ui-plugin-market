@@ -1,6 +1,0 @@
-# Activated when this package is listed in a DSH profile's bundles.
-# The Host registers source configuration and authenticated RPC; the Web client
-# extends the native Plugins page.
-- insert:
-    - id: registry-aggregator
-      name: '@stolyarovmn/dsh-ui-registry-aggregator'
