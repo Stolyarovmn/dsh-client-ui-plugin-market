@@ -2,7 +2,7 @@
 
 [← UI code reference](./README.md)
 
-Canonical export surface: [`packages/client/ui-primitives/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/index.ts)
+Canonical export surface: [`packages/client/ui-primitives/src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/index.ts)
 
 The upstream package describes itself as Cordis-free React primitives styled through `--dsw-*` tokens. Feature UI should compose these shared atoms instead of creating parallel copies when the existing primitive fits.
 
@@ -26,7 +26,7 @@ The upstream package describes itself as Cordis-free React primitives styled thr
 
 | Export | Use |
 |---|---|
-| `Menu`, `MenuItemButton`, `MenuSurface`, `MenuGroup` | Shared menus and grouped menu/list content. |
+| `Menu`, `MenuItemButton`, `MenuSurface` | Shared menus and grouped menu/list content. |
 | `Tooltip` | Hover/focus tooltip. |
 | `HoverCard` | Hover preview that remains interactive. |
 | `Modal`, `useModalLayer`, `closeTopModal`, `isBehindModal` | Modal layering and focus/escape behavior. |
@@ -62,25 +62,25 @@ These are intended for untrusted/model-produced content and centralize shared re
 
 Standard product icons:
 - [all `icons/*` exports](./ICONS.md)
-- [upstream source](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/icons/index.tsx)
+- [upstream source](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/icons/index.tsx)
 
 Additional families:
-- [`PermissionIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/PermissionIcon.tsx)
-- [`ReferenceIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/ReferenceIcon.tsx)
-- [`LinkIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/LinkIcon.tsx)
-- [`FileTypeIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/FileTypeIcon.tsx)
-- [`FishLogo.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/FishLogo.tsx)
-- [`BrandWordmark.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/BrandWordmark.tsx)
-- [`plugin-artwork.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/plugin-artwork.tsx)
-- [`guide-artwork.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/guide-artwork.tsx)
+- [`PermissionIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/PermissionIcon.tsx)
+- [`ReferenceIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/ReferenceIcon.tsx)
+- [`LinkIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/LinkIcon.tsx)
+- [`FileTypeIcon.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/FileTypeIcon.tsx)
+- [`FishLogo.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/FishLogo.tsx)
+- [`BrandWordmark.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/BrandWordmark.tsx)
+- [`plugin-artwork.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/plugin-artwork.tsx)
+- [`guide-artwork.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/guide-artwork.tsx)
 
 ## Shared behavior/helpers
 
 The package also exports shared behavior rather than only visual components:
 
 - `useAnchoredMaxHeight`, `useAnchoredPosition`, `useDismissOnOutsidePointer`
-- `observeStickyMenuGroups`, `observeComposition`
-- `focusWithoutRing`, `pointerModality`
+- `observeComposition`
+- `focusWithoutRing`
 - `writeClipboard`, `fileSizeText`, `relativeTime`, `rankByName`
 - `languageForPath`, `CODE_HIGHLIGHT_EXTENSIONS`, `useCodeHighlighter`
 - `classifyFileType`, `fileExtension`, `classifyLinkPath`
@@ -90,12 +90,13 @@ The package also exports shared behavior rather than only visual components:
 
 Use the upstream theme aliases rather than local product colors:
 
-- [`ui-theme/README.md`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-theme/README.md)
-- [`ui-theme/src/styles/base.css`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-theme/src/styles/base.css)
-- [`docs/ui-radius.md`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/docs/ui-radius.md)
+- [`ui-theme/README.md`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-theme/README.md)
+- [`ui-theme/src/styles/base.css`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-theme/src/styles/base.css)
+- [`docs/ui-radius.md`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/docs/ui-radius.md)
+- [`docs/web-styling.md`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/docs/web-styling.md)
 
 The DSH radius guidance distinguishes flat neutral hairline borders from elevated surfaces: elevated menus/popovers/dialogs/panels use the shared elevation material rather than stacking another neutral border on top.
 
 ## Source snapshot
 
-Pinned to upstream commit `639ed015397290b3745d163aafe02ffee4aa3f84`. Re-check upstream `src/index.ts` before creating a new shared-looking control.
+Pinned to upstream commit `477b4f420553e8a52c2fbccc464d7561b239c443`. Re-check upstream `src/index.ts` before creating a new shared-looking control.
