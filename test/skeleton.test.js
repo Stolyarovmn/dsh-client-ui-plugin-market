@@ -11,11 +11,15 @@ test('targets only DSH 0.2.x', () => {
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh'], '>=0.2.0-rc.2 <0.3.0')
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-plugin-manager'))
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-connection'))
+  assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-settings'))
 })
 
-test('uses the native bundle configuration slot and Config form', () => {
+test('uses the native bundle slot but binds the Host entry form explicitly', () => {
   assert.match(client, /plugins\.bundle\.config/)
-  assert.match(client, /form\.mutate/)
+  assert.match(client, /ctx\.configForms\.get\(HOST_ENTRY\)/)
+  assert.match(client, /ctx\.configForms\.whileServed\(\[HOST_ENTRY\]/)
+  assert.match(client, /sourceConfigForm\.subscribe/)
+  assert.match(client, /sourceConfigForm\.mutate/)
   assert.match(host, /export const Config/)
   assert.match(patch, /registry-aggregator/)
 })
