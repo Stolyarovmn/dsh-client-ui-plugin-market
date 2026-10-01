@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.2`  
+Current test version: `0.5.0-rc.3`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -13,7 +13,7 @@ Implemented in this milestone:
 
 - native `plugins.bundle.config` integration;
 - `Sources | Browse | Updates` navigation;
-- live source configuration through the Plugin Manager's `form.state` / `form.mutate` contract;
+- live source configuration through `ctx.configForms.get('registry-aggregator')`; the bundle slot is presentation-only because DSH does not guarantee a single `form` for bundle-wide pages;
 - built-in npm and GitHub sources;
 - custom JSON and corporate catalog sources;
 - Host-side health checks and discovered-item counts;
@@ -42,8 +42,9 @@ DSH Plugins
               └─ Updates
 
 Sources UI
-  ├─ form.state / form.mutate
-  │    └─ Host Config.sources
+  ├─ ctx.configForms.get('registry-aggregator')
+  │    ├─ snapshot subscription
+  │    └─ form.mutate(...) → Host Config.sources
   └─ ctx.connection.rpc.call
        └─ /api/plugin-sources/{health,counts}
             └─ Host source adapters
