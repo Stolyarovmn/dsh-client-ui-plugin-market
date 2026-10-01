@@ -33,6 +33,7 @@ When building DSH UI:
 
 - [Icons](./ICONS.md) — visual catalogue of all 94 native glyph families / 188 Regular + Medium exports.
 - [Components](./COMPONENTS.md) — shared controls, overlays, renderers, helpers, artwork families, and source links.
+- [Styling](./STYLING.md) — borders, radii, materials, colors, gradients, links, menus, and the rules for feature-owned CSS.
 
 ## Important icon convention
 
