@@ -73,8 +73,9 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	}
 	assert.match(client, /function UpdateIcon/);
 	assert.match(client, /h\(UpdateIcon,/);
-	assert.doesNotMatch(client, /#[0-9a-fA-F]{3,8}\\b/);
-	assert.doesNotMatch(client, /(?:linear|radial)-gradient\\(/);
+	assert.doesNotMatch(client, /#[0-9a-fA-F]{3,8}\b/);
+	assert.equal(client.includes("linear-gradient("), false);
+	assert.equal(client.includes("radial-gradient("), false);
 	assert.match(client, /var\(--dsw-radius-xl\)/);
 	assert.match(client, /border:\.5px solid var\(--dsw-alias-border-l4\)/);
 	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section/);
