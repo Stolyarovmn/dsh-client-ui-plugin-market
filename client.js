@@ -69,6 +69,7 @@ window.__ModuleLoader__.load({
       sortOff: 'Not active',
       sortAsc: 'Ascending',
       sortDesc: 'Descending',
+      sortCombined: 'Combined equally with other active criteria',
       filterRelease: 'Release',
       releaseAll: 'All releases',
       releaseStable: 'Stable only',
@@ -150,6 +151,7 @@ window.__ModuleLoader__.load({
       sortOff: '未启用',
       sortAsc: '升序',
       sortDesc: '降序',
+      sortCombined: '与其他启用条件等权组合',
       filterRelease: '版本',
       releaseAll: '全部版本',
       releaseStable: '仅稳定版',
@@ -423,6 +425,73 @@ window.__ModuleLoader__.load({
       if (days < 30) return days + 'd'
       if (days < 365) return Math.floor(days / 30) + 'mo'
       return Math.floor(days / 365) + 'y'
+    }
+
+    function browsePluginKey(plugin) {
+      return plugin?.key ?? plugin?.installSpec ?? plugin?.name ?? ''
+    }
+
+    function sortMetricValue(plugin, key, baseOrder) {
+      if (key === 'relevance') {
+        const index = baseOrder.get(browsePluginKey(plugin))
+        return Number.isFinite(index) ? -index : undefined
+      }
+      if (key === 'stars') return Number.isFinite(plugin?.stars) ? plugin.stars : undefined
+      if (key === 'downloads') return Number.isFinite(plugin?.downloads30d) ? plugin.downloads30d : undefined
+      if (key === 'freshness') {
+        const value = Date.parse(plugin?.releasedAt ?? plugin?.repositoryUpdatedAt ?? plugin?.updatedAt ?? '')
+        return Number.isFinite(value) ? value : undefined
+      }
+      if (key === 'name') return String(plugin?.name ?? '').toLocaleLowerCase()
+      return undefined
+    }
+
+    function metricPercentiles(plugins, criterion, baseOrder) {
+      const rows = plugins.map((plugin, index) => ({
+        plugin,
+        index,
+        value: sortMetricValue(plugin, criterion.key, baseOrder),
+      })).filter(row => row.value !== undefined)
+
+      rows.sort((left, right) => {
+        if (typeof left.value === 'string' || typeof right.value === 'string') {
+          return String(left.value).localeCompare(String(right.value)) || left.index - right.index
+        }
+        return left.value - right.value || left.index - right.index
+      })
+
+      const scores = new Map()
+      const denominator = Math.max(1, rows.length - 1)
+      let cursor = 0
+      while (cursor < rows.length) {
+        let end = cursor + 1
+        while (end < rows.length && rows[end].value === rows[cursor].value) end += 1
+        const percentile = ((cursor + end - 1) / 2) / denominator
+        const preferred = criterion.direction === 'asc' ? 1 - percentile : percentile
+        for (let index = cursor; index < end; index += 1) scores.set(rows[index].plugin, preferred)
+        cursor = end
+      }
+      return scores
+    }
+
+    function compositeSortPlugins(plugins, sorts, baseOrder) {
+      if (!Array.isArray(plugins) || plugins.length < 2 || !Array.isArray(sorts) || sorts.length === 0) return plugins
+      const metrics = sorts.map(criterion => metricPercentiles(plugins, criterion, baseOrder))
+      return [...plugins].sort((left, right) => {
+        let leftScore = 0
+        let rightScore = 0
+        for (const scores of metrics) {
+          // Missing evidence is deliberately worse than the lowest measured value.
+          leftScore += scores.has(left) ? scores.get(left) : -1
+          rightScore += scores.has(right) ? scores.get(right) : -1
+        }
+        leftScore /= metrics.length
+        rightScore /= metrics.length
+        if (rightScore !== leftScore) return rightScore - leftScore
+        const leftBase = baseOrder.get(browsePluginKey(left)) ?? Number.MAX_SAFE_INTEGER
+        const rightBase = baseOrder.get(browsePluginKey(right)) ?? Number.MAX_SAFE_INTEGER
+        return leftBase - rightBase || String(left.name ?? '').localeCompare(String(right.name ?? ''))
+      })
     }
 
     function IconRefresh({ size = 16, className }) {
@@ -881,28 +950,7 @@ window.__ModuleLoader__.load({
         return true
       })
 
-      const valueForSort = (plugin, key) => {
-        if (key === 'stars') return plugin.stars ?? 0
-        if (key === 'downloads') return plugin.downloads30d ?? 0
-        if (key === 'freshness') return Date.parse(plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt ?? '') || 0
-        if (key === 'name') return plugin.name.toLocaleLowerCase()
-        return baseOrder.get(plugin.key ?? plugin.installSpec ?? plugin.name) ?? Number.MAX_SAFE_INTEGER
-      }
-
-      const sorted = [...filtered]
-      if (sorts.length) {
-        sorted.sort((a, b) => {
-          for (const criterion of sorts) {
-            const left = valueForSort(a, criterion.key)
-            const right = valueForSort(b, criterion.key)
-            let delta
-            if (typeof left === 'string' || typeof right === 'string') delta = String(left).localeCompare(String(right))
-            else delta = left - right
-            if (delta !== 0) return criterion.direction === 'asc' ? delta : -delta
-          }
-          return (baseOrder.get(a.key ?? a.installSpec ?? a.name) ?? 0) - (baseOrder.get(b.key ?? b.installSpec ?? b.name) ?? 0)
-        })
-      }
+      const sorted = compositeSortPlugins(filtered, sorts, baseOrder)
 
       const cycleSort = key => {
         setSorts(current => {
@@ -974,7 +1022,7 @@ window.__ModuleLoader__.load({
         const active = index >= 0
         const direction = active ? sorts[index].direction : undefined
         const stateLabel = active ? t(direction === 'asc' ? 'sortAsc' : 'sortDesc') : t('sortOff')
-        const title = label + ' · ' + stateLabel
+        const title = label + ' · ' + stateLabel + (active && sorts.length > 1 ? ' · ' + t('sortCombined') : '')
         return h('button', {
           key,
           type: 'button',

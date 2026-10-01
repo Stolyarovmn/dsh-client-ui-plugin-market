@@ -61,6 +61,8 @@ test('ships source marks, compact Browse filters, multi-sort, and pagination', (
   assert.match(client, /ra-sort-row/)
   assert.match(client, /const \[sorts, setSorts\] = React\.useState\(\[\]\)/)
   assert.match(client, /cycleSort/)
+  assert.match(client, /compositeSortPlugins/)
+  assert.match(client, /metricPercentiles/)
   assert.doesNotMatch(client, /ra-sort-priority/)
   assert.match(client, /sortCriterion\('stars'/)
   assert.match(client, /sortCriterion\('downloads'/)

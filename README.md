@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.7`  
+Current test version: `0.5.0-rc.8`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -24,7 +24,7 @@ Implemented in this milestone:
 - no duplicate `Installed` view;
 - live federated Browse search across enabled npm, GitHub, custom JSON, and corporate sources;
 - compact icon-led source/release/freshness/tag/page-size filters, multi-source metadata, and 20/50/100 pagination;
-- combinable multi-sort criteria for relevance, stars, downloads, freshness, and name with per-criterion direction; active criteria use a subtle native-style fill without priority badges;
+- combinable multi-sort criteria for relevance, stars, downloads, freshness, and name with per-criterion direction; when several are active they contribute equally through percentile-normalized composite ranking, so every selected criterion can affect the order; active criteria use a subtle native-style fill without priority badges;
 - npm 30-day download enrichment plus GitHub stars when available; GitHub-only entries intentionally have no npm download count;
 - package freshness distinguishes npm release time from GitHub repository push time, so GitHub metadata churn does not make every item look newly released;
 - best-effort package artwork discovery from the DSH top-level manifest `icon` field, returned to the Client as bounded data URLs with the same SVG/PNG/JPEG/WebP and 256 KiB policy as native DSH metadata;
