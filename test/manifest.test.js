@@ -24,7 +24,9 @@ test("package declares both DSH faces and required client services", async () =>
 	assert.equal(typeof pkg.dsh.catalog.summary.en, "string");
 	assert.equal(typeof pkg.dsh.catalog.summary.zh, "string");
 	assert.deepEqual(pkg.dsh.catalog.capabilities, ["slots", "settings", "network", "plugin-manager"]);
-	assert.equal(pkg.peerDependencies["@deepseek-ai/dsh"], ">=0.1.7-rc.1 <0.2.0");
+	assert.equal(pkg.peerDependencies["@deepseek-ai/dsh"], ">=0.1.7-rc.2 <0.2.0");
+	assert.equal(pkg.dependencies["@deepseek-ai/dsh-client-connection"], "0.1.7-rc.2");
+	assert.equal(pkg.dependencies["@deepseek-ai/dsh-client-ui-primitives"], "0.1.7-rc.2");
 	assert.equal(pkg.icon, "./icon.svg");
 });
 
@@ -66,6 +68,15 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /plugin-manager\/install-log/);
 	assert.match(client, /StateDot/);
 	assert.match(client, /h\(Menu,/);
+	for (const primitive of ["Input", "Tag", "Pill", "SegmentedTabs", "Tooltip", "LinkIconRegular", "writeClipboard"]) {
+		assert.match(client, new RegExp(`\\b${primitive}\\b`), `missing native primitive/helper ${primitive}`);
+	}
+	assert.match(client, /function UpdateIcon/);
+	assert.match(client, /h\(UpdateIcon,/);
+	assert.doesNotMatch(client, /#[0-9a-fA-F]{3,8}\\b/);
+	assert.doesNotMatch(client, /(?:linear|radial)-gradient\\(/);
+	assert.match(client, /var\(--dsw-radius-xl\)/);
+	assert.match(client, /border:\.5px solid var\(--dsw-alias-border-l4\)/);
 	assert.doesNotMatch(client, /settingsScope|settings\.plugins\.tab|settings\.section/);
 	assert.match(host, /connection\.fetch\.register\(route\("health"\)\)/);
 	assert.match(host, /connection\.fetch\.register\(route\("browse"\)\)/);
@@ -82,7 +93,6 @@ test("production client uses Connection RPC and contains no arbitrary remote fet
 	assert.match(client, /source\.type === "github" \? t\("source\.repositories"/);
 	assert.doesNotMatch(client, /children: source\.enabled !== false \? t\("source\.enabled"\)/);
 	assert.match(client, /\.pm-source-list\{align-items:start\}/);
-	assert.match(client, /\.pm-status-ok\{[^}]*box-shadow:0 0 7px/s);
 	assert.match(client, /"data-open": open/);
 	assert.match(client, /\.pm-installed-registry-host\{[^}]*position:relative[^}]*z-index:2[^}]*pointer-events:auto/s);
 	assert.match(client, /\.pm-installed-expand\{[^}]*position:relative[^}]*z-index:3[^}]*pointer-events:auto/s);
