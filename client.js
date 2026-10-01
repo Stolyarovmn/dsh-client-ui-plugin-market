@@ -84,6 +84,8 @@ window.__ModuleLoader__.load({
       previousPage: 'Previous page',
       nextPage: 'Next page',
       updated: 'updated {value}',
+      released: 'released {value}',
+      repoUpdated: 'repo {value}',
       prerelease: 'pre-release',
       updatesTitle: 'Plugin updates',
       updatesLead: 'Update discovery complements the native DSH Plugin Manager instead of replacing it.',
@@ -163,6 +165,8 @@ window.__ModuleLoader__.load({
       previousPage: '上一页',
       nextPage: '下一页',
       updated: '{value}前更新',
+      released: '{value}前发布',
+      repoUpdated: '仓库 {value}',
       prerelease: '预发布',
       updatesTitle: '插件更新',
       updatesLead: '更新发现用于补充原生 DSH Plugin Manager，而不是替代它。',
@@ -234,23 +238,24 @@ window.__ModuleLoader__.load({
       '.ra-search::placeholder{color:var(--dsw-alias-label-caption)}',
       '.ra-filter-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}',
       '.ra-compact-filter{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 4px 0 7px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-tertiary)}',
-      '.ra-compact-filter[data-active=true]{background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-border-l4)}',
+      '.ra-compact-filter[data-active=true]{background:color-mix(in srgb,var(--dsw-alias-label-primary) 7%,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l4)}',
       '.ra-compact-filter-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 14px;width:14px;height:14px}',
-      '.ra-compact-filter select{height:27px;max-width:132px;padding:0 18px 0 2px;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-secondary);font:500 11px/1 inherit}',
+      '.ra-compact-filter select{height:27px;max-width:132px;padding:0 18px 0 2px;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-secondary);font:500 11px/1 inherit;color-scheme:light dark}',
+      '.ra-compact-filter select option,.ra-select option{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
       '.ra-sort-row{display:inline-flex;align-items:center;gap:3px;padding:2px;border:.5px solid var(--dsw-alias-border-l3);border-radius:9px;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-bg-layer-2))}',
       '.ra-sort-criterion{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:30px;height:26px;padding:0 6px;border:.5px solid transparent;border-radius:7px;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/1 inherit;cursor:pointer}',
       '.ra-sort-criterion:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}',
-      '.ra-sort-criterion[data-active=true]{border-color:var(--dsw-alias-border-l3);background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-primary)}',
+      '.ra-sort-criterion[data-active=true]{border-color:var(--dsw-alias-border-l3);background:color-mix(in srgb,var(--dsw-alias-label-primary) 9%,var(--dsw-alias-bg-layer-2));color:var(--dsw-alias-label-primary)}',
       '.ra-sort-criterion:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
       '.ra-sort-symbol{display:inline-flex;align-items:center;justify-content:center;min-width:14px;height:14px}',
       '.ra-sort-direction{display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-caption);font-size:9px;line-height:1}',
       '.ra-sort-criterion[data-active=true] .ra-sort-direction{color:var(--dsw-alias-brand-primary)}',
-      '.ra-sort-priority{position:absolute;top:-5px;right:-4px;display:flex;align-items:center;justify-content:center;width:13px;height:13px;border-radius:99px;background:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary-foreground);font:700 8px/13px ui-monospace,SFMono-Regular,Consolas,monospace}',
       '.ra-star{color:var(--dsw-alias-state-warn-primary);font-weight:800}',
       '.ra-browse-list{display:flex;flex-direction:column;gap:2px;box-sizing:border-box;min-width:0;max-width:100%;margin:0;padding:0;overflow:hidden;list-style:none}',
       '.ra-plugin-card{display:flex;align-items:center;gap:14px;box-sizing:border-box;min-width:0;max-width:100%;width:100%;margin:0;padding:8px;border-radius:var(--dsw-radius-xl)}',
       '.ra-plugin-card:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.ra-plugin-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);color:var(--dsw-alias-label-secondary)}',
+      '.ra-plugin-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);color:var(--dsw-alias-label-secondary);overflow:hidden}',
+      '.ra-plugin-image{display:block;width:30px;height:30px;object-fit:contain;border-radius:6px}',
       '.ra-plugin-main{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}',
       '.ra-plugin-title-row{display:flex;align-items:center;gap:8px;min-width:0}',
       '.ra-plugin-title{font-size:13.5px;line-height:20px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
@@ -499,6 +504,20 @@ window.__ModuleLoader__.load({
       } catch {
         return false
       }
+    }
+
+    function PluginArtwork({ src }) {
+      const [failed, setFailed] = React.useState(false)
+      React.useEffect(() => { setFailed(false) }, [src])
+      if (!src || failed) return h(IconPlugin, { size: 16 })
+      return h('img', {
+        className: 'ra-plugin-image',
+        src,
+        alt: '',
+        width: 30,
+        height: 30,
+        onError: () => setFailed(true),
+      })
     }
 
     function Empty({ title, body }) {
@@ -817,6 +836,7 @@ window.__ModuleLoader__.load({
       const [page, setPage] = React.useState(1)
       const [pageSize, setPageSize] = React.useState(20)
       const [state, setState] = React.useState({ loading: true, data: null, error: '' })
+      const [iconEvidence, setIconEvidence] = React.useState({})
 
       React.useEffect(() => {
         const controller = new AbortController()
@@ -864,7 +884,7 @@ window.__ModuleLoader__.load({
       const valueForSort = (plugin, key) => {
         if (key === 'stars') return plugin.stars ?? 0
         if (key === 'downloads') return plugin.downloads30d ?? 0
-        if (key === 'freshness') return Date.parse(plugin.updatedAt ?? '') || 0
+        if (key === 'freshness') return Date.parse(plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt ?? '') || 0
         if (key === 'name') return plugin.name.toLocaleLowerCase()
         return baseOrder.get(plugin.key ?? plugin.installSpec ?? plugin.name) ?? Number.MAX_SAFE_INTEGER
       }
@@ -900,6 +920,36 @@ window.__ModuleLoader__.load({
       const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize))
       const currentPage = Math.min(page, pageCount)
       const visible = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+      const iconItems = visible
+        .filter(plugin => (plugin.packageName && plugin.version) || plugin.repository)
+        .map(plugin => ({
+          key: plugin.key ?? plugin.installSpec ?? plugin.name,
+          ...(plugin.packageName ? { packageName: plugin.packageName } : {}),
+          ...(plugin.version ? { version: plugin.version } : {}),
+          ...(plugin.repository ? { repository: plugin.repository } : {}),
+        }))
+      const iconSignature = iconItems.map(item => [item.key, item.packageName ?? '', item.version ?? '', item.repository ?? ''].join('|')).join(';')
+
+      React.useEffect(() => {
+        if (!iconItems.length) return undefined
+        const controller = new AbortController()
+        const batches = []
+        for (let index = 0; index < iconItems.length; index += 6) batches.push(iconItems.slice(index, index + 6))
+        Promise.all(batches.map(items => rpc('icons', { items }, controller.signal))).then(values => {
+          if (controller.signal.aborted) return
+          setIconEvidence(current => {
+            const next = { ...current }
+            for (const value of values) {
+              for (const row of value?.icons ?? []) {
+                if (row?.key && row?.icon) next[row.key] = row.icon
+              }
+            }
+            return next
+          })
+        }, () => {})
+        return () => controller.abort()
+      }, [iconSignature])
+
       const resultLabel = state.loading
         ? t('browseLoading')
         : query.trim()
@@ -924,9 +974,7 @@ window.__ModuleLoader__.load({
         const active = index >= 0
         const direction = active ? sorts[index].direction : undefined
         const stateLabel = active ? t(direction === 'asc' ? 'sortAsc' : 'sortDesc') : t('sortOff')
-        const title = active
-          ? label + ' · ' + stateLabel + ' · ' + format(t, 'sortPriority', { priority: index + 1 })
-          : label + ' · ' + stateLabel
+        const title = label + ' · ' + stateLabel
         return h('button', {
           key,
           type: 'button',
@@ -938,7 +986,6 @@ window.__ModuleLoader__.load({
         },
           h('span', { className: 'ra-sort-symbol' }, icon),
           active ? h('span', { className: 'ra-sort-direction', 'aria-hidden': true }, direction === 'asc' ? '↑' : '↓') : null,
-          active ? h('span', { className: 'ra-sort-priority', 'aria-hidden': true }, String(index + 1)) : null,
         )
       }
 
@@ -1021,10 +1068,17 @@ window.__ModuleLoader__.load({
           ? h(Empty, { title: t('browseNoResults'), body: t('browseNoResultsBody') })
           : h('ul', { className: 'ra-browse-list' },
             ...visible.map(plugin => {
-              const updated = ageShort(plugin.updatedAt)
+              const pluginKey = plugin.key ?? plugin.installSpec ?? plugin.name
+              const freshnessAt = plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt
+              const freshnessAge = ageShort(freshnessAt)
+              const freshnessLabel = freshnessAge
+                ? plugin.releasedAt
+                  ? format(t, 'released', { value: freshnessAge })
+                  : format(t, 'repoUpdated', { value: freshnessAge })
+                : ''
               const prerelease = plugin.channel === 'prerelease' || String(plugin.version ?? '').includes('-')
-              return h('li', { key: plugin.key ?? plugin.installSpec ?? plugin.name, className: 'ra-plugin-card' },
-                h('span', { className: 'ra-plugin-icon', 'aria-hidden': true }, h(IconPlugin, { size: 16 })),
+              return h('li', { key: pluginKey, className: 'ra-plugin-card' },
+                h('span', { className: 'ra-plugin-icon', 'aria-hidden': true }, h(PluginArtwork, { src: iconEvidence[pluginKey] })),
                 h('div', { className: 'ra-plugin-main' },
                   h('div', { className: 'ra-plugin-title-row' },
                     h('span', { className: 'ra-plugin-title', title: plugin.name }, plugin.name),
@@ -1043,8 +1097,8 @@ window.__ModuleLoader__.load({
                     plugin.packageName ? h('span', { className: 'ra-plugin-meta-item', title: 'npm downloads / 30d' },
                       h(IconDownload, { size: 12 }), Number.isFinite(plugin.downloads30d) ? compactNumber(plugin.downloads30d) + ' / 30d' : '— / 30d',
                     ) : null,
-                    updated ? h('span', { className: 'ra-plugin-meta-item' },
-                      h(IconClock, { size: 12 }), format(t, 'updated', { value: updated }),
+                    freshnessLabel ? h('span', { className: 'ra-plugin-meta-item', title: freshnessAt },
+                      h(IconClock, { size: 12 }), freshnessLabel,
                     ) : null,
                   ),
                   (plugin.tags ?? []).length ? h('div', { className: 'ra-plugin-tags' },

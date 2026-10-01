@@ -41,6 +41,7 @@ test('source RPC is Host-owned and client uses the Connection service', () => {
   assert.match(host, /route\('health'\)/)
   assert.match(host, /route\('counts'\)/)
   assert.match(host, /route\('browse'\)/)
+  assert.match(host, /route\('icons'\)/)
   assert.match(client, /connection\.rpc\.call/)
   assert.match(client, /rpc\('browse'/)
 })
@@ -60,7 +61,7 @@ test('ships source marks, compact Browse filters, multi-sort, and pagination', (
   assert.match(client, /ra-sort-row/)
   assert.match(client, /const \[sorts, setSorts\] = React\.useState\(\[\]\)/)
   assert.match(client, /cycleSort/)
-  assert.match(client, /ra-sort-priority/)
+  assert.doesNotMatch(client, /ra-sort-priority/)
   assert.match(client, /sortCriterion\('stars'/)
   assert.match(client, /sortCriterion\('downloads'/)
   assert.match(client, /sortCriterion\('freshness'/)
@@ -87,4 +88,13 @@ test('Browse separates statistics from tags and uses the warning token for stars
   assert.match(client, /ra-star/)
   assert.match(client, /--dsw-alias-state-warn-primary/)
   assert.match(client, /plugin\.packageName \? h\('span'.*— \/ 30d/s)
+})
+
+
+test('Browse uses theme-colored native options and manifest artwork fallback', () => {
+  assert.match(client, /ra-compact-filter select option/)
+  assert.match(client, /--dsw-alias-bg-layer-2/)
+  assert.match(client, /function PluginArtwork/)
+  assert.match(client, /rpc\('icons'/)
+  assert.match(client, /plugin\.releasedAt \?\? plugin\.repositoryUpdatedAt/)
 })

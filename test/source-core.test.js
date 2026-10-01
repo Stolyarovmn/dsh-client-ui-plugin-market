@@ -6,6 +6,7 @@ import {
   healthSources,
   isPrivateAddress,
   normalizeSource,
+  resolvePluginIcons,
 } from '../source-core.js'
 
 const publicResolver = async () => [{ address: '93.184.216.34', family: 4 }]
@@ -80,7 +81,8 @@ test('browse merges npm and GitHub candidates by repository and keeps npm instal
           description: 'Alpha plugin for DeepSeek Harness',
           html_url: 'https://github.com/acme/dsh-alpha',
           stargazers_count: 42,
-          updated_at: '2026-09-30T00:00:00Z',
+          pushed_at: '2026-10-01T12:00:00Z',
+          updated_at: '2026-10-01T18:00:00Z',
           topics: ['deepseek-harness', 'dsh-plugin'],
         }],
       })
@@ -116,6 +118,9 @@ test('browse merges npm and GitHub candidates by repository and keeps npm instal
   assert.equal(result.plugins[0].packageName, '@acme/dsh-alpha')
   assert.equal(result.plugins[0].installSpec, '@acme/dsh-alpha')
   assert.equal(result.plugins[0].stars, 42)
+  assert.equal(result.plugins[0].releasedAt, '2026-09-29T00:00:00Z')
+  assert.equal(result.plugins[0].repositoryUpdatedAt, '2026-10-01T12:00:00Z')
+  assert.equal(result.plugins[0].updatedAt, '2026-09-29T00:00:00Z')
   assert.deepEqual(result.plugins[0].sources.map(item => item.id).sort(), ['github', 'npm'])
 })
 
@@ -172,4 +177,43 @@ test('browse can enrich npm packages with 30-day downloads', async () => {
   assert.equal(result.plugins[0].downloads30d, 12345)
   assert.equal(result.plugins[0].channel, 'stable')
   assert.ok(result.plugins[0].tags.includes('automation'))
+})
+
+
+test('plugin icons follow the DSH manifest-relative icon contract and return data URLs', async () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="7"/></svg>'
+  const fetchImpl = async input => {
+    const url = new URL(input)
+    if (url.hostname === 'registry.npmjs.org') {
+      return Response.json({ icon: './assets/icon.svg' })
+    }
+    if (url.hostname === 'unpkg.com') {
+      return new Response(svg, { status: 200, headers: { 'content-type': 'image/svg+xml' } })
+    }
+    throw new Error('unexpected URL ' + url)
+  }
+
+  const rows = await resolvePluginIcons([
+    { key: 'alpha', packageName: '@acme/dsh-alpha', version: '1.2.3' },
+  ], { fetchImpl, resolveHost: publicResolver })
+
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].key, 'alpha')
+  assert.match(rows[0].icon, /^data:image\/svg\+xml;base64,/)
+})
+
+test('plugin icon resolution rejects URL icon declarations', async () => {
+  const fetchImpl = async input => {
+    const url = new URL(input)
+    if (url.hostname === 'registry.npmjs.org') {
+      return Response.json({ icon: 'https://example.com/icon.svg' })
+    }
+    throw new Error('unexpected URL ' + url)
+  }
+
+  const rows = await resolvePluginIcons([
+    { key: 'alpha', packageName: '@acme/dsh-alpha', version: '1.2.4' },
+  ], { fetchImpl, resolveHost: publicResolver })
+
+  assert.deepEqual(rows, [{ key: 'alpha' }])
 })

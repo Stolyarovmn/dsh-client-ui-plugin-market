@@ -1,5 +1,5 @@
 import z from '@deepseek-ai/schemastery'
-import { browseSources, countSources, healthSources, SOURCE_TYPES } from './source-core.js'
+import { browseSources, countSources, healthSources, resolvePluginIcons, SOURCE_TYPES } from './source-core.js'
 
 export const name = 'registry-aggregator'
 export const RPC_CHANNEL = '/api'
@@ -103,6 +103,14 @@ export function apply(ctx, config = {}) {
           }
           return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
         }
+        if (endpoint === 'icons') {
+          const items = Array.isArray(payload?.items) ? payload.items.slice(0, 8) : []
+          const value = {
+            icons: await resolvePluginIcons(items, requestOptions),
+            generatedAt: new Date().toISOString(),
+          }
+          return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
+        }
         return failure('plugin-sources/not-found', 'unknown endpoint ' + endpoint, { endpoint })
       } catch (error) {
         return failure('plugin-sources/invalid-request', error)
@@ -144,6 +152,10 @@ export function apply(ctx, config = {}) {
     rpcCtx.effect(
       () => rpcCtx.connection.fetch.register(route('browse')),
       'registry-aggregator: browse route',
+    )
+    rpcCtx.effect(
+      () => rpcCtx.connection.fetch.register(route('icons')),
+      'registry-aggregator: plugin icons route',
     )
   })
 }

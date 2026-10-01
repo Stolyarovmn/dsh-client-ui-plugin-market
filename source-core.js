@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { lookup as dnsLookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import ipaddr from 'ipaddr.js'
@@ -12,7 +13,10 @@ const GITHUB_RETRY_BASE_DELAY_MS = 250
 const GITHUB_RETRY_TIMEOUT_MS = 5000
 const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504])
 const BROWSE_CACHE_TTL_MS = 60_000
+const ICON_CACHE_TTL_MS = 30 * 60_000
+const MAX_ICON_BYTES = 256 * 1024
 const browseCache = new Map()
+const iconCache = new Map()
 
 export const SOURCE_TYPES = Object.freeze(['npm', 'github', 'custom-json', 'corporate'])
 export const NPM_DISCOVERY_KEYWORDS = Object.freeze(['dsh-plugin', 'deepseek-harness', 'deepseek-harness-plugin', 'dsh-plugins'])
@@ -41,6 +45,29 @@ function cacheBrowse(key, value) {
   if (browseCache.size <= 64) return
   const first = browseCache.keys().next().value
   if (first !== undefined) browseCache.delete(first)
+}
+
+function cachedIcon(key) {
+  const entry = iconCache.get(key)
+  if (!entry) return { hit: false }
+  if (entry.expiresAt <= Date.now()) {
+    iconCache.delete(key)
+    return { hit: false }
+  }
+  return { hit: true, value: entry.value }
+}
+
+function cacheIcon(key, value) {
+  iconCache.set(key, { value, expiresAt: Date.now() + ICON_CACHE_TTL_MS })
+  if (iconCache.size <= 128) return
+  const first = iconCache.keys().next().value
+  if (first !== undefined) iconCache.delete(first)
+}
+
+function laterDate(...values) {
+  return values
+    .filter(value => typeof value === 'string' && Number.isFinite(Date.parse(value)))
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0]
 }
 
 function releaseChannel(version) {
@@ -302,6 +329,56 @@ export async function fetchJson(urlInput, source, options = {}) {
   throw lastError
 }
 
+async function fetchBinary(urlInput, source, options = {}) {
+  const fetchImpl = options.fetchImpl ?? globalThis.fetch
+  if (typeof fetchImpl !== 'function') throw new Error('Host fetch is unavailable')
+  const maxBytes = Math.min(options.maxBytes ?? MAX_ICON_BYTES, MAX_ICON_BYTES)
+  const maxRedirects = options.maxRedirects ?? DEFAULT_MAX_REDIRECTS
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const forwardAbort = () => controller.abort(options.signal?.reason)
+  options.signal?.addEventListener('abort', forwardAbort, { once: true })
+  let url = new URL(urlInput)
+
+  try {
+    for (let redirects = 0; redirects <= maxRedirects; redirects += 1) {
+      let dispatcher
+      try {
+        const address = await assertSafeUrl(url, { ...options, signal: controller.signal }, false)
+        dispatcher = options.fetchImpl && !options.dispatcherFactory ? undefined : pinnedDispatcher(address, options.dispatcherFactory)
+        const response = await fetchImpl(url, {
+          method: 'GET',
+          headers: { accept: 'image/svg+xml,image/png,image/jpeg,image/webp,*/*;q=0.1', 'user-agent': 'dsh-registry-aggregator/0.5' },
+          redirect: 'manual',
+          signal: controller.signal,
+          ...(dispatcher ? { dispatcher } : {}),
+        })
+
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          const location = response.headers.get('location')
+          await response.body?.cancel?.()
+          if (!location) throw new Error('icon redirect ' + response.status + ' has no Location header')
+          if (redirects === maxRedirects) throw new Error('icon redirected too many times')
+          url = new URL(location, url)
+          continue
+        }
+        if (!response.ok) {
+          await response.body?.cancel?.()
+          throw new Error('icon returned HTTP ' + response.status)
+        }
+        return await readResponseBytes(response, maxBytes)
+      } finally {
+        await dispatcher?.close?.()
+      }
+    }
+    throw new Error('icon redirected too many times')
+  } finally {
+    clearTimeout(timer)
+    options.signal?.removeEventListener('abort', forwardAbort)
+  }
+}
+
 function npmSearchUrl(source) {
   if (source.url) {
     const configured = new URL(source.url)
@@ -370,7 +447,7 @@ function npmPlugin(entry, source) {
     ...(text(pkg?.description) ? { description: text(pkg.description) } : {}),
     ...(repository ? { repository } : {}),
     ...(npmUrl ? { npmUrl } : {}),
-    ...(text(pkg?.date) ? { updatedAt: text(pkg.date) } : {}),
+    ...(text(pkg?.date) ? { releasedAt: text(pkg.date), updatedAt: text(pkg.date) } : {}),
     ...(Array.isArray(pkg?.keywords) ? { tags: pkg.keywords.filter(item => typeof item === 'string').map(item => item.toLowerCase()).slice(0, 8) } : {}),
     ...(Number.isFinite(entry?.score?.final) ? { score: entry.score.final } : {}),
     channel: releaseChannel(pkg?.version),
@@ -390,7 +467,7 @@ function githubPlugin(entry, source) {
     ...(text(entry?.description) ? { description: text(entry.description) } : {}),
     repository,
     ...(Number.isFinite(entry?.stargazers_count) ? { stars: entry.stargazers_count } : {}),
-    ...(text(entry?.updated_at) ? { updatedAt: text(entry.updated_at) } : {}),
+    ...(text(entry?.pushed_at ?? entry?.updated_at) ? { repositoryUpdatedAt: text(entry.pushed_at ?? entry.updated_at), updatedAt: text(entry.pushed_at ?? entry.updated_at) } : {}),
     ...(Array.isArray(entry?.topics) ? { tags: entry.topics.filter(item => typeof item === 'string').map(item => item.toLowerCase()).slice(0, 12) } : {}),
     channel: 'stable',
     installSpec: 'github:' + fullName,
@@ -424,7 +501,9 @@ function catalogPlugin(entry, source, index) {
     ...(repository ? { repository } : {}),
     ...(Number.isFinite(entry.stars) ? { stars: entry.stars } : {}),
     ...(Number.isFinite(entry.downloads30d) ? { downloads30d: entry.downloads30d } : {}),
-    ...(text(entry.updatedAt ?? entry.updated_at ?? entry.date) ? { updatedAt: text(entry.updatedAt ?? entry.updated_at ?? entry.date) } : {}),
+    ...(text(entry.releasedAt ?? entry.released_at ?? entry.releaseDate ?? entry.date) ? { releasedAt: text(entry.releasedAt ?? entry.released_at ?? entry.releaseDate ?? entry.date) } : {}),
+    ...(text(entry.repositoryUpdatedAt ?? entry.repository_updated_at) ? { repositoryUpdatedAt: text(entry.repositoryUpdatedAt ?? entry.repository_updated_at) } : {}),
+    ...(text(entry.releasedAt ?? entry.released_at ?? entry.releaseDate ?? entry.date ?? entry.repositoryUpdatedAt ?? entry.repository_updated_at ?? entry.updatedAt ?? entry.updated_at) ? { updatedAt: text(entry.releasedAt ?? entry.released_at ?? entry.releaseDate ?? entry.date ?? entry.repositoryUpdatedAt ?? entry.repository_updated_at ?? entry.updatedAt ?? entry.updated_at) } : {}),
     ...(Array.isArray(entry.tags) ? { tags: entry.tags.filter(item => typeof item === 'string').slice(0, 12) } : {}),
     ...(installSpec ? { installSpec } : {}),
     sources: [{ id: source.id, name: source.name, type: source.type }],
@@ -455,15 +534,25 @@ function mergeBrowsePlugins(plugins) {
     for (const source of plugin.sources ?? []) {
       if (!sources.some(item => item.id === source.id)) sources.push(source)
     }
+    const packageBearing = existing.packageName ? existing : plugin.packageName ? plugin : undefined
+    const releasedAt = laterDate(existing.releasedAt, plugin.releasedAt)
+    const repositoryUpdatedAt = laterDate(existing.repositoryUpdatedAt, plugin.repositoryUpdatedAt)
+    const updatedAt = releasedAt ?? repositoryUpdatedAt ?? laterDate(existing.updatedAt, plugin.updatedAt)
+    const tags = [...new Set([...(existing.tags ?? []), ...(plugin.tags ?? [])])].slice(0, 12)
     merged.set(plugin.key, {
       ...existing,
       ...plugin,
-      name: existing.packageName ? existing.name : plugin.name,
-      ...(existing.packageName ? { packageName: existing.packageName } : {}),
-      ...(existing.version ? { version: existing.version } : {}),
+      name: packageBearing?.name ?? plugin.name,
+      ...(packageBearing?.packageName ? { packageName: packageBearing.packageName } : {}),
+      ...(packageBearing?.version ? { version: packageBearing.version } : {}),
+      ...(packageBearing?.channel ? { channel: packageBearing.channel } : {}),
       ...(existing.description ? { description: existing.description } : {}),
       ...(existing.repository ? { repository: existing.repository } : {}),
-      ...(existing.packageName && existing.installSpec ? { installSpec: existing.installSpec } : {}),
+      ...(packageBearing?.installSpec ? { installSpec: packageBearing.installSpec } : {}),
+      ...(releasedAt ? { releasedAt } : {}),
+      ...(repositoryUpdatedAt ? { repositoryUpdatedAt } : {}),
+      ...(updatedAt ? { updatedAt } : {}),
+      ...(tags.length ? { tags } : {}),
       stars: Math.max(existing.stars ?? 0, plugin.stars ?? 0) || undefined,
       downloads30d: Math.max(existing.downloads30d ?? 0, plugin.downloads30d ?? 0) || undefined,
       score: Math.max(existing.score ?? 0, plugin.score ?? 0) || undefined,
@@ -523,12 +612,114 @@ function browseRank(plugin, query) {
   rank += Math.log10((plugin.stars ?? 0) + 1) * 120
   rank += Math.log10((plugin.downloads30d ?? 0) + 1) * 80
   rank += (plugin.score ?? 0) * 100
-  const freshness = Date.parse(plugin.updatedAt ?? '')
+  const freshness = Date.parse(plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt ?? '')
   if (Number.isFinite(freshness)) {
     const ageDays = Math.max(0, (Date.now() - freshness) / 86400000)
     rank += Math.max(0, 50 - Math.min(50, ageDays / 30))
   }
   return rank
+}
+
+function githubRepositoryParts(repository) {
+  const raw = cleanUrl(repository)
+  if (!raw) return undefined
+  try {
+    const url = new URL(raw)
+    if (url.hostname.toLowerCase() !== 'github.com') return undefined
+    const parts = url.pathname.replace(/^\/+|\/+$/g, '').split('/')
+    if (parts.length !== 2 || !parts[0] || !parts[1]) return undefined
+    return { owner: parts[0], repo: parts[1].replace(/\.git$/i, '') }
+  } catch {
+    return undefined
+  }
+}
+
+function safeIconPath(value) {
+  const raw = text(value)
+  if (!raw || raw.length > 512 || raw.includes('\\') || raw.startsWith('/')) return undefined
+  if (/^[A-Za-z][A-Za-z\d+.-]*:/u.test(raw)) return undefined
+  const clean = raw.replace(/^\.\//, '')
+  const parts = clean.split('/')
+  if (!parts.length || parts.some(part => !part || part === '.' || part === '..')) return undefined
+  const match = clean.toLowerCase().match(/\.(svg|png|jpe?g|webp)$/u)
+  if (!match) return undefined
+  const mediaType = match[1] === 'svg' ? 'image/svg+xml'
+    : match[1] === 'png' ? 'image/png'
+      : match[1] === 'webp' ? 'image/webp'
+        : 'image/jpeg'
+  return { path: clean, mediaType }
+}
+
+function encodedPath(path) {
+  return path.split('/').map(part => encodeURIComponent(part)).join('/')
+}
+
+async function iconDataFromUrl(url, mediaType, options) {
+  const bytes = await fetchBinary(url, { id: 'plugin-icon', name: 'plugin icon', type: 'github', enabled: true }, {
+    ...options,
+    authToken: undefined,
+    allowPrivateNetwork: false,
+    maxBytes: MAX_ICON_BYTES,
+  })
+  return 'data:' + mediaType + ';base64,' + Buffer.from(bytes).toString('base64')
+}
+
+async function resolveNpmIcon(item, options) {
+  const packageName = text(item?.packageName)
+  const version = text(item?.version)
+  if (!packageName || !version || packageName.length > 214 || version.length > 80) return undefined
+  if (!/^(?:@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*|[a-z0-9][a-z0-9._~-]*)$/iu.test(packageName)) return undefined
+  if (!/^[0-9A-Za-z][0-9A-Za-z._+~-]*$/u.test(version)) return undefined
+
+  const manifestUrl = 'https://registry.npmjs.org/' + encodeURIComponent(packageName) + '/' + encodeURIComponent(version)
+  const manifest = await fetchJson(manifestUrl, { id: 'npm-icon-manifest', name: 'npm', type: 'npm', enabled: true }, {
+    ...options,
+    authToken: undefined,
+    allowPrivateNetwork: false,
+  })
+  const icon = safeIconPath(manifest?.icon)
+  if (!icon) return undefined
+  const packagePath = packageName.startsWith('@')
+    ? packageName.split('/').map(part => encodeURIComponent(part)).join('/')
+    : encodeURIComponent(packageName)
+  const iconUrl = 'https://unpkg.com/' + packagePath + '@' + encodeURIComponent(version) + '/' + encodedPath(icon.path)
+  return iconDataFromUrl(iconUrl, icon.mediaType, options)
+}
+
+async function resolveGithubIcon(item, options) {
+  const parts = githubRepositoryParts(item?.repository)
+  if (!parts) return undefined
+  const manifestUrl = 'https://raw.githubusercontent.com/' + encodeURIComponent(parts.owner) + '/' + encodeURIComponent(parts.repo) + '/HEAD/package.json'
+  const manifest = await fetchJson(manifestUrl, { id: 'github-icon-manifest', name: 'GitHub', type: 'github', enabled: true }, {
+    ...options,
+    authToken: undefined,
+    allowPrivateNetwork: false,
+    githubRetryAttempts: 1,
+  })
+  const icon = safeIconPath(manifest?.icon)
+  if (!icon) return undefined
+  const iconUrl = 'https://raw.githubusercontent.com/' + encodeURIComponent(parts.owner) + '/' + encodeURIComponent(parts.repo) + '/HEAD/' + encodedPath(icon.path)
+  return iconDataFromUrl(iconUrl, icon.mediaType, options)
+}
+
+export async function resolvePluginIcons(items, options = {}) {
+  const values = Array.isArray(items) ? items.slice(0, 8) : []
+  return mapConcurrent(values, Math.min(options.concurrency ?? 4, 4), async item => {
+    const key = text(item?.key)?.slice(0, 500)
+    if (!key) return undefined
+    const cacheKey = [text(item?.packageName) ?? '', text(item?.version) ?? '', cleanUrl(item?.repository) ?? ''].join('|')
+    const cached = cachedIcon(cacheKey)
+    if (cached.hit) return { key, ...(cached.value ? { icon: cached.value } : {}) }
+    let icon
+    try {
+      if (item?.packageName && item?.version) icon = await resolveNpmIcon(item, options)
+      if (!icon && item?.repository) icon = await resolveGithubIcon(item, options)
+    } catch {
+      icon = undefined
+    }
+    cacheIcon(cacheKey, icon ?? null)
+    return { key, ...(icon ? { icon } : {}) }
+  }).then(rows => rows.filter(Boolean))
 }
 
 function uniqueCount(values) {

@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.6`  
+Current test version: `0.5.0-rc.7`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -24,8 +24,10 @@ Implemented in this milestone:
 - no duplicate `Installed` view;
 - live federated Browse search across enabled npm, GitHub, custom JSON, and corporate sources;
 - compact icon-led source/release/freshness/tag/page-size filters, multi-source metadata, and 20/50/100 pagination;
-- combinable multi-sort criteria for relevance, stars, downloads, freshness, and name with per-criterion direction and priority;
+- combinable multi-sort criteria for relevance, stars, downloads, freshness, and name with per-criterion direction; active criteria use a subtle native-style fill without priority badges;
 - npm 30-day download enrichment plus GitHub stars when available; GitHub-only entries intentionally have no npm download count;
+- package freshness distinguishes npm release time from GitHub repository push time, so GitHub metadata churn does not make every item look newly released;
+- best-effort package artwork discovery from the DSH top-level manifest `icon` field, returned to the Client as bounded data URLs with the same SVG/PNG/JPEG/WebP and 256 KiB policy as native DSH metadata;
 - popular/default Browse results when the query is empty;
 - real npm/GitHub source marks and a package icon exposed through the DSH 0.2 manifest contract;
 - horizontal layout containment for narrow Plugin Manager detail panes;
@@ -54,7 +56,7 @@ Sources UI
   │    ├─ snapshot subscription
   │    └─ form.mutate(...) → Host Config.sources
   └─ ctx.connection.rpc.call
-       └─ /api/plugin-sources/{health,counts,browse}
+       └─ /api/plugin-sources/{health,counts,browse,icons}
             └─ Host source adapters
                  ├─ npm
                  ├─ GitHub
