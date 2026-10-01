@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Registry Aggregator",
+    "description": "聚合插件注册表与目录，并在原生 Plugin Manager 中提供更新发现。"
+  }
+}

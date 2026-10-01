@@ -4,16 +4,19 @@ import test from 'node:test'
 
 const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const client = await readFile(new URL('../client.js', import.meta.url), 'utf8')
+const host = await readFile(new URL('../index.js', import.meta.url), 'utf8')
 const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 
 test('targets only DSH 0.2.x', () => {
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh'], '>=0.2.0-rc.2 <0.3.0')
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-plugin-manager'))
+  assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-connection'))
 })
 
-test('uses the native bundle configuration slot', () => {
+test('uses the native bundle configuration slot and Config form', () => {
   assert.match(client, /plugins\.bundle\.config/)
-  assert.match(client, /key:\s*PACKAGE/)
+  assert.match(client, /form\.mutate/)
+  assert.match(host, /export const Config/)
   assert.match(patch, /registry-aggregator/)
 })
 
@@ -27,6 +30,13 @@ test('keeps only Sources, Browse, and Updates top-level views', () => {
   assert.match(client, /browse:\s*'Browse'/)
   assert.match(client, /updates:\s*'Updates'/)
   assert.doesNotMatch(client, /installed:\s*'Installed'/i)
+})
+
+test('source RPC is Host-owned and client uses the Connection service', () => {
+  assert.match(host, /connection\.fetch\.register/)
+  assert.match(host, /route\('health'\)/)
+  assert.match(host, /route\('counts'\)/)
+  assert.match(client, /connection\.rpc\.call/)
 })
 
 test('styles use DSH theme tokens and no feature gradient', () => {

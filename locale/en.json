@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Registry Aggregator",
+    "description": "Discover plugins from federated registries and catalogs, with update discovery integrated into the native Plugin Manager."
+  }
+}

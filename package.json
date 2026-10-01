@@ -1,6 +1,6 @@
 {
   "name": "@stolyarovmn/dsh-ui-registry-aggregator",
-  "version": "0.5.0-rc.1",
+  "version": "0.5.0-rc.2",
   "description": "Federated plugin discovery and update UI for DeepSeek Harness 0.2.x, integrated with the native Plugin Manager.",
   "author": {
     "name": "Stolyarovmn",
@@ -10,7 +10,9 @@
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
-    "./package.json": "./package.json"
+    "./source-core": "./source-core.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "scripts": {
     "test": "node --test test/*.test.js",
@@ -19,7 +21,9 @@
   "files": [
     "index.js",
     "client.js",
+    "source-core.js",
     "cordis.patch.yml",
+    "locale/*.json",
     "README.md",
     "LICENSE"
   ],
@@ -31,6 +35,11 @@
     "plugin-discovery",
     "plugin-updates"
   ],
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.2",
+    "ipaddr.js": "^2.2.0",
+    "undici": "^7.16.0"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -39,6 +48,7 @@
       "platform": "web",
       "immediately": true,
       "inject": [
+        "@deepseek-ai/dsh-client-connection",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-plugin-manager"
       ]

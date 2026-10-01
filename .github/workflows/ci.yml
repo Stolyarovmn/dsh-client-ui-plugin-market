@@ -17,10 +17,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Install test dependencies
+        run: npm install --package-lock=false --legacy-peer-deps
       - name: Check JavaScript syntax
         run: |
           node --check index.js
           node --check client.js
+          node --check source-core.js
       - run: npm test
       - run: npm pack --dry-run
 
