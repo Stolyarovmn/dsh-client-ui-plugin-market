@@ -2,7 +2,7 @@
 
 [← UI code reference](./README.md)
 
-This page indexes the standard current-color product icon set exported by DSH `ui-primitives` at [`639ed0153972`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/icons/index.tsx).
+This page indexes the standard current-color product icon set exported by DSH `ui-primitives` at [`477b4f420553`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/icons/index.tsx).
 
 **94 glyph families / 188 named exports.** Every family normally has a Regular and Medium export. Regular uses a 1px stroke; Medium uses 1.3px where the geometry is stroke-based. Fill-only glyphs may render identically in both weights.
 

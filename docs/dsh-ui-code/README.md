@@ -7,13 +7,16 @@ A docs-only reference for building DSH plugins and extensions that visually and 
 ## Pinned upstream
 
 - Repository: [deepseek-ai/deepseek-harness](https://github.com/deepseek-ai/deepseek-harness)
-- Snapshot: [`639ed015397290b3745d163aafe02ffee4aa3f84`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84)
-- Shared primitives package: [`packages/client/ui-primitives`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives)
-- Package documentation: [`ui-primitives/README.md`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/README.md)
-- Public exports: [`src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/index.ts)
-- Native product icons: [`src/icons/index.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-primitives/src/icons/index.tsx)
-- Theme/design tokens: [`packages/client/ui-theme`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/packages/client/ui-theme)
-- Radius/border guidance: [`docs/ui-radius.md`](https://github.com/deepseek-ai/deepseek-harness/blob/639ed015397290b3745d163aafe02ffee4aa3f84/docs/ui-radius.md)
+- DSH target: `0.1.7-rc.2`
+- ui-primitives package: `0.1.7-rc.2`
+- Snapshot: [`477b4f420553e8a52c2fbccc464d7561b239c443`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443)
+- Shared primitives package: [`packages/client/ui-primitives`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives)
+- Package documentation: [`ui-primitives/README.md`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/README.md)
+- Public exports: [`src/index.ts`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/index.ts)
+- Native product icons: [`src/icons/index.tsx`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-primitives/src/icons/index.tsx)
+- Theme/design tokens: [`packages/client/ui-theme`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/client/ui-theme)
+- Radius/border guidance: [`docs/ui-radius.md`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/docs/ui-radius.md)
+- Web styling rules: [`docs/web-styling.md`](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/docs/web-styling.md)
 
 ## Project UI rule
 
