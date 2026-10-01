@@ -338,33 +338,33 @@ export function createSourceAdapter(sourceInput, options = {}) {
   const maxPlugins = Math.max(1, Math.min(options.maxPlugins ?? DEFAULT_MAX_PLUGINS, 2000))
 
   async function npmDiscover() {
-    const rows = []
-    let truncated = false
-    for (const keyword of NPM_DISCOVERY_KEYWORDS) {
+    const batches = await Promise.all(NPM_DISCOVERY_KEYWORDS.map(async keyword => {
       const url = npmSearchUrl(source)
       url.searchParams.set('text', 'keywords:' + keyword)
       url.searchParams.set('size', String(Math.min(maxPlugins, 250)))
       const value = await request(url)
       const names = npmRows(value)
-      rows.push(...names)
-      if (Number(value?.total) > names.length) truncated = true
+      return { names, truncated: Number(value?.total) > names.length }
+    }))
+    return {
+      count: uniqueCount(batches.flatMap(batch => batch.names)),
+      truncated: batches.some(batch => batch.truncated),
     }
-    return { count: uniqueCount(rows), truncated }
   }
 
   async function githubDiscover() {
-    const rows = []
-    let truncated = false
-    for (const discoveryQuery of GITHUB_DISCOVERY_QUERIES) {
+    const batches = await Promise.all(GITHUB_DISCOVERY_QUERIES.map(async discoveryQuery => {
       const url = githubSearchUrl(source)
       url.searchParams.set('q', discoveryQuery)
       url.searchParams.set('per_page', String(Math.min(maxPlugins, 100)))
       const value = await request(url)
       const names = githubRows(value)
-      rows.push(...names)
-      if (Number(value?.total_count) > names.length) truncated = true
+      return { names, truncated: Number(value?.total_count) > names.length }
+    }))
+    return {
+      count: uniqueCount(batches.flatMap(batch => batch.names)),
+      truncated: batches.some(batch => batch.truncated),
     }
-    return { count: uniqueCount(rows), truncated }
   }
 
   async function catalogDiscover() {
