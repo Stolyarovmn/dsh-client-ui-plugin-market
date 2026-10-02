@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.13`  
+Current test version: `0.5.0-rc.14`  
 Current validation baseline: DSH `v0.2.0-rc.2`. Compatibility checks use the actual running DSH version from the active installation manifest rather than a hardcoded RC.
 
 ## Current milestone

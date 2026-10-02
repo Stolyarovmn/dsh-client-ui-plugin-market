@@ -175,3 +175,9 @@ test('Browse resolves paired npm 30-day and total download stats lazily for visi
   assert.match(client, /downloadStats\?\.complete/)
   assert.match(client, /downloadsTotal/)
 })
+
+
+test('freshness and page-size filters reserve enough width for their selected values', () => {
+  assert.match(client, /data-kind=freshness\] select\{width:72px\}/)
+  assert.match(client, /data-kind=page\] select\{width:58px\}/)
+})
