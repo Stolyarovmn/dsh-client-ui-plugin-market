@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.9`  
+Current test version: `0.5.0-rc.10`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -32,15 +32,18 @@ Implemented in this milestone:
 - real npm/GitHub source marks and a package icon exposed through the DSH 0.2 manifest contract;
 - horizontal layout containment for narrow Plugin Manager detail panes;
 - one-click Browse installation through the native DSH `remote.pluginManager` service: `inspect` → `installBundle`, installed-state synchronization via `listBundles` / `plugin-manager/changed`, and inline failure reporting;
+- icon-only Browse install states using the same local DSH-style glyph language as the rest of the page;
+- explicit `v<version>` package versions plus lazy manifest evidence for GitHub/npm rows;
+- positive compatibility evidence against the exact target DSH `0.2.0-rc.2`, following DSH peer semantics for `@deepseek-ai/dsh` and `@deepseek-ai/dsh-*`; the UI shows only `Compatible` or neutral `Not verified`;
+- live Updates discovery from native installed bundles plus latest npm manifests, with per-package update through `remote.pluginManager.installBundle`;
 - no runtime import of Harness Client implementation packages;
 - Harness-provided React and DSH theme tokens.
 
 Not migrated yet:
 
-- compatibility evidence beyond the native install-time bundle/version checks;
-- Browse update action for already-installed packages;
 - build-script approval UI inside Registry Aggregator (the native Add plugin dialog remains the approval fallback);
-- update discovery and Update all.
+- bulk Update all/cancel orchestration;
+- update discovery for GitHub-only installed dependencies that have no npm package identity.
 
 ## Architecture
 
@@ -58,7 +61,7 @@ Sources UI
   │    ├─ snapshot subscription
   │    └─ form.mutate(...) → Host Config.sources
   └─ ctx.connection.rpc.call
-       └─ /api/plugin-sources/{health,counts,browse,icons}
+       └─ /api/plugin-sources/{health,counts,browse,icons,metadata}
             └─ Host source adapters
                  ├─ npm
                  ├─ GitHub

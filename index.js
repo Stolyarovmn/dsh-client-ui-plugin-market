@@ -1,9 +1,10 @@
 import z from '@deepseek-ai/schemastery'
-import { browseSources, countSources, healthSources, resolvePluginIcons, SOURCE_TYPES } from './source-core.js'
+import { browseSources, countSources, healthSources, resolvePluginIcons, resolvePluginMetadata, SOURCE_TYPES } from './source-core.js'
 
 export const name = 'registry-aggregator'
 export const RPC_CHANNEL = '/api'
 export const RPC_PREFIX = 'plugin-sources'
+export const TARGET_DSH_VERSION = '0.2.0-rc.2'
 
 const SourceTypeSchema = z.union(SOURCE_TYPES.map(type => z.const(type)))
 const SourceAuthSchema = z.object({
@@ -111,6 +112,15 @@ export function apply(ctx, config = {}) {
           }
           return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
         }
+        if (endpoint === 'metadata') {
+          const items = Array.isArray(payload?.items) ? payload.items.slice(0, 24) : []
+          const value = {
+            plugins: await resolvePluginMetadata(items, { ...requestOptions, runtimeVersion: TARGET_DSH_VERSION }),
+            runtimeVersion: TARGET_DSH_VERSION,
+            generatedAt: new Date().toISOString(),
+          }
+          return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
+        }
         return failure('plugin-sources/not-found', 'unknown endpoint ' + endpoint, { endpoint })
       } catch (error) {
         return failure('plugin-sources/invalid-request', error)
@@ -156,6 +166,10 @@ export function apply(ctx, config = {}) {
     rpcCtx.effect(
       () => rpcCtx.connection.fetch.register(route('icons')),
       'registry-aggregator: plugin icons route',
+    )
+    rpcCtx.effect(
+      () => rpcCtx.connection.fetch.register(route('metadata')),
+      'registry-aggregator: plugin metadata route',
     )
   })
 }

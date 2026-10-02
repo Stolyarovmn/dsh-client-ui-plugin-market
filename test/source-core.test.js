@@ -7,6 +7,7 @@ import {
   isPrivateAddress,
   normalizeSource,
   resolvePluginIcons,
+  resolvePluginMetadata,
 } from '../source-core.js'
 
 const publicResolver = async () => [{ address: '93.184.216.34', family: 4 }]
@@ -216,4 +217,59 @@ test('plugin icon resolution rejects URL icon declarations', async () => {
   ], { fetchImpl, resolveHost: publicResolver })
 
   assert.deepEqual(rows, [{ key: 'alpha' }])
+})
+
+
+test('plugin metadata verifies DSH peer compatibility against the target runtime', async () => {
+  const fetchImpl = async input => {
+    const url = new URL(input)
+    if (url.hostname === 'registry.npmjs.org') {
+      return Response.json({
+        name: '@acme/dsh-plugin',
+        version: '2.3.4',
+        peerDependencies: {
+          '@deepseek-ai/dsh': '>=0.2.0-rc.1 <0.3.0',
+          '@deepseek-ai/dsh-client-ui-slots': '^0.2.0-rc.2',
+        },
+      })
+    }
+    throw new Error('unexpected URL ' + url)
+  }
+
+  const rows = await resolvePluginMetadata([
+    { key: 'plugin', packageName: '@acme/dsh-plugin', version: '2.3.4' },
+  ], { fetchImpl, resolveHost: publicResolver, runtimeVersion: '0.2.0-rc.2' })
+
+  assert.equal(rows[0].version, '2.3.4')
+  assert.equal(rows[0].compatibility, 'compatible')
+  assert.equal(rows[0].runtimeVersion, '0.2.0-rc.2')
+  assert.equal(rows[0].dshPeers.length, 2)
+})
+
+test('plugin metadata keeps non-confirmed compatibility neutral for the UI', async () => {
+  let manifest = {
+    name: '@acme/no-peer',
+    version: '1.0.0',
+    peerDependencies: { '@deepseek-ai/cordis': '^4.0.0' },
+  }
+  const fetchImpl = async input => {
+    const url = new URL(input)
+    if (url.hostname === 'registry.npmjs.org') return Response.json(manifest)
+    throw new Error('unexpected URL ' + url)
+  }
+
+  let rows = await resolvePluginMetadata([
+    { key: 'no-peer', packageName: '@acme/no-peer', version: '1.0.0' },
+  ], { fetchImpl, resolveHost: publicResolver, runtimeVersion: '0.2.0-rc.2' })
+  assert.equal(rows[0].compatibility, 'unchecked')
+
+  manifest = {
+    name: '@acme/old-plugin',
+    version: '1.0.1',
+    peerDependencies: { '@deepseek-ai/dsh': '<0.2.0' },
+  }
+  rows = await resolvePluginMetadata([
+    { key: 'old-plugin', packageName: '@acme/old-plugin', version: '1.0.1' },
+  ], { fetchImpl, resolveHost: publicResolver, runtimeVersion: '0.2.0-rc.2' })
+  assert.equal(rows[0].compatibility, 'unsupported')
 })

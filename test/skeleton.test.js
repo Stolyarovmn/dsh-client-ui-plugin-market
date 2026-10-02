@@ -44,6 +44,7 @@ test('source RPC is Host-owned and client uses the Connection service', () => {
   assert.match(host, /route\('counts'\)/)
   assert.match(host, /route\('browse'\)/)
   assert.match(host, /route\('icons'\)/)
+  assert.match(host, /route\('metadata'\)/)
   assert.match(client, /connection\.rpc\.call/)
   assert.match(client, /rpc\('browse'/)
 })
@@ -112,4 +113,23 @@ test('Browse install action delegates to the native DSH Plugin Manager Remote', 
   assert.match(client, /plugin-manager\/install-state/)
   assert.match(client, /className: 'ra-install-button'/)
   assert.match(client, /inject: \['slots', 'locale', 'connection', 'configForms', 'remote', 'remote\.pluginManager'\]/)
+})
+
+
+test('Browse uses icon-only install actions and explicit compatibility evidence', () => {
+  assert.doesNotMatch(client, /className: 'ra-install-button'/)
+  assert.match(client, /h\(IconDownload, \{ size: 16 \}\)/)
+  assert.match(client, /h\(IconCheck, \{ size: 16 \}\)/)
+  assert.match(client, /rpc\('metadata'/)
+  assert.match(client, /ra-compat-tag/)
+  assert.match(client, /'v' \+ displayVersion/)
+  assert.match(host, /TARGET_DSH_VERSION = '0\.2\.0-rc\.2'/)
+})
+
+test('Updates tab checks installed bundles and updates through native Plugin Manager', () => {
+  assert.match(client, /function UpdatesView/)
+  assert.match(client, /readInstalledBundles\(\)/)
+  assert.match(client, /compareSemver\(availableVersion, bundle\.version\)/)
+  assert.match(client, /updateInstalledPlugin/)
+  assert.match(client, /installBundle\(name \+ '@' \+ version/)
 })

@@ -12,7 +12,7 @@ function loadHelpers(fakeRemote) {
   return new Function('fakeRemote', [
     'let remote = fakeRemote;',
     helpers,
-    'return { readInstalledBundles, installBrowsePlugin };',
+    'return { readInstalledBundles, installBrowsePlugin, updateInstalledPlugin };',
   ].join('\n'))(fakeRemote)
 }
 
@@ -79,4 +79,38 @@ test('Browse install refuses non-bundles before running installBundle', async ()
     error => error?.problem === 'not-a-bundle' && /dsh\.bundle/.test(error.message),
   )
   assert.equal(installed, false)
+})
+
+
+test('Updates use native installBundle directly for an installed exact version', async () => {
+  const calls = []
+  const listeners = new Map()
+  const fakeRemote = {
+    pluginManager: {
+      installBundle: async (spec, options) => {
+        calls.push([spec, options])
+        listeners.get('plugin-manager/install-state')?.({ requestId: options.requestId, phase: 'applying' })
+        return { ok: true, value: { application: 'applied', bundle: '@acme/plugin' } }
+      },
+    },
+    $on: (event, listener) => {
+      listeners.set(event, listener)
+      return () => listeners.delete(event)
+    },
+  }
+
+  const { updateInstalledPlugin } = loadHelpers(fakeRemote)
+  const progress = []
+  const result = await updateInstalledPlugin(
+    { name: '@acme/plugin', version: '1.0.0', enabled: true },
+    '1.1.0',
+    state => progress.push(state.phase),
+  )
+
+  assert.equal(result.application, 'applied')
+  assert.equal(calls[0][0], '@acme/plugin@1.1.0')
+  assert.equal(calls[0][1].enabled, true)
+  assert.ok(progress.includes('starting'))
+  assert.ok(progress.includes('applying'))
+  assert.ok(progress.includes('done'))
 })

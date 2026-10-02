@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { lookup as dnsLookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import ipaddr from 'ipaddr.js'
+import semver from 'semver'
 import { Agent } from 'undici'
 
 const DEFAULT_TIMEOUT_MS = 10000
@@ -14,9 +15,11 @@ const GITHUB_RETRY_TIMEOUT_MS = 5000
 const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504])
 const BROWSE_CACHE_TTL_MS = 60_000
 const ICON_CACHE_TTL_MS = 30 * 60_000
+const METADATA_CACHE_TTL_MS = 10 * 60_000
 const MAX_ICON_BYTES = 256 * 1024
 const browseCache = new Map()
 const iconCache = new Map()
+const metadataCache = new Map()
 
 export const SOURCE_TYPES = Object.freeze(['npm', 'github', 'custom-json', 'corporate'])
 export const NPM_DISCOVERY_KEYWORDS = Object.freeze(['dsh-plugin', 'deepseek-harness', 'deepseek-harness-plugin', 'dsh-plugins'])
@@ -62,6 +65,23 @@ function cacheIcon(key, value) {
   if (iconCache.size <= 128) return
   const first = iconCache.keys().next().value
   if (first !== undefined) iconCache.delete(first)
+}
+
+function cachedMetadata(key) {
+  const entry = metadataCache.get(key)
+  if (!entry) return { hit: false }
+  if (entry.expiresAt <= Date.now()) {
+    metadataCache.delete(key)
+    return { hit: false }
+  }
+  return { hit: true, value: entry.value }
+}
+
+function cacheMetadata(key, value) {
+  metadataCache.set(key, { value, expiresAt: Date.now() + METADATA_CACHE_TTL_MS })
+  if (metadataCache.size <= 256) return
+  const first = metadataCache.keys().next().value
+  if (first !== undefined) metadataCache.delete(first)
 }
 
 function laterDate(...values) {
@@ -664,19 +684,102 @@ async function iconDataFromUrl(url, mediaType, options) {
   return 'data:' + mediaType + ';base64,' + Buffer.from(bytes).toString('base64')
 }
 
-async function resolveNpmIcon(item, options) {
-  const packageName = text(item?.packageName)
-  const version = text(item?.version)
-  if (!packageName || !version || packageName.length > 214 || version.length > 80) return undefined
-  if (!/^(?:@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*|[a-z0-9][a-z0-9._~-]*)$/iu.test(packageName)) return undefined
-  if (!/^[0-9A-Za-z][0-9A-Za-z._+~-]*$/u.test(version)) return undefined
+function validPackageName(value) {
+  const packageName = text(value)
+  if (!packageName || packageName.length > 214) return undefined
+  return /^(?:@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*|[a-z0-9][a-z0-9._~-]*)$/iu.test(packageName)
+    ? packageName
+    : undefined
+}
 
-  const manifestUrl = 'https://registry.npmjs.org/' + encodeURIComponent(packageName) + '/' + encodeURIComponent(version)
-  const manifest = await fetchJson(manifestUrl, { id: 'npm-icon-manifest', name: 'npm', type: 'npm', enabled: true }, {
+async function npmManifest(item, options) {
+  const packageName = validPackageName(item?.packageName)
+  if (!packageName) return undefined
+  const version = text(item?.version)
+  if (version && !/^[0-9A-Za-z][0-9A-Za-z._+~-]*$/u.test(version)) return undefined
+  const target = version ? encodeURIComponent(version) : 'latest'
+  return fetchJson('https://registry.npmjs.org/' + encodeURIComponent(packageName) + '/' + target,
+    { id: 'npm-plugin-manifest', name: 'npm', type: 'npm', enabled: true }, {
+      ...options,
+      authToken: undefined,
+      allowPrivateNetwork: false,
+    })
+}
+
+async function githubManifest(item, options) {
+  const parts = githubRepositoryParts(item?.repository)
+  if (!parts) return undefined
+  const url = 'https://raw.githubusercontent.com/' + encodeURIComponent(parts.owner) + '/' + encodeURIComponent(parts.repo) + '/HEAD/package.json'
+  return fetchJson(url, { id: 'github-plugin-manifest', name: 'GitHub', type: 'github', enabled: true }, {
     ...options,
     authToken: undefined,
     allowPrivateNetwork: false,
+    githubRetryAttempts: 1,
   })
+}
+
+function dshCompatibility(manifest, runtimeVersion) {
+  const runtime = text(runtimeVersion)
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest) || !runtime || semver.valid(runtime) === null) {
+    return { status: 'unchecked', peers: [] }
+  }
+  const peerDependencies = manifest.peerDependencies
+  if (!peerDependencies || typeof peerDependencies !== 'object' || Array.isArray(peerDependencies)) {
+    return { status: 'unchecked', peers: [] }
+  }
+  const peers = Object.entries(peerDependencies)
+    .filter(([name]) => name === '@deepseek-ai/dsh' || name.startsWith('@deepseek-ai/dsh-'))
+    .map(([dependency, range]) => {
+      const declared = typeof range === 'string' ? range : ''
+      const requirement = ['workspace:^', 'workspace:~', 'workspace:*'].includes(declared) ? runtime : declared
+      const compatible = Boolean(requirement
+        && semver.validRange(requirement, { includePrerelease: true }) !== null
+        && semver.satisfies(runtime, requirement, { includePrerelease: true }))
+      return { dependency, range: declared, compatible }
+    })
+  if (!peers.length) return { status: 'unchecked', peers: [] }
+  return { status: peers.every(peer => peer.compatible) ? 'compatible' : 'unsupported', peers }
+}
+
+export async function resolvePluginMetadata(items, options = {}) {
+  const values = Array.isArray(items) ? items.slice(0, 24) : []
+  return mapConcurrent(values, Math.min(options.concurrency ?? 4, 6), async item => {
+    const key = text(item?.key)?.slice(0, 500)
+    if (!key) return undefined
+    const cacheKey = [
+      text(item?.packageName) ?? '',
+      text(item?.version) ?? 'latest',
+      cleanUrl(item?.repository) ?? '',
+      text(options.runtimeVersion) ?? '',
+    ].join('|')
+    const cached = cachedMetadata(cacheKey)
+    if (cached.hit) return { key, ...cached.value }
+
+    let manifest
+    try {
+      if (item?.packageName) manifest = await npmManifest(item, options)
+      if (!manifest && item?.repository) manifest = await githubManifest(item, options)
+    } catch {
+      manifest = undefined
+    }
+
+    const compatibility = dshCompatibility(manifest, options.runtimeVersion)
+    const value = {
+      ...(text(manifest?.version) ? { version: text(manifest.version) } : {}),
+      compatibility: compatibility.status,
+      ...(compatibility.peers.length ? { dshPeers: compatibility.peers } : {}),
+      runtimeVersion: text(options.runtimeVersion),
+    }
+    cacheMetadata(cacheKey, value)
+    return { key, ...value }
+  }).then(rows => rows.filter(Boolean))
+}
+
+async function resolveNpmIcon(item, options) {
+  const packageName = validPackageName(item?.packageName)
+  const version = text(item?.version)
+  if (!packageName || !version) return undefined
+  const manifest = await npmManifest(item, options)
   const icon = safeIconPath(manifest?.icon)
   if (!icon) return undefined
   const packagePath = packageName.startsWith('@')
@@ -689,13 +792,7 @@ async function resolveNpmIcon(item, options) {
 async function resolveGithubIcon(item, options) {
   const parts = githubRepositoryParts(item?.repository)
   if (!parts) return undefined
-  const manifestUrl = 'https://raw.githubusercontent.com/' + encodeURIComponent(parts.owner) + '/' + encodeURIComponent(parts.repo) + '/HEAD/package.json'
-  const manifest = await fetchJson(manifestUrl, { id: 'github-icon-manifest', name: 'GitHub', type: 'github', enabled: true }, {
-    ...options,
-    authToken: undefined,
-    allowPrivateNetwork: false,
-    githubRetryAttempts: 1,
-  })
+  const manifest = await githubManifest(item, options)
   const icon = safeIconPath(manifest?.icon)
   if (!icon) return undefined
   const iconUrl = 'https://raw.githubusercontent.com/' + encodeURIComponent(parts.owner) + '/' + encodeURIComponent(parts.repo) + '/HEAD/' + encodedPath(icon.path)

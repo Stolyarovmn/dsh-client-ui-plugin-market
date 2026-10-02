@@ -67,6 +67,17 @@ window.__ModuleLoader__.load({
       installNotBundle: 'Not a DSH bundle',
       installAlready: 'Already installed',
       installApproval: 'Build-script approval is required; use the native Add plugin dialog to review and approve it.',
+      compatible: 'Compatible',
+      notVerified: 'Not verified',
+      compatibilityTitle: 'DSH {version} compatibility',
+      updateChecking: 'Checking installed plugins…',
+      updateAvailable: '{installed} → {available}',
+      updateAction: 'Update to {version}',
+      updateRetry: 'Retry update',
+      updateFailed: 'Update failed',
+      updateNone: 'Installed plugins are up to date',
+      updateNoneBody: 'No newer package versions were found in the connected registries.',
+      updateRefresh: 'Check for updates',
       filterSource: 'Source',
       filterAllSources: 'All sources',
       filterSort: 'Sort',
@@ -158,6 +169,17 @@ window.__ModuleLoader__.load({
       installNotBundle: '不是 DSH bundle',
       installAlready: '已安装',
       installApproval: '需要批准依赖构建脚本；请使用原生“添加插件”对话框检查并批准。',
+      compatible: '兼容',
+      notVerified: '未验证',
+      compatibilityTitle: 'DSH {version} 兼容性',
+      updateChecking: '正在检查已安装插件…',
+      updateAvailable: '{installed} → {available}',
+      updateAction: '更新到 {version}',
+      updateRetry: '重试更新',
+      updateFailed: '更新失败',
+      updateNone: '已安装插件均为最新版本',
+      updateNoneBody: '在已连接的注册表中没有发现更高版本。',
+      updateRefresh: '检查更新',
       filterSource: '来源',
       filterAllSources: '全部来源',
       filterSort: '排序',
@@ -241,6 +263,8 @@ window.__ModuleLoader__.load({
       '.ra-icon-button:disabled{opacity:.5;cursor:default}',
       '.ra-icon-button[data-danger=true]{color:var(--dsw-alias-state-error-primary)}',
       '.ra-icon-button[data-danger=true]:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover-danger,var(--dsw-alias-interactive-bg-hover))}',
+      '.ra-icon-button[data-state=done]{color:var(--dsw-alias-state-success-primary)}',
+      '.ra-icon-button[data-state=error]{color:var(--dsw-alias-state-error-primary)}',
       '.ra-switch{box-sizing:border-box;position:relative;flex:0 0 auto;width:36px;height:20px;padding:2px;border:0;border-radius:999px;corner-shape:round;background:var(--dsw-alias-border-l3);cursor:pointer}',
       '.ra-switch[aria-checked=true]{background:var(--dsw-alias-brand-primary)}',
       '.ra-switch:disabled{cursor:default;opacity:.5}',
@@ -280,7 +304,7 @@ window.__ModuleLoader__.load({
       '.ra-plugin-main{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}',
       '.ra-plugin-title-row{display:flex;align-items:center;gap:8px;min-width:0}',
       '.ra-plugin-title{font-size:13.5px;line-height:20px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.ra-plugin-version{display:inline-flex;align-items:center;flex:none;font:500 10px/16px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--dsw-alias-label-caption)}',
+      '.ra-plugin-version{display:inline-flex;align-items:center;flex:none;font:600 10.5px/16px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--dsw-alias-label-secondary)}',
       '.ra-plugin-desc{font-size:12.5px;line-height:18px;color:var(--dsw-alias-label-tertiary);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}',
       '.ra-plugin-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
       '.ra-plugin-stats{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0;margin-top:1px;font-size:11px;line-height:16px;color:var(--dsw-alias-label-caption)}',
@@ -288,6 +312,13 @@ window.__ModuleLoader__.load({
       '.ra-plugin-meta-item{display:inline-flex;align-items:center;gap:4px;min-width:0;white-space:nowrap}',
       '.ra-source-mark{display:inline-flex;align-items:center;justify-content:center;flex:none;color:currentColor}',
       '.ra-tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border:.5px solid var(--dsw-alias-border-l3);border-radius:999px;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:1;white-space:nowrap}',
+      '.ra-compat-tag[data-status=compatible]{border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 45%,var(--dsw-alias-border-l3));color:var(--dsw-alias-state-success-primary)}',
+      '.ra-update-list{display:flex;flex-direction:column;gap:4px;margin:8px 0 0;padding:0;list-style:none}',
+      '.ra-update-row{display:flex;align-items:center;gap:12px;min-width:0;padding:9px 8px;border-radius:var(--dsw-radius-md)}',
+      '.ra-update-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.ra-update-main{display:flex;flex:1;flex-direction:column;gap:2px;min-width:0}',
+      '.ra-update-title{display:flex;align-items:center;gap:8px;min-width:0;font-size:13px;font-weight:600}',
+      '.ra-update-version{font:500 11px/16px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--dsw-alias-label-tertiary)}',
       '.ra-pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding-top:4px}',
       '.ra-pages{display:flex;align-items:center;gap:4px;min-width:0}',
       '.ra-page-button{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 7px;border:0;border-radius:var(--dsw-radius-sm);background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;cursor:pointer}',
@@ -445,6 +476,38 @@ window.__ModuleLoader__.load({
       return (value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1).replace(/\.0$/, '') + 'm'
     }
 
+    function parseSemver(value) {
+      const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/u.exec(String(value ?? '').trim())
+      if (!match) return undefined
+      return { core: [Number(match[1]), Number(match[2]), Number(match[3])], prerelease: match[4] ? match[4].split('.') : [] }
+    }
+
+    function compareSemver(left, right) {
+      const a = parseSemver(left)
+      const b = parseSemver(right)
+      if (!a || !b) return 0
+      for (let index = 0; index < 3; index += 1) {
+        if (a.core[index] !== b.core[index]) return a.core[index] > b.core[index] ? 1 : -1
+      }
+      if (!a.prerelease.length && !b.prerelease.length) return 0
+      if (!a.prerelease.length) return 1
+      if (!b.prerelease.length) return -1
+      const length = Math.max(a.prerelease.length, b.prerelease.length)
+      for (let index = 0; index < length; index += 1) {
+        const leftPart = a.prerelease[index]
+        const rightPart = b.prerelease[index]
+        if (leftPart === undefined) return -1
+        if (rightPart === undefined) return 1
+        if (leftPart === rightPart) continue
+        const leftNumeric = /^\d+$/u.test(leftPart)
+        const rightNumeric = /^\d+$/u.test(rightPart)
+        if (leftNumeric && rightNumeric) return Number(leftPart) > Number(rightPart) ? 1 : -1
+        if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1
+        return leftPart > rightPart ? 1 : -1
+      }
+      return 0
+    }
+
     function ageShort(value) {
       const stamp = Date.parse(value ?? '')
       if (!Number.isFinite(stamp)) return ''
@@ -581,13 +644,14 @@ window.__ModuleLoader__.load({
       ] })
     }
 
-    function IconButton({ label, icon, disabled = false, danger = false, onClick }) {
+    function IconButton({ label, icon, disabled = false, danger = false, state, className = '', onClick }) {
       return h('button', {
         type: 'button',
-        className: 'ra-icon-button',
+        className: ['ra-icon-button', className].filter(Boolean).join(' '),
         title: label,
         'aria-label': label,
         'data-danger': danger || undefined,
+        'data-state': state || undefined,
         disabled,
         onClick,
       }, icon)
@@ -653,6 +717,43 @@ window.__ModuleLoader__.load({
           throw error
         }
         onProgress?.({ phase: 'done', requestId, bundle: result?.bundle, application: result?.application })
+        return result
+      } finally {
+        if (typeof dispose === 'function') dispose()
+      }
+    }
+
+    async function updateInstalledPlugin(bundle, availableVersion, onProgress) {
+      const name = String(bundle?.name ?? '').trim()
+      const version = String(availableVersion ?? '').trim()
+      if (!name || !version) throw new Error('Update target is unavailable')
+      if (!remote?.pluginManager?.installBundle) throw new Error('Native Plugin Manager is unavailable')
+      const requestId = globalThis.crypto?.randomUUID?.()
+      if (!requestId) throw new Error('Browser cannot create an update request id')
+
+      let dispose
+      if (typeof remote?.$on === 'function') {
+        dispose = remote.$on('plugin-manager/install-state', progress => {
+          if (progress?.requestId !== requestId) return
+          onProgress?.({ phase: progress.phase, requestId, attempt: progress.attempt })
+        })
+      }
+      try {
+        onProgress?.({ phase: 'starting', requestId })
+        const answer = await remote.pluginManager.installBundle(name + '@' + version, {
+          enabled: bundle.enabled !== false,
+          registry: null,
+          requestId,
+        })
+        if (!answer?.ok) throw new Error(answer?.error?.message || 'Plugin update request failed')
+        const result = answer.value
+        if (result?.application === 'failed') {
+          const error = new Error(result?.error?.diagnostic || result?.packageResult?.output || result?.error?.message || 'Plugin update failed')
+          error.installResult = result
+          throw error
+        }
+        if (result?.application === 'cancelled') throw new Error('Plugin update was cancelled')
+        onProgress?.({ phase: 'done', requestId })
         return result
       } finally {
         if (typeof dispose === 'function') dispose()
@@ -990,6 +1091,7 @@ window.__ModuleLoader__.load({
       const [pageSize, setPageSize] = React.useState(20)
       const [state, setState] = React.useState({ loading: true, data: null, error: '' })
       const [iconEvidence, setIconEvidence] = React.useState({})
+      const [metadataEvidence, setMetadataEvidence] = React.useState({})
       const [installedBundles, setInstalledBundles] = React.useState([])
       const [installStates, setInstallStates] = React.useState({})
 
@@ -1145,6 +1247,28 @@ window.__ModuleLoader__.load({
         return () => controller.abort()
       }, [iconSignature])
 
+      const metadataItems = visible.map(plugin => ({
+        key: browsePluginKey(plugin),
+        ...(plugin.packageName ? { packageName: plugin.packageName } : {}),
+        ...(plugin.version ? { version: plugin.version } : {}),
+        ...(plugin.repository ? { repository: plugin.repository } : {}),
+      })).filter(item => item.packageName || item.repository)
+      const metadataSignature = metadataItems.map(item => [item.key, item.packageName ?? '', item.version ?? '', item.repository ?? ''].join('|')).join(';')
+
+      React.useEffect(() => {
+        if (!metadataItems.length) return undefined
+        const controller = new AbortController()
+        rpc('metadata', { items: metadataItems }, controller.signal).then(value => {
+          if (controller.signal.aborted) return
+          setMetadataEvidence(current => {
+            const next = { ...current }
+            for (const row of value?.plugins ?? []) if (row?.key) next[row.key] = row
+            return next
+          })
+        }, () => {})
+        return () => controller.abort()
+      }, [metadataSignature])
+
       const resultLabel = state.loading
         ? t('browseLoading')
         : query.trim()
@@ -1264,6 +1388,11 @@ window.__ModuleLoader__.load({
           : h('ul', { className: 'ra-browse-list' },
             ...visible.map(plugin => {
               const pluginKey = plugin.key ?? plugin.installSpec ?? plugin.name
+              const pluginMetadata = metadataEvidence[pluginKey] ?? {}
+              const displayVersion = pluginMetadata.version ?? plugin.version
+              const compatibilityStatus = pluginMetadata.compatibility === 'compatible' ? 'compatible' : 'unverified'
+              const compatibilityLabel = compatibilityStatus === 'compatible' ? t('compatible') : t('notVerified')
+              const compatibilityTitle = format(t, 'compatibilityTitle', { version: pluginMetadata.runtimeVersion ?? '0.2.0-rc.2' })
               const freshnessAt = plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt
               const freshnessAge = ageShort(freshnessAt)
               const freshnessLabel = freshnessAge
@@ -1284,8 +1413,9 @@ window.__ModuleLoader__.load({
                       h(SourceMark, { type: source.type, size: 12 }),
                       h('span', null, source.name),
                     )),
-                    plugin.version ? h('span', { className: 'ra-plugin-version' }, plugin.version) : null,
+                    displayVersion ? h('span', { className: 'ra-plugin-version' }, 'v' + displayVersion) : null,
                     prerelease ? h('span', { className: 'ra-tag' }, t('prerelease')) : null,
+                    h('span', { className: 'ra-tag ra-compat-tag', 'data-status': compatibilityStatus, title: compatibilityTitle }, compatibilityLabel),
                     Number.isFinite(plugin.stars) ? h('span', { className: 'ra-plugin-meta-item' },
                       h('span', { className: 'ra-star' }, '★'), compactNumber(plugin.stars),
                     ) : null,
@@ -1314,14 +1444,20 @@ window.__ModuleLoader__.load({
                           : busy
                             ? t('installing')
                             : t('install')
-                    return plugin.installSpec ? h('button', {
-                      type: 'button',
-                      className: 'ra-install-button',
-                      'data-state': installed ? 'done' : installState.phase === 'failed' ? 'error' : undefined,
+                    const icon = installed
+                      ? h(IconCheck, { size: 16 })
+                      : busy
+                        ? h(IconRefresh, { size: 16, className: 'ra-spin' })
+                        : installState.phase === 'failed'
+                          ? h(IconRefresh, { size: 16 })
+                          : h(IconDownload, { size: 16 })
+                    return plugin.installSpec ? h(IconButton, {
+                      label: installState.error || label,
+                      state: installed ? 'done' : installState.phase === 'failed' ? 'error' : undefined,
                       disabled: installed || busy,
-                      title: installState.error || label,
                       onClick: () => { void runInstall(plugin) },
-                    }, label) : null
+                      icon,
+                    }) : null
                   })(),
                   plugin.repository ? h('a', {
                     className: 'ra-plugin-link',
@@ -1362,12 +1498,128 @@ window.__ModuleLoader__.load({
     }
 
     function UpdatesView({ t }) {
+      const [revision, setRevision] = React.useState(0)
+      const [state, setState] = React.useState({ loading: true, items: [], error: '' })
+      const [operations, setOperations] = React.useState({})
+
+      React.useEffect(() => {
+        let active = true
+        const controller = new AbortController()
+        const load = async () => {
+          setState(current => ({ ...current, loading: true, error: '' }))
+          try {
+            const bundles = (await readInstalledBundles())
+              .filter(bundle => bundle?.installed !== false && bundle?.name && bundle?.version)
+            const rows = []
+            for (let index = 0; index < bundles.length; index += 24) {
+              const chunk = bundles.slice(index, index + 24)
+              const value = await rpc('metadata', {
+                items: chunk.map(bundle => ({ key: bundle.name, packageName: bundle.name })),
+              }, controller.signal)
+              rows.push(...(value?.plugins ?? []))
+            }
+            if (!active) return
+            const byName = new Map(rows.map(row => [row.key, row]))
+            const items = bundles.map(bundle => {
+              const metadata = byName.get(bundle.name)
+              const availableVersion = metadata?.version
+              return {
+                bundle,
+                metadata,
+                availableVersion,
+                updateAvailable: Boolean(availableVersion && compareSemver(availableVersion, bundle.version) === 1),
+              }
+            }).filter(item => item.updateAvailable)
+            setState({ loading: false, items, error: '' })
+          } catch (error) {
+            if (active && error?.name !== 'AbortError') setState({ loading: false, items: [], error: String(error?.message ?? error) })
+          }
+        }
+        void load()
+        const dispose = typeof remote?.$on === 'function'
+          ? remote.$on('plugin-manager/changed', () => setRevision(value => value + 1))
+          : undefined
+        return () => {
+          active = false
+          controller.abort()
+          if (typeof dispose === 'function') dispose()
+        }
+      }, [revision])
+
+      const runUpdate = async item => {
+        const key = item.bundle.name
+        const current = operations[key]
+        if (['starting', 'installing', 'applying'].includes(current?.phase)) return
+        setOperations(value => ({ ...value, [key]: { phase: 'starting', error: '' } }))
+        try {
+          await updateInstalledPlugin(item.bundle, item.availableVersion, progress => {
+            setOperations(value => ({ ...value, [key]: { ...(value[key] ?? {}), ...progress, error: '' } }))
+          })
+          setOperations(value => ({ ...value, [key]: { phase: 'done', error: '' } }))
+          setRevision(value => value + 1)
+        } catch (error) {
+          setOperations(value => ({ ...value, [key]: { phase: 'failed', error: String(error?.message ?? error) } }))
+        }
+      }
+
       return h('section', { className: 'ra-section', 'aria-labelledby': 'ra-updates-title' },
-        h('div', null,
-          h('h3', { id: 'ra-updates-title', className: 'ra-heading' }, t('updatesTitle')),
-          h('p', { className: 'ra-lead' }, t('updatesLead')),
+        h('div', { className: 'ra-section-head' },
+          h('div', null,
+            h('h3', { id: 'ra-updates-title', className: 'ra-heading' }, t('updatesTitle')),
+            h('p', { className: 'ra-lead' }, t('updatesLead')),
+          ),
+          h(IconButton, {
+            label: t('updateRefresh'),
+            disabled: state.loading,
+            onClick: () => setRevision(value => value + 1),
+            icon: h(IconRefresh, { size: 16, className: state.loading ? 'ra-spin' : undefined }),
+          }),
         ),
-        h(Empty, { title: t('updatesEmptyTitle'), body: t('updatesEmptyBody') }),
+        state.loading
+          ? h('div', { className: 'ra-plugin-meta', role: 'status' }, t('updateChecking'))
+          : state.error
+            ? h('p', { className: 'ra-notice', role: 'alert' }, state.error)
+            : state.items.length === 0
+              ? h(Empty, { title: t('updateNone'), body: t('updateNoneBody') })
+              : h('ul', { className: 'ra-update-list' },
+                ...state.items.map(item => {
+                  const key = item.bundle.name
+                  const operation = operations[key] ?? {}
+                  const busy = ['starting', 'installing', 'applying'].includes(operation.phase)
+                  const done = operation.phase === 'done'
+                  const failed = operation.phase === 'failed'
+                  const compatible = item.metadata?.compatibility === 'compatible'
+                  const compatibilityLabel = compatible ? t('compatible') : t('notVerified')
+                  const label = failed
+                    ? t('updateRetry')
+                    : format(t, 'updateAction', { version: item.availableVersion })
+                  return h('li', { key, className: 'ra-update-row' },
+                    h('span', { className: 'ra-plugin-icon', 'aria-hidden': true }, h(IconPlugin, { size: 16 })),
+                    h('div', { className: 'ra-update-main' },
+                      h('div', { className: 'ra-update-title' },
+                        h('span', null, key),
+                        h('span', { className: 'ra-tag ra-compat-tag', 'data-status': compatible ? 'compatible' : 'unverified' }, compatibilityLabel),
+                      ),
+                      h('div', { className: 'ra-update-version' }, format(t, 'updateAvailable', {
+                        installed: 'v' + item.bundle.version,
+                        available: 'v' + item.availableVersion,
+                      })),
+                      operation.error ? h('div', { className: 'ra-install-error', role: 'alert' }, operation.error) : null,
+                    ),
+                    h(IconButton, {
+                      label,
+                      state: done ? 'done' : failed ? 'error' : undefined,
+                      disabled: busy || done,
+                      onClick: () => { void runUpdate(item) },
+                      icon: done
+                        ? h(IconCheck, { size: 16 })
+                        : busy
+                          ? h(IconRefresh, { size: 16, className: 'ra-spin' })
+                          : h(IconRefresh, { size: 16 }),
+                    }),
+                  )
+                }),
+              ),
       )
     }
 
