@@ -68,8 +68,16 @@ window.__ModuleLoader__.load({
       installAlready: 'Already installed',
       installApproval: 'Build-script approval is required; use the native Add plugin dialog to review and approve it.',
       compatible: 'Compatible',
+      incompatible: 'Incompatible',
       notVerified: 'Not verified',
       compatibilityTitle: 'DSH {version} compatibility',
+      incompatibleTitle: 'Not compatible with DSH {version}',
+      filterCompatibility: 'Compatibility',
+      compatibilityAll: 'All compatibility',
+      compatibilityCompatible: 'Compatible only',
+      compatibilityIncompatible: 'Incompatible',
+      compatibilityUnverified: 'Not verified',
+      compatibilityChecking: 'Checking compatibility…',
       updateChecking: 'Checking installed plugins…',
       updateAvailable: '{installed} → {available}',
       updateAction: 'Update to {version}',
@@ -170,8 +178,16 @@ window.__ModuleLoader__.load({
       installAlready: '已安装',
       installApproval: '需要批准依赖构建脚本；请使用原生“添加插件”对话框检查并批准。',
       compatible: '兼容',
+      incompatible: '不兼容',
       notVerified: '未验证',
       compatibilityTitle: 'DSH {version} 兼容性',
+      incompatibleTitle: '与 DSH {version} 不兼容',
+      filterCompatibility: '兼容性',
+      compatibilityAll: '全部兼容状态',
+      compatibilityCompatible: '仅兼容',
+      compatibilityIncompatible: '不兼容',
+      compatibilityUnverified: '未验证',
+      compatibilityChecking: '正在检查兼容性…',
       updateChecking: '正在检查已安装插件…',
       updateAvailable: '{installed} → {available}',
       updateAction: '更新到 {version}',
@@ -312,7 +328,10 @@ window.__ModuleLoader__.load({
       '.ra-plugin-meta-item{display:inline-flex;align-items:center;gap:4px;min-width:0;white-space:nowrap}',
       '.ra-source-mark{display:inline-flex;align-items:center;justify-content:center;flex:none;color:currentColor}',
       '.ra-tag{display:inline-flex;align-items:center;height:18px;padding:0 6px;border:.5px solid var(--dsw-alias-border-l3);border-radius:999px;color:var(--dsw-alias-label-tertiary);font-size:10px;line-height:1;white-space:nowrap}',
-      '.ra-compat-tag[data-status=compatible]{border-color:color-mix(in srgb,var(--dsw-alias-state-success-primary) 45%,var(--dsw-alias-border-l3));color:var(--dsw-alias-state-success-primary)}',
+      '.ra-compat-status{display:inline-flex;align-items:center;flex:none;font-size:11px;line-height:16px;font-weight:500;white-space:nowrap}',
+      '.ra-compat-status[data-status=compatible]{color:var(--dsw-alias-state-success-primary)}',
+      '.ra-compat-status[data-status=incompatible]{color:var(--dsw-alias-state-error-primary)}',
+      '.ra-compat-status[data-status=unverified]{color:var(--dsw-alias-label-tertiary)}',
       '.ra-update-list{display:flex;flex-direction:column;gap:4px;margin:8px 0 0;padding:0;list-style:none}',
       '.ra-update-row{display:flex;align-items:center;gap:12px;min-width:0;padding:9px 8px;border-radius:var(--dsw-radius-md)}',
       '.ra-update-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
@@ -328,12 +347,6 @@ window.__ModuleLoader__.load({
       '.ra-plugin-link{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:var(--dsw-radius-sm);color:var(--dsw-alias-label-tertiary);text-decoration:none}',
       '.ra-plugin-link:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-link)}',
       '.ra-plugin-actions{display:flex;align-items:center;gap:6px;flex:none}',
-      '.ra-install-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:68px;height:30px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:500 12px/1 inherit;cursor:pointer}',
-      '.ra-install-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
-      '.ra-install-button:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
-      '.ra-install-button:disabled{cursor:default;opacity:.55}',
-      '.ra-install-button[data-state=done]{color:var(--dsw-alias-state-success-primary)}',
-      '.ra-install-button[data-state=error]{color:var(--dsw-alias-state-error-primary)}',
       '.ra-install-error{flex:1 0 calc(100% - 54px);max-width:calc(100% - 54px);margin:-8px 0 0 54px;color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px;white-space:normal}',
 
       '@media(max-width:900px){.ra-source-grid{grid-template-columns:1fr}.ra-add-form{grid-template-columns:1fr 160px}.ra-add-form .ra-url-field{grid-column:1/-1}.ra-form-actions{grid-column:1/-1;justify-content:flex-end}}',
@@ -1087,6 +1100,7 @@ window.__ModuleLoader__.load({
       const [releaseFilter, setReleaseFilter] = React.useState('all')
       const [freshness, setFreshness] = React.useState('any')
       const [tagFilter, setTagFilter] = React.useState('all')
+      const [compatibilityFilter, setCompatibilityFilter] = React.useState('all')
       const [page, setPage] = React.useState(1)
       const [pageSize, setPageSize] = React.useState(20)
       const [state, setState] = React.useState({ loading: true, data: null, error: '' })
@@ -1134,7 +1148,7 @@ window.__ModuleLoader__.load({
       }, [])
 
       const sortSignature = sorts.map(item => item.key + ':' + item.direction).join('|')
-      React.useEffect(() => { setPage(1) }, [query, sourceFilter, sortSignature, releaseFilter, freshness, tagFilter, pageSize])
+      React.useEffect(() => { setPage(1) }, [query, sourceFilter, sortSignature, releaseFilter, freshness, tagFilter, compatibilityFilter, pageSize])
 
       const plugins = state.data?.plugins ?? []
       const sourceRows = state.data?.sources ?? []
@@ -1184,12 +1198,60 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const metadataSource = compatibilityFilter === 'all' ? [] : plugins
+      const metadataItems = metadataSource.map(plugin => ({
+        key: browsePluginKey(plugin),
+        ...(plugin.packageName ? { packageName: plugin.packageName } : {}),
+        ...(plugin.version ? { version: plugin.version } : {}),
+        ...(plugin.repository ? { repository: plugin.repository } : {}),
+      })).filter(item => item.packageName || item.repository)
+      const metadataSignature = [
+        compatibilityFilter,
+        ...metadataItems.map(item => [item.key, item.packageName ?? '', item.version ?? '', item.repository ?? ''].join('|')),
+      ].join(';')
+
+      React.useEffect(() => {
+        if (!metadataItems.length) return undefined
+        const controller = new AbortController()
+        const batches = []
+        for (let index = 0; index < metadataItems.length; index += 24) batches.push(metadataItems.slice(index, index + 24))
+        Promise.all(batches.map(items => rpc('metadata', { items }, controller.signal))).then(values => {
+          if (controller.signal.aborted) return
+          setMetadataEvidence(current => {
+            const next = { ...current }
+            for (const value of values) {
+              for (const row of value?.plugins ?? []) if (row?.key) next[row.key] = row
+            }
+            return next
+          })
+        }, () => {
+          if (controller.signal.aborted) return
+          setMetadataEvidence(current => {
+            const next = { ...current }
+            for (const item of metadataItems) if (item?.key && next[item.key] === undefined) next[item.key] = { compatibility: 'unchecked' }
+            return next
+          })
+        })
+        return () => controller.abort()
+      }, [metadataSignature])
+
+      const compatibilityOf = plugin => {
+        const status = metadataEvidence[browsePluginKey(plugin)]?.compatibility
+        if (status === 'compatible') return 'compatible'
+        if (status === 'unsupported') return 'incompatible'
+        return 'unverified'
+      }
+
+      const compatibilityPending = compatibilityFilter !== 'all'
+        && metadataItems.some(item => metadataEvidence[item.key] === undefined)
+
       const filtered = plugins.filter(plugin => {
         if (sourceFilter !== 'all' && !(plugin.sources ?? []).some(source => source.type === sourceFilter)) return false
         const prerelease = plugin.channel === 'prerelease' || String(plugin.version ?? '').includes('-')
         if (releaseFilter === 'stable' && prerelease) return false
         if (releaseFilter === 'prerelease' && !prerelease) return false
         if (tagFilter !== 'all' && !(plugin.tags ?? []).includes(tagFilter)) return false
+        if (compatibilityFilter !== 'all' && compatibilityOf(plugin) !== compatibilityFilter) return false
         if (freshness !== 'any') {
           const stamp = Date.parse(plugin.updatedAt ?? '')
           if (!Number.isFinite(stamp)) return false
@@ -1247,18 +1309,22 @@ window.__ModuleLoader__.load({
         return () => controller.abort()
       }, [iconSignature])
 
-      const metadataItems = visible.map(plugin => ({
-        key: browsePluginKey(plugin),
-        ...(plugin.packageName ? { packageName: plugin.packageName } : {}),
-        ...(plugin.version ? { version: plugin.version } : {}),
-        ...(plugin.repository ? { repository: plugin.repository } : {}),
-      })).filter(item => item.packageName || item.repository)
-      const metadataSignature = metadataItems.map(item => [item.key, item.packageName ?? '', item.version ?? '', item.repository ?? ''].join('|')).join(';')
+      const visibleMetadataItems = compatibilityFilter === 'all'
+        ? visible.map(plugin => ({
+            key: browsePluginKey(plugin),
+            ...(plugin.packageName ? { packageName: plugin.packageName } : {}),
+            ...(plugin.version ? { version: plugin.version } : {}),
+            ...(plugin.repository ? { repository: plugin.repository } : {}),
+          })).filter(item => item.packageName || item.repository)
+        : []
+      const visibleMetadataSignature = visibleMetadataItems
+        .map(item => [item.key, item.packageName ?? '', item.version ?? '', item.repository ?? ''].join('|'))
+        .join(';')
 
       React.useEffect(() => {
-        if (!metadataItems.length) return undefined
+        if (!visibleMetadataItems.length) return undefined
         const controller = new AbortController()
-        rpc('metadata', { items: metadataItems }, controller.signal).then(value => {
+        rpc('metadata', { items: visibleMetadataItems }, controller.signal).then(value => {
           if (controller.signal.aborted) return
           setMetadataEvidence(current => {
             const next = { ...current }
@@ -1267,13 +1333,15 @@ window.__ModuleLoader__.load({
           })
         }, () => {})
         return () => controller.abort()
-      }, [metadataSignature])
+      }, [visibleMetadataSignature])
 
       const resultLabel = state.loading
         ? t('browseLoading')
-        : query.trim()
-          ? format(t, 'browseResults', { count: sorted.length })
-          : t('browsePopular')
+        : compatibilityPending
+          ? t('compatibilityChecking')
+          : query.trim() || compatibilityFilter !== 'all'
+            ? format(t, 'browseResults', { count: sorted.length })
+            : t('browsePopular')
 
       const compactFilter = (label, icon, value, onChange, options, active = false) => h('label', {
         className: 'ra-compact-filter',
@@ -1365,6 +1433,12 @@ window.__ModuleLoader__.load({
             { value: 'all', label: t('filterAllTags') },
             ...availableTags.map(tag => ({ value: tag, label: tag })),
           ], tagFilter !== 'all'),
+          compactFilter(t('filterCompatibility'), h(IconCheck, { size: 14 }), compatibilityFilter, setCompatibilityFilter, [
+            { value: 'all', label: t('compatibilityAll') },
+            { value: 'compatible', label: t('compatibilityCompatible') },
+            { value: 'incompatible', label: t('compatibilityIncompatible') },
+            { value: 'unverified', label: t('compatibilityUnverified') },
+          ], compatibilityFilter !== 'all'),
           h('div', { className: 'ra-sort-row', role: 'group', 'aria-label': t('filterSort') },
             sortCriterion('relevance', t('sortRelevance'), h(IconSearch, { size: 13 })),
             sortCriterion('stars', t('sortStars'), h('span', { className: 'ra-star' }, '★')),
@@ -1384,15 +1458,25 @@ window.__ModuleLoader__.load({
           t('browseSourceFailures') + ' ' + failedSources.map(row => row?.source?.name ?? row?.source?.id).filter(Boolean).join(', '),
         ) : null,
         !state.loading && !state.error && visible.length === 0
-          ? h(Empty, { title: t('browseNoResults'), body: t('browseNoResultsBody') })
+          ? compatibilityPending
+            ? null
+            : h(Empty, { title: t('browseNoResults'), body: t('browseNoResultsBody') })
           : h('ul', { className: 'ra-browse-list' },
             ...visible.map(plugin => {
               const pluginKey = plugin.key ?? plugin.installSpec ?? plugin.name
               const pluginMetadata = metadataEvidence[pluginKey] ?? {}
               const displayVersion = pluginMetadata.version ?? plugin.version
-              const compatibilityStatus = pluginMetadata.compatibility === 'compatible' ? 'compatible' : 'unverified'
-              const compatibilityLabel = compatibilityStatus === 'compatible' ? t('compatible') : t('notVerified')
-              const compatibilityTitle = format(t, 'compatibilityTitle', { version: pluginMetadata.runtimeVersion ?? '0.2.0-rc.2' })
+              const compatibilityStatus = compatibilityOf(plugin)
+              const compatibilityLabel = compatibilityStatus === 'compatible'
+                ? t('compatible')
+                : compatibilityStatus === 'incompatible'
+                  ? t('incompatible')
+                  : t('notVerified')
+              const compatibilityTitle = format(
+                t,
+                compatibilityStatus === 'incompatible' ? 'incompatibleTitle' : 'compatibilityTitle',
+                { version: pluginMetadata.runtimeVersion ?? '0.2.0-rc.2' },
+              )
               const freshnessAt = plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt
               const freshnessAge = ageShort(freshnessAt)
               const freshnessLabel = freshnessAge
@@ -1415,7 +1499,7 @@ window.__ModuleLoader__.load({
                     )),
                     displayVersion ? h('span', { className: 'ra-plugin-version' }, 'v' + displayVersion) : null,
                     prerelease ? h('span', { className: 'ra-tag' }, t('prerelease')) : null,
-                    h('span', { className: 'ra-tag ra-compat-tag', 'data-status': compatibilityStatus, title: compatibilityTitle }, compatibilityLabel),
+                    h('span', { className: 'ra-compat-status', 'data-status': compatibilityStatus, title: compatibilityTitle }, compatibilityLabel),
                     Number.isFinite(plugin.stars) ? h('span', { className: 'ra-plugin-meta-item' },
                       h('span', { className: 'ra-star' }, '★'), compactNumber(plugin.stars),
                     ) : null,
@@ -1452,9 +1536,9 @@ window.__ModuleLoader__.load({
                           ? h(IconRefresh, { size: 16 })
                           : h(IconDownload, { size: 16 })
                     return plugin.installSpec ? h(IconButton, {
-                      label: installState.error || label,
+                      label: compatibilityStatus === 'incompatible' ? compatibilityTitle : installState.error || label,
                       state: installed ? 'done' : installState.phase === 'failed' ? 'error' : undefined,
-                      disabled: installed || busy,
+                      disabled: installed || busy || compatibilityStatus === 'incompatible',
                       onClick: () => { void runInstall(plugin) },
                       icon,
                     }) : null
@@ -1588,8 +1672,17 @@ window.__ModuleLoader__.load({
                   const busy = ['starting', 'installing', 'applying'].includes(operation.phase)
                   const done = operation.phase === 'done'
                   const failed = operation.phase === 'failed'
-                  const compatible = item.metadata?.compatibility === 'compatible'
-                  const compatibilityLabel = compatible ? t('compatible') : t('notVerified')
+                  const compatibilityStatus = item.metadata?.compatibility === 'compatible'
+                    ? 'compatible'
+                    : item.metadata?.compatibility === 'unsupported'
+                      ? 'incompatible'
+                      : 'unverified'
+                  const compatibilityLabel = compatibilityStatus === 'compatible'
+                    ? t('compatible')
+                    : compatibilityStatus === 'incompatible'
+                      ? t('incompatible')
+                      : t('notVerified')
+                  const incompatible = compatibilityStatus === 'incompatible'
                   const label = failed
                     ? t('updateRetry')
                     : format(t, 'updateAction', { version: item.availableVersion })
@@ -1598,7 +1691,7 @@ window.__ModuleLoader__.load({
                     h('div', { className: 'ra-update-main' },
                       h('div', { className: 'ra-update-title' },
                         h('span', null, key),
-                        h('span', { className: 'ra-tag ra-compat-tag', 'data-status': compatible ? 'compatible' : 'unverified' }, compatibilityLabel),
+                        h('span', { className: 'ra-compat-status', 'data-status': compatibilityStatus }, compatibilityLabel),
                       ),
                       h('div', { className: 'ra-update-version' }, format(t, 'updateAvailable', {
                         installed: 'v' + item.bundle.version,
@@ -1609,7 +1702,7 @@ window.__ModuleLoader__.load({
                     h(IconButton, {
                       label,
                       state: done ? 'done' : failed ? 'error' : undefined,
-                      disabled: busy || done,
+                      disabled: busy || done || incompatible,
                       onClick: () => { void runUpdate(item) },
                       icon: done
                         ? h(IconCheck, { size: 16 })

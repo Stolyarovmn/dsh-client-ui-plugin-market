@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.10`  
+Current test version: `0.5.0-rc.11`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -34,7 +34,7 @@ Implemented in this milestone:
 - one-click Browse installation through the native DSH `remote.pluginManager` service: `inspect` → `installBundle`, installed-state synchronization via `listBundles` / `plugin-manager/changed`, and inline failure reporting;
 - icon-only Browse install states using the same local DSH-style glyph language as the rest of the page;
 - explicit `v<version>` package versions plus lazy manifest evidence for GitHub/npm rows;
-- positive compatibility evidence against the exact target DSH `0.2.0-rc.2`, following DSH peer semantics for `@deepseek-ai/dsh` and `@deepseek-ai/dsh-*`; the UI shows only `Compatible` or neutral `Not verified`;
+- compatibility evidence against the exact target DSH `0.2.0-rc.2`, following DSH peer semantics for `@deepseek-ai/dsh` and `@deepseek-ai/dsh-*`; Browse shows `Compatible`, `Incompatible`, or neutral `Not verified` as plain colored text, and can filter by compatibility;
 - live Updates discovery from native installed bundles plus latest npm manifests, with per-package update through `remote.pluginManager.installBundle`;
 - no runtime import of Harness Client implementation packages;
 - Harness-provided React and DSH theme tokens.

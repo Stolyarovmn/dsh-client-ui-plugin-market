@@ -121,7 +121,12 @@ test('Browse uses icon-only install actions and explicit compatibility evidence'
   assert.match(client, /h\(IconDownload, \{ size: 16 \}\)/)
   assert.match(client, /h\(IconCheck, \{ size: 16 \}\)/)
   assert.match(client, /rpc\('metadata'/)
-  assert.match(client, /ra-compat-tag/)
+  assert.match(client, /ra-compat-status/)
+  assert.doesNotMatch(client, /ra-tag ra-compat/)
+  assert.match(client, /data-status=compatible/)
+  assert.match(client, /data-status=incompatible/)
+  assert.match(client, /--dsw-alias-state-success-primary/)
+  assert.match(client, /--dsw-alias-state-error-primary/)
   assert.match(client, /'v' \+ displayVersion/)
   assert.match(host, /TARGET_DSH_VERSION = '0\.2\.0-rc\.2'/)
 })
@@ -132,4 +137,20 @@ test('Updates tab checks installed bundles and updates through native Plugin Man
   assert.match(client, /compareSemver\(availableVersion, bundle\.version\)/)
   assert.match(client, /updateInstalledPlugin/)
   assert.match(client, /installBundle\(name \+ '@' \+ version/)
+})
+
+
+test('Browse compatibility filter can isolate compatible, incompatible, and unverified packages', () => {
+  assert.match(client, /const \[compatibilityFilter, setCompatibilityFilter\] = React\.useState\('all'\)/)
+  assert.match(client, /compatibilityOf\(plugin\) !== compatibilityFilter/)
+  assert.match(client, /compatibilityCompatible/)
+  assert.match(client, /compatibilityIncompatible/)
+  assert.match(client, /compatibilityUnverified/)
+  assert.match(client, /metadataSource = compatibilityFilter === 'all' \? \[\] : plugins/)
+  assert.match(client, /for \(let index = 0; index < metadataItems\.length; index \+= 24\)/)
+})
+
+test('known-incompatible Browse and Updates actions are disabled before native Plugin Manager rejects them', () => {
+  assert.match(client, /disabled: installed \|\| busy \|\| compatibilityStatus === 'incompatible'/)
+  assert.match(client, /disabled: busy \|\| done \|\| incompatible/)
 })
