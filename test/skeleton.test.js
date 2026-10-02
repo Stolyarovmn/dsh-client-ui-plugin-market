@@ -111,7 +111,7 @@ test('Browse install action delegates to the native DSH Plugin Manager Remote', 
   assert.match(client, /remote\.pluginManager\.listBundles\(\)/)
   assert.match(client, /plugin-manager\/changed/)
   assert.match(client, /plugin-manager\/install-state/)
-  assert.match(client, /className: 'ra-install-button'/)
+  assert.match(client, /h\(IconButton, \{[\s\S]{0,500}icon,/)
   assert.match(client, /inject: \['slots', 'locale', 'connection', 'configForms', 'remote', 'remote\.pluginManager'\]/)
 })
 

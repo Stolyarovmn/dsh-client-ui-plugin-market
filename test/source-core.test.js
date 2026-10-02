@@ -266,7 +266,7 @@ test('plugin metadata keeps non-confirmed compatibility neutral for the UI', asy
   manifest = {
     name: '@acme/old-plugin',
     version: '1.0.1',
-    peerDependencies: { '@deepseek-ai/dsh': '<0.2.0' },
+    peerDependencies: { '@deepseek-ai/dsh': '>=0.3.0' },
   }
   rows = await resolvePluginMetadata([
     { key: 'old-plugin', packageName: '@acme/old-plugin', version: '1.0.1' },
