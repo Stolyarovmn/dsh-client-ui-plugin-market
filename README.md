@@ -2,7 +2,7 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.8`  
+Current test version: `0.5.0-rc.9`  
 Target: DSH `v0.2.0-rc.2`
 
 ## Current milestone
@@ -31,13 +31,15 @@ Implemented in this milestone:
 - popular/default Browse results when the query is empty;
 - real npm/GitHub source marks and a package icon exposed through the DSH 0.2 manifest contract;
 - horizontal layout containment for narrow Plugin Manager detail panes;
+- one-click Browse installation through the native DSH `remote.pluginManager` service: `inspect` → `installBundle`, installed-state synchronization via `listBundles` / `plugin-manager/changed`, and inline failure reporting;
 - no runtime import of Harness Client implementation packages;
 - Harness-provided React and DSH theme tokens.
 
 Not migrated yet:
 
-- compatibility evidence and bundle verification in Browse;
-- install/update actions from Browse;
+- compatibility evidence beyond the native install-time bundle/version checks;
+- Browse update action for already-installed packages;
+- build-script approval UI inside Registry Aggregator (the native Add plugin dialog remains the approval fallback);
 - update discovery and Update all.
 
 ## Architecture
@@ -63,7 +65,13 @@ Sources UI
                  ├─ custom-json
                  └─ corporate
 
-Install / enable / disable / uninstall
+Browse Install
+  └─ native DSH remote.pluginManager
+       ├─ inspect(spec)
+       ├─ installBundle(spec)
+       └─ listBundles() / plugin-manager/changed
+
+Enable / disable / uninstall
   └─ native DSH Plugin Manager
 ```
 

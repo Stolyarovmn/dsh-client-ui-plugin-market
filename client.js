@@ -10,6 +10,7 @@ window.__ModuleLoader__.load({
     const HOST_ENTRY = 'registry-aggregator'
     const SOURCE_TYPES = ['npm', 'github', 'custom-json', 'corporate']
     let connection
+    let remote
     let sourceConfigForm
 
     const en = {
@@ -57,6 +58,15 @@ window.__ModuleLoader__.load({
       browseNoResults: 'No plugins found',
       browseNoResultsBody: 'Try another query or enable another source.',
       browseSourceFailures: 'Some sources could not be searched.',
+      install: 'Install',
+      installing: 'Installing…',
+      installed: 'Installed',
+      installRetry: 'Retry install',
+      installChecking: 'Checking package…',
+      installFailed: 'Install failed',
+      installNotBundle: 'Not a DSH bundle',
+      installAlready: 'Already installed',
+      installApproval: 'Build-script approval is required; use the native Add plugin dialog to review and approve it.',
       filterSource: 'Source',
       filterAllSources: 'All sources',
       filterSort: 'Sort',
@@ -139,6 +149,15 @@ window.__ModuleLoader__.load({
       browseNoResults: '未找到插件',
       browseNoResultsBody: '尝试其他关键词或启用其他来源。',
       browseSourceFailures: '部分来源无法搜索。',
+      install: '安装',
+      installing: '正在安装…',
+      installed: '已安装',
+      installRetry: '重试安装',
+      installChecking: '正在检查包…',
+      installFailed: '安装失败',
+      installNotBundle: '不是 DSH bundle',
+      installAlready: '已安装',
+      installApproval: '需要批准依赖构建脚本；请使用原生“添加插件”对话框检查并批准。',
       filterSource: '来源',
       filterAllSources: '全部来源',
       filterSort: '排序',
@@ -254,7 +273,7 @@ window.__ModuleLoader__.load({
       '.ra-sort-criterion[data-active=true] .ra-sort-direction{color:var(--dsw-alias-brand-primary)}',
       '.ra-star{color:var(--dsw-alias-state-warn-primary);font-weight:800}',
       '.ra-browse-list{display:flex;flex-direction:column;gap:2px;box-sizing:border-box;min-width:0;max-width:100%;margin:0;padding:0;overflow:hidden;list-style:none}',
-      '.ra-plugin-card{display:flex;align-items:center;gap:14px;box-sizing:border-box;min-width:0;max-width:100%;width:100%;margin:0;padding:8px;border-radius:var(--dsw-radius-xl)}',
+      '.ra-plugin-card{display:flex;align-items:center;gap:14px;box-sizing:border-box;min-width:0;max-width:100%;width:100%;margin:0;padding:8px;border-radius:var(--dsw-radius-xl);flex-wrap:wrap}',
       '.ra-plugin-card:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.ra-plugin-icon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md);color:var(--dsw-alias-label-secondary);overflow:hidden}',
       '.ra-plugin-image{display:block;width:30px;height:30px;object-fit:contain;border-radius:6px}',
@@ -277,6 +296,15 @@ window.__ModuleLoader__.load({
       '.ra-page-button:disabled{opacity:.45;cursor:default}',
       '.ra-plugin-link{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;border-radius:var(--dsw-radius-sm);color:var(--dsw-alias-label-tertiary);text-decoration:none}',
       '.ra-plugin-link:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-link)}',
+      '.ra-plugin-actions{display:flex;align-items:center;gap:6px;flex:none}',
+      '.ra-install-button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:68px;height:30px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:500 12px/1 inherit;cursor:pointer}',
+      '.ra-install-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover)}',
+      '.ra-install-button:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
+      '.ra-install-button:disabled{cursor:default;opacity:.55}',
+      '.ra-install-button[data-state=done]{color:var(--dsw-alias-state-success-primary)}',
+      '.ra-install-button[data-state=error]{color:var(--dsw-alias-state-error-primary)}',
+      '.ra-install-error{flex:1 0 calc(100% - 54px);max-width:calc(100% - 54px);margin:-8px 0 0 54px;color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px;white-space:normal}',
+
       '@media(max-width:900px){.ra-source-grid{grid-template-columns:1fr}.ra-add-form{grid-template-columns:1fr 160px}.ra-add-form .ra-url-field{grid-column:1/-1}.ra-form-actions{grid-column:1/-1;justify-content:flex-end}}',
       '@media(max-width:560px){.ra-tabs{width:100%}.ra-tab{padding:0 8px}.ra-section-head{align-items:stretch;flex-direction:column}.ra-actions{justify-content:flex-end}.ra-add-form{grid-template-columns:1fr}.ra-add-form .ra-url-field,.ra-form-actions{grid-column:1}}',
     ].join('\n')
@@ -572,6 +600,62 @@ window.__ModuleLoader__.load({
         return true
       } catch {
         return false
+      }
+    }
+
+    async function readInstalledBundles() {
+      if (!remote?.pluginManager?.listBundles) throw new Error('Native Plugin Manager is unavailable')
+      const result = await remote.pluginManager.listBundles()
+      if (!result?.ok) throw new Error(result?.error?.message || 'Could not read installed plugins')
+      return Array.isArray(result.value) ? result.value : []
+    }
+
+    async function installBrowsePlugin(plugin, onProgress) {
+      const spec = String(plugin?.installSpec ?? '').trim()
+      if (!spec) throw new Error('Plugin has no install spec')
+      if (!remote?.pluginManager?.inspect || !remote?.pluginManager?.installBundle) {
+        throw new Error('Native Plugin Manager is unavailable')
+      }
+
+      onProgress?.({ phase: 'checking' })
+      const inspected = await remote.pluginManager.inspect(spec, { registry: null })
+      if (!inspected?.ok) throw new Error(inspected?.error?.message || 'Package inspection failed')
+      if (inspected.value?.status === 'refused') {
+        const error = new Error(inspected.value.reason || inspected.value.problem || 'Package was refused')
+        error.problem = inspected.value.problem
+        throw error
+      }
+
+      const requestId = globalThis.crypto?.randomUUID?.()
+      if (!requestId) throw new Error('Browser cannot create an install request id')
+      const registry = inspected.value.registry ?? null
+      let dispose
+      if (typeof remote?.$on === 'function') {
+        dispose = remote.$on('plugin-manager/install-state', progress => {
+          if (progress?.requestId !== requestId) return
+          onProgress?.({ phase: progress.phase, requestId, attempt: progress.attempt })
+        })
+      }
+
+      try {
+        onProgress?.({ phase: 'starting', requestId })
+        const answer = await remote.pluginManager.installBundle(spec, { enabled: true, registry, requestId })
+        if (!answer?.ok) throw new Error(answer?.error?.message || 'Plugin installation request failed')
+        const result = answer.value
+        if (result?.application === 'failed') {
+          const error = new Error(result?.error?.diagnostic || result?.packageResult?.output || result?.error?.message || 'Plugin installation failed')
+          error.installResult = result
+          throw error
+        }
+        if (result?.application === 'cancelled') {
+          const error = new Error('Plugin installation was cancelled')
+          error.cancelled = true
+          throw error
+        }
+        onProgress?.({ phase: 'done', requestId, bundle: result?.bundle, application: result?.application })
+        return result
+      } finally {
+        if (typeof dispose === 'function') dispose()
       }
     }
 
@@ -906,6 +990,8 @@ window.__ModuleLoader__.load({
       const [pageSize, setPageSize] = React.useState(20)
       const [state, setState] = React.useState({ loading: true, data: null, error: '' })
       const [iconEvidence, setIconEvidence] = React.useState({})
+      const [installedBundles, setInstalledBundles] = React.useState([])
+      const [installStates, setInstallStates] = React.useState({})
 
       React.useEffect(() => {
         const controller = new AbortController()
@@ -925,6 +1011,26 @@ window.__ModuleLoader__.load({
         }
       }, [query, revision])
 
+      React.useEffect(() => {
+        let active = true
+        const load = async () => {
+          try {
+            const bundles = await readInstalledBundles()
+            if (active) setInstalledBundles(bundles)
+          } catch {
+            // Browse remains usable even when the management inventory cannot be read.
+          }
+        }
+        void load()
+        const dispose = typeof remote?.$on === 'function'
+          ? remote.$on('plugin-manager/changed', () => { void load() })
+          : undefined
+        return () => {
+          active = false
+          if (typeof dispose === 'function') dispose()
+        }
+      }, [])
+
       const sortSignature = sorts.map(item => item.key + ':' + item.direction).join('|')
       React.useEffect(() => { setPage(1) }, [query, sourceFilter, sortSignature, releaseFilter, freshness, tagFilter, pageSize])
 
@@ -934,6 +1040,47 @@ window.__ModuleLoader__.load({
       const availableSources = [...new Map(plugins.flatMap(plugin => plugin.sources ?? []).map(source => [source.type, source])).values()]
       const availableTags = [...new Set(plugins.flatMap(plugin => plugin.tags ?? []).filter(Boolean))].sort((a, b) => a.localeCompare(b))
       const baseOrder = new Map(plugins.map((plugin, index) => [plugin.key ?? plugin.installSpec ?? plugin.name, index]))
+      const installedNames = new Set(installedBundles.filter(bundle => bundle?.installed || bundle?.optional).map(bundle => bundle?.name).filter(Boolean))
+      const isInstalled = plugin => Boolean(plugin?.packageName && installedNames.has(plugin.packageName))
+        || installStates[browsePluginKey(plugin)]?.phase === 'done'
+
+      const runInstall = async plugin => {
+        const pluginKey = browsePluginKey(plugin)
+        const current = installStates[pluginKey]
+        if (!pluginKey || current?.phase === 'checking' || current?.phase === 'starting'
+          || current?.phase === 'installing' || current?.phase === 'applying' || current?.phase === 'done') return
+
+        setInstallStates(states => ({ ...states, [pluginKey]: { phase: 'checking', error: '' } }))
+        try {
+          const result = await installBrowsePlugin(plugin, progress => {
+            setInstallStates(states => ({
+              ...states,
+              [pluginKey]: { ...(states[pluginKey] ?? {}), ...progress, error: '' },
+            }))
+          })
+          setInstallStates(states => ({
+            ...states,
+            [pluginKey]: { phase: 'done', bundle: result?.bundle, application: result?.application, error: '' },
+          }))
+          try {
+            setInstalledBundles(await readInstalledBundles())
+          } catch {}
+        } catch (error) {
+          const problem = error?.problem
+          if (problem === 'already-installed') {
+            setInstallStates(states => ({ ...states, [pluginKey]: { phase: 'done', error: '' } }))
+            try { setInstalledBundles(await readInstalledBundles()) } catch {}
+            return
+          }
+          const result = error?.installResult
+          const message = Array.isArray(result?.pendingBuilds) && result.pendingBuilds.length
+            ? t('installApproval') + ' ' + result.pendingBuilds.join(', ')
+            : problem === 'not-a-bundle'
+              ? t('installNotBundle')
+              : String(error?.message ?? t('installFailed'))
+          setInstallStates(states => ({ ...states, [pluginKey]: { phase: 'failed', error: message } }))
+        }
+      }
 
       const filtered = plugins.filter(plugin => {
         if (sourceFilter !== 'all' && !(plugin.sources ?? []).some(source => source.type === sourceFilter)) return false
@@ -1153,14 +1300,41 @@ window.__ModuleLoader__.load({
                     ...(plugin.tags ?? []).slice(0, 6).map(tag => h('span', { key: tag, className: 'ra-tag' }, tag)),
                   ) : null,
                 ),
-                plugin.repository ? h('a', {
-                  className: 'ra-plugin-link',
-                  href: plugin.repository,
-                  target: '_blank',
-                  rel: 'noreferrer',
-                  title: plugin.repository,
-                  'aria-label': plugin.repository,
-                }, h(IconRightUp, { size: 14 })) : null,
+                h('div', { className: 'ra-plugin-actions' },
+                  (() => {
+                    const installState = installStates[pluginKey] ?? {}
+                    const installed = isInstalled(plugin)
+                    const busy = ['checking', 'starting', 'installing', 'applying'].includes(installState.phase)
+                    const label = installed
+                      ? t('installed')
+                      : installState.phase === 'failed'
+                        ? t('installRetry')
+                        : installState.phase === 'checking'
+                          ? t('installChecking')
+                          : busy
+                            ? t('installing')
+                            : t('install')
+                    return plugin.installSpec ? h('button', {
+                      type: 'button',
+                      className: 'ra-install-button',
+                      'data-state': installed ? 'done' : installState.phase === 'failed' ? 'error' : undefined,
+                      disabled: installed || busy,
+                      title: installState.error || label,
+                      onClick: () => { void runInstall(plugin) },
+                    }, label) : null
+                  })(),
+                  plugin.repository ? h('a', {
+                    className: 'ra-plugin-link',
+                    href: plugin.repository,
+                    target: '_blank',
+                    rel: 'noreferrer',
+                    title: plugin.repository,
+                    'aria-label': plugin.repository,
+                  }, h(IconRightUp, { size: 14 })) : null,
+                ),
+                installStates[pluginKey]?.error
+                  ? h('div', { className: 'ra-install-error', role: 'alert' }, installStates[pluginKey].error)
+                  : null,
               )
             }),
           ),
@@ -1252,9 +1426,10 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['slots', 'locale', 'connection', 'configForms'],
+      inject: ['slots', 'locale', 'connection', 'configForms', 'remote', 'remote.pluginManager'],
       apply(ctx) {
         connection = ctx.connection
+        remote = ctx.remote
         sourceConfigForm = ctx.configForms.get(HOST_ENTRY)
         ctx.effect(() => ctx.locale.register(NS, { en, zh }), 'registry-aggregator: locale')
         ctx.effect(() => ctx.configForms.whileServed([HOST_ENTRY], () =>

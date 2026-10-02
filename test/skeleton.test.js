@@ -10,6 +10,7 @@ const patch = await readFile(new URL('../cordis.patch.yml', import.meta.url), 'u
 test('targets only DSH 0.2.x', () => {
   assert.equal(pkg.peerDependencies['@deepseek-ai/dsh'], '>=0.2.0-rc.2 <0.3.0')
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-plugin-manager'))
+  assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-api-remotes'))
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-connection'))
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-settings'))
 })
@@ -99,4 +100,15 @@ test('Browse uses theme-colored native options and manifest artwork fallback', (
   assert.match(client, /function PluginArtwork/)
   assert.match(client, /rpc\('icons'/)
   assert.match(client, /plugin\.releasedAt \?\? plugin\.repositoryUpdatedAt/)
+})
+
+
+test('Browse install action delegates to the native DSH Plugin Manager Remote', () => {
+  assert.match(client, /remote\.pluginManager\.inspect\(spec, \{ registry: null \}\)/)
+  assert.match(client, /remote\.pluginManager\.installBundle\(spec, \{ enabled: true, registry, requestId \}\)/)
+  assert.match(client, /remote\.pluginManager\.listBundles\(\)/)
+  assert.match(client, /plugin-manager\/changed/)
+  assert.match(client, /plugin-manager\/install-state/)
+  assert.match(client, /className: 'ra-install-button'/)
+  assert.match(client, /inject: \['slots', 'locale', 'connection', 'configForms', 'remote', 'remote\.pluginManager'\]/)
 })
