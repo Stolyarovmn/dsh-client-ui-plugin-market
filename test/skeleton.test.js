@@ -34,7 +34,8 @@ test('keeps only Sources, Browse, and Updates top-level views', () => {
   assert.match(client, /sources:\s*'Sources'/)
   assert.match(client, /browse:\s*'Browse'/)
   assert.match(client, /updates:\s*'Updates'/)
-  assert.doesNotMatch(client, /installed:\s*'Installed'/i)
+  assert.match(client, /const tabs = \[\s*\['sources',[\s\S]*\['browse',[\s\S]*\['updates'/)
+  assert.doesNotMatch(client, /const tabs = \[[\s\S]{0,400}\['installed'/i)
 })
 
 test('source RPC is Host-owned and client uses the Connection service', () => {
