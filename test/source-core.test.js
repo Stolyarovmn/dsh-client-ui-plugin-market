@@ -8,7 +8,7 @@ import {
   normalizeSource,
   resolvePluginIcons,
   resolvePluginMetadata,
-  resolveNpmDownloadTotals,
+  resolveNpmDownloadStats,
 } from '../source-core.js'
 
 const publicResolver = async () => [{ address: '93.184.216.34', family: 4 }]
@@ -276,33 +276,68 @@ test('plugin metadata keeps non-confirmed compatibility neutral for the UI', asy
 })
 
 
-test('lazy npm lifetime downloads sum safe date chunks from package creation', async () => {
-  const packageName = '@acme/dsh-total-test'
-  const created = new Date(Date.now() - 620 * 86_400_000).toISOString()
+test('lazy npm download stats always return 30d and lifetime total as one complete pair', async () => {
+  const created = new Date(Date.now() - 600 * 86_400_000).toISOString()
   const periods = []
+  let monthlyCalls = 0
   const fetchImpl = async input => {
     const url = new URL(input)
     if (url.hostname === 'registry.npmjs.org') {
-      return Response.json({ name: packageName, time: { created } })
+      return Response.json({ name: '@acme/dsh-stats', time: { created } })
+    }
+    if (url.hostname === 'api.npmjs.org' && url.pathname.includes('/last-month/')) {
+      monthlyCalls += 1
+      return Response.json({ downloads: 345, package: '@acme/dsh-stats' })
     }
     if (url.hostname === 'api.npmjs.org') {
       const match = url.pathname.match(/\/downloads\/point\/(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})\//)
       assert.ok(match)
       periods.push([match[1], match[2]])
-      return Response.json({ downloads: 100, package: packageName })
+      return Response.json({ downloads: 100, package: '@acme/dsh-stats' })
     }
     throw new Error('unexpected URL ' + url)
   }
 
-  const rows = await resolveNpmDownloadTotals([
-    { key: 'total-test', packageName },
+  const rows = await resolveNpmDownloadStats([
+    { key: 'stats', packageName: '@acme/dsh-stats' },
   ], { fetchImpl, resolveHost: publicResolver, concurrency: 1 })
 
   assert.equal(rows.length, 1)
+  assert.equal(rows[0].complete, true)
+  assert.equal(rows[0].downloads30d, 345)
   assert.equal(rows[0].downloadsTotal, periods.length * 100)
+  assert.equal(monthlyCalls, 1)
   assert.ok(periods.length >= 2)
   for (const [start, end] of periods) {
     const days = Math.round((Date.parse(end + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z')) / 86_400_000)
     assert.ok(days <= 539)
   }
+})
+
+test('lazy npm download stats reuse an already known 30d count but never expose a partial total', async () => {
+  const created = new Date(Date.now() - 10 * 86_400_000).toISOString()
+  let monthlyCalls = 0
+  const fetchImpl = async input => {
+    const url = new URL(input)
+    if (url.hostname === 'registry.npmjs.org') {
+      return Response.json({ name: '@acme/dsh-known-month', time: { created } })
+    }
+    if (url.hostname === 'api.npmjs.org' && url.pathname.includes('/last-month/')) {
+      monthlyCalls += 1
+      return Response.json({ downloads: 999 })
+    }
+    if (url.hostname === 'api.npmjs.org') {
+      return Response.json({ downloads: 777 })
+    }
+    throw new Error('unexpected URL ' + url)
+  }
+
+  const rows = await resolveNpmDownloadStats([
+    { key: 'known-month', packageName: '@acme/dsh-known-month', downloads30d: 123 },
+  ], { fetchImpl, resolveHost: publicResolver, concurrency: 1 })
+
+  assert.equal(rows[0].complete, true)
+  assert.equal(rows[0].downloads30d, 123)
+  assert.equal(rows[0].downloadsTotal, 777)
+  assert.equal(monthlyCalls, 0)
 })

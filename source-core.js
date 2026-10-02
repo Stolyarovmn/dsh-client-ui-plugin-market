@@ -16,14 +16,15 @@ const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504])
 const BROWSE_CACHE_TTL_MS = 60_000
 const ICON_CACHE_TTL_MS = 30 * 60_000
 const METADATA_CACHE_TTL_MS = 10 * 60_000
-const DOWNLOAD_TOTAL_CACHE_TTL_MS = 24 * 60 * 60_000
+const DOWNLOAD_STATS_CACHE_TTL_MS = 60 * 60_000
 const NPM_DOWNLOAD_EARLIEST = '2015-01-10'
 const NPM_DOWNLOAD_CHUNK_DAYS = 540
+const NPM_DOWNLOAD_RETRY_ATTEMPTS = 3
 const MAX_ICON_BYTES = 256 * 1024
 const browseCache = new Map()
 const iconCache = new Map()
 const metadataCache = new Map()
-const downloadTotalCache = new Map()
+const downloadStatsCache = new Map()
 
 export const SOURCE_TYPES = Object.freeze(['npm', 'github', 'custom-json', 'corporate'])
 export const NPM_DISCOVERY_KEYWORDS = Object.freeze(['dsh-plugin', 'deepseek-harness', 'deepseek-harness-plugin', 'dsh-plugins'])
@@ -88,21 +89,21 @@ function cacheMetadata(key, value) {
   if (first !== undefined) metadataCache.delete(first)
 }
 
-function cachedDownloadTotal(key) {
-  const entry = downloadTotalCache.get(key)
+function cachedDownloadStats(key) {
+  const entry = downloadStatsCache.get(key)
   if (!entry) return undefined
   if (entry.expiresAt <= Date.now()) {
-    downloadTotalCache.delete(key)
+    downloadStatsCache.delete(key)
     return undefined
   }
   return entry.value
 }
 
-function cacheDownloadTotal(key, value) {
-  downloadTotalCache.set(key, { value, expiresAt: Date.now() + DOWNLOAD_TOTAL_CACHE_TTL_MS })
-  if (downloadTotalCache.size <= 256) return
-  const first = downloadTotalCache.keys().next().value
-  if (first !== undefined) downloadTotalCache.delete(first)
+function cacheDownloadStats(key, value) {
+  downloadStatsCache.set(key, { value, expiresAt: Date.now() + DOWNLOAD_STATS_CACHE_TTL_MS })
+  if (downloadStatsCache.size <= 256) return
+  const first = downloadStatsCache.keys().next().value
+  if (first !== undefined) downloadStatsCache.delete(first)
 }
 
 function isoDay(value) {
@@ -116,18 +117,23 @@ function addUtcDays(day, amount) {
   return isoDay(date)
 }
 
-function previousUtcDay() {
-  const date = new Date()
-  date.setUTCDate(date.getUTCDate() - 1)
-  return isoDay(date)
-}
-
 function laterDay(left, right) {
   return String(left) > String(right) ? left : right
 }
 
 function earlierDay(left, right) {
   return String(left) < String(right) ? left : right
+}
+
+function npmDownloadPeriods(start, end) {
+  const periods = []
+  let cursor = start
+  while (cursor <= end) {
+    const chunkEnd = earlierDay(addUtcDays(cursor, NPM_DOWNLOAD_CHUNK_DAYS - 1), end)
+    periods.push([cursor, chunkEnd])
+    cursor = addUtcDays(chunkEnd, 1)
+  }
+  return periods
 }
 
 function laterDate(...values) {
@@ -738,81 +744,88 @@ function validPackageName(value) {
     : undefined
 }
 
-async function npmPackageMetadata(packageName, options) {
-  const valid = validPackageName(packageName)
-  if (!valid) return undefined
-  return fetchJson('https://registry.npmjs.org/' + encodeURIComponent(valid),
-    { id: 'npm-package-metadata', name: 'npm', type: 'npm', enabled: true }, {
-      ...options,
-      authToken: undefined,
-      allowPrivateNetwork: false,
-    })
-}
-
-async function npmLifetimeDownloads(packageName, options = {}) {
-  const valid = validPackageName(packageName)
-  if (!valid) return undefined
-  const end = previousUtcDay()
-  if (!end) return undefined
-  const cacheKey = valid + '|' + end
-  const cached = cachedDownloadTotal(cacheKey)
-  if (cached !== undefined) return cached
-
-  let created
-  try {
-    const metadata = await npmPackageMetadata(valid, options)
-    created = isoDay(metadata?.time?.created)
-  } catch {
-    created = undefined
-  }
-
-  let cursor = laterDay(created ?? NPM_DOWNLOAD_EARLIEST, NPM_DOWNLOAD_EARLIEST)
-  if (cursor > end) {
-    const empty = { downloadsTotal: 0, start: cursor, end }
-    cacheDownloadTotal(cacheKey, empty)
-    return empty
-  }
-
-  const source = { id: 'npm-downloads-total', name: 'npm downloads total', type: 'npm', enabled: true }
+async function fetchNpmDownloadJson(url, options = {}) {
+  const source = { id: 'npm-download-stats', name: 'npm downloads', type: 'npm', enabled: true }
   const requestOptions = { ...options, authToken: undefined, allowPrivateNetwork: false }
-  let total = 0
-  const encoded = encodeURIComponent(valid)
-  const start = cursor
-
-  while (cursor <= end) {
-    const chunkEnd = earlierDay(addUtcDays(cursor, NPM_DOWNLOAD_CHUNK_DAYS - 1), end)
-    const value = await fetchJson(
-      'https://api.npmjs.org/downloads/point/' + cursor + ':' + chunkEnd + '/' + encoded,
-      source,
-      requestOptions,
-    )
-    if (!Number.isFinite(value?.downloads)) throw new Error('npm downloads total returned no count')
-    total += value.downloads
-    cursor = addUtcDays(chunkEnd, 1)
+  let lastError
+  for (let attempt = 0; attempt < NPM_DOWNLOAD_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      return await fetchJson(url, source, requestOptions)
+    } catch (error) {
+      lastError = error
+      if (requestOptions.signal?.aborted || error?.retryable !== true || attempt + 1 >= NPM_DOWNLOAD_RETRY_ATTEMPTS) throw error
+      await waitForRetry(Math.min(1000, 200 * (2 ** attempt)), requestOptions.signal)
+    }
   }
-
-  const result = { downloadsTotal: total, start, end }
-  cacheDownloadTotal(cacheKey, result)
-  return result
+  throw lastError
 }
 
-export async function resolveNpmDownloadTotals(items, options = {}) {
+async function npmPackageCreatedDay(packageName, options) {
+  const value = await fetchJson(
+    'https://registry.npmjs.org/' + encodeURIComponent(packageName),
+    { id: 'npm-package-metadata', name: 'npm', type: 'npm', enabled: true },
+    { ...options, authToken: undefined, allowPrivateNetwork: false },
+  )
+  return isoDay(value?.time?.created)
+}
+
+async function npmMonthlyDownloads(packageName, options) {
+  const encoded = encodeURIComponent(packageName)
+  const value = await fetchNpmDownloadJson(
+    'https://api.npmjs.org/downloads/point/last-month/' + encoded,
+    options,
+  )
+  return Number.isFinite(value?.downloads) ? value.downloads : undefined
+}
+
+async function npmLifetimeDownloads(packageName, options) {
+  const created = await npmPackageCreatedDay(packageName, options)
+  if (!created) return undefined
+  const end = isoDay(new Date())
+  if (!end) return undefined
+  const start = laterDay(created, NPM_DOWNLOAD_EARLIEST)
+  if (start > end) return 0
+  const encoded = encodeURIComponent(packageName)
+  const periods = npmDownloadPeriods(start, end)
+  const counts = await mapConcurrent(periods, Math.min(2, Math.max(1, periods.length)), async ([periodStart, periodEnd]) => {
+    const value = await fetchNpmDownloadJson(
+      'https://api.npmjs.org/downloads/point/' + periodStart + ':' + periodEnd + '/' + encoded,
+      options,
+    )
+    if (!Number.isFinite(value?.downloads)) throw new Error('npm downloads API returned no count')
+    return value.downloads
+  })
+  return counts.reduce((sum, value) => sum + value, 0)
+}
+
+export async function resolveNpmDownloadStats(items, options = {}) {
   const values = Array.isArray(items) ? items.slice(0, 24) : []
-  const unique = new Map()
-  for (const item of values) {
+  return mapConcurrent(values, Math.min(options.concurrency ?? 3, 3), async item => {
     const key = text(item?.key)?.slice(0, 500)
     const packageName = validPackageName(item?.packageName)
-    if (!key || !packageName || unique.has(key)) continue
-    unique.set(key, { key, packageName })
-  }
-  return mapConcurrent([...unique.values()], Math.min(options.concurrency ?? 3, 3), async item => {
+    if (!key || !packageName) return undefined
+
+    const cached = cachedDownloadStats(packageName)
+    if (cached !== undefined) return { key, packageName, ...cached, complete: true }
+
     try {
-      const total = await npmLifetimeDownloads(item.packageName, options)
-      return { key: item.key, packageName: item.packageName, ...(total ?? {}) }
+      const supplied30d = Number.isFinite(item?.downloads30d) ? item.downloads30d : undefined
+      const downloads30dPromise = supplied30d === undefined
+        ? npmMonthlyDownloads(packageName, options)
+        : Promise.resolve(supplied30d)
+      const downloadsTotalPromise = npmLifetimeDownloads(packageName, options)
+      const [downloads30d, downloadsTotal] = await Promise.all([downloads30dPromise, downloadsTotalPromise])
+      if (!Number.isFinite(downloads30d) || !Number.isFinite(downloadsTotal)) {
+        return { key, packageName, complete: false }
+      }
+      const value = { downloads30d, downloadsTotal }
+      cacheDownloadStats(packageName, value)
+      return { key, packageName, ...value, complete: true }
     } catch {
-      return { key: item.key, packageName: item.packageName }
+      // Never expose a partial lifetime sum as a real total.
+      return { key, packageName, complete: false }
     }
-  })
+  }).then(rows => rows.filter(Boolean))
 }
 
 async function npmManifest(item, options) {

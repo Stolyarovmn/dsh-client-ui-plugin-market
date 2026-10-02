@@ -73,7 +73,7 @@ window.__ModuleLoader__.load({
       compatibilityTitle: 'DSH {version} compatibility',
       incompatibleTitle: 'Not compatible with DSH {version}',
       filterCompatibility: 'Compatibility',
-      compatibilityAll: 'All',
+      compatibilityAll: 'Any',
       compatibilityCompatible: 'Compatible only',
       compatibilityIncompatible: 'Incompatible',
       compatibilityUnverified: 'Not verified',
@@ -86,8 +86,8 @@ window.__ModuleLoader__.load({
       updateNone: 'Installed plugins are up to date',
       updateNoneBody: 'No newer package versions were found in the connected registries.',
       updateRefresh: 'Check for updates',
-      downloads30d: 'Downloads in the last 30 days',
-      downloadsTotal: 'Total npm downloads',
+      downloads30d: 'npm downloads in the last 30 days',
+      downloadsTotal: 'npm total downloads',
       filterSource: 'Source',
       filterAllSources: 'All',
       filterSort: 'Sort',
@@ -185,7 +185,7 @@ window.__ModuleLoader__.load({
       compatibilityTitle: 'DSH {version} 兼容性',
       incompatibleTitle: '与 DSH {version} 不兼容',
       filterCompatibility: '兼容性',
-      compatibilityAll: '全部',
+      compatibilityAll: '不限',
       compatibilityCompatible: '仅兼容',
       compatibilityIncompatible: '不兼容',
       compatibilityUnverified: '未验证',
@@ -198,7 +198,7 @@ window.__ModuleLoader__.load({
       updateNone: '已安装插件均为最新版本',
       updateNoneBody: '在已连接的注册表中没有发现更高版本。',
       updateRefresh: '检查更新',
-      downloads30d: '最近 30 天下载量',
+      downloads30d: 'npm 最近 30 天下载量',
       downloadsTotal: 'npm 总下载量',
       filterSource: '来源',
       filterAllSources: '全部',
@@ -302,19 +302,19 @@ window.__ModuleLoader__.load({
       '.ra-search{box-sizing:border-box;min-width:0;max-width:100%;width:100%;height:36px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}',
       '.ra-search::placeholder{color:var(--dsw-alias-label-caption)}',
       '.ra-filter-row{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-width:0;max-width:100%}',
-      '.ra-compact-filter{box-sizing:border-box;display:inline-flex;align-items:center;gap:3px;height:28px;padding:0 3px 0 6px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-tertiary);min-width:0}',
+      '.ra-compact-filter{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 4px 0 7px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-tertiary);flex:0 0 auto;min-width:0}',
       '.ra-compact-filter[data-active=true]{background:color-mix(in srgb,var(--dsw-alias-label-primary) 7%,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l4)}',
-      '.ra-compact-filter-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 13px;width:13px;height:13px}',
-      '.ra-compact-filter select{box-sizing:border-box;width:100%;height:25px;min-width:0;padding:0 14px 0 1px;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-secondary);font:500 11px/1 inherit;color-scheme:light dark}',
-      '.ra-compact-filter[data-kind=source]{width:92px}',
-      '.ra-compact-filter[data-kind=release]{width:92px}',
-      '.ra-compact-filter[data-kind=freshness]{width:72px}',
-      '.ra-compact-filter[data-kind=tag]{width:92px}',
-      '.ra-compact-filter[data-kind=compatibility]{width:94px}',
-      '.ra-compact-filter[data-kind=page]{width:58px}',
+      '.ra-compact-filter-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 14px;width:14px;height:14px}',
+      '.ra-compact-filter select{box-sizing:border-box;height:27px;min-width:0;padding:0 18px 0 2px;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-secondary);font:500 11px/1 inherit;color-scheme:light dark}',
+      '.ra-compact-filter[data-kind=source] select{width:78px}',
+      '.ra-compact-filter[data-kind=release] select{width:78px}',
+      '.ra-compact-filter[data-kind=freshness] select{width:58px}',
+      '.ra-compact-filter[data-kind=tag] select{width:78px}',
+      '.ra-compact-filter[data-kind=compatibility] select{width:88px}',
+      '.ra-compact-filter[data-kind=page] select{width:44px}',
       '.ra-compact-filter select option,.ra-select option{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
-      '.ra-sort-row{display:inline-flex;align-items:center;gap:2px;padding:1px;border:.5px solid var(--dsw-alias-border-l3);border-radius:8px;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-bg-layer-2));flex:none}',
-      '.ra-sort-criterion{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:2px;min-width:27px;height:24px;padding:0 5px;border:.5px solid transparent;border-radius:6px;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/1 inherit;cursor:pointer}',
+      '.ra-sort-row{display:inline-flex;align-items:center;gap:3px;padding:2px;border:.5px solid var(--dsw-alias-border-l3);border-radius:9px;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-bg-layer-2))}',
+      '.ra-sort-criterion{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:30px;height:26px;padding:0 6px;border:.5px solid transparent;border-radius:7px;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/1 inherit;cursor:pointer}',
       '.ra-sort-criterion:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}',
       '.ra-sort-criterion[data-active=true]{border-color:var(--dsw-alias-border-l3);background:color-mix(in srgb,var(--dsw-alias-label-primary) 9%,var(--dsw-alias-bg-layer-2));color:var(--dsw-alias-label-primary)}',
       '.ra-sort-criterion:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
@@ -649,6 +649,16 @@ window.__ModuleLoader__.load({
     function IconCheck({ size = 16 }) {
       return h(SvgIcon, { size, children: [
         h('path', { d: 'M2.25 8.5L5.49732 11.7473C5.90519 12.1552 6.57263 12.1344 6.95426 11.7018L13.75 4', stroke: 'currentColor' }),
+      ] })
+    }
+
+    function IconShield({ size = 14 }) {
+      return h(SvgIcon, { size, children: [
+        h('path', {
+          d: 'M6.80132 2.14853C7.70663 1.80917 8.70422 1.80919 9.60952 2.14859L14.1296 3.84317V7.11961C14.1296 11.6089 10.7615 13.5975 8.20543 14.5779C5.64931 13.5975 2.28052 11.6089 2.28052 7.11961V3.84317L6.80132 2.14853Z',
+          stroke: 'currentColor',
+          strokeLinejoin: 'round',
+        }),
       ] })
     }
 
@@ -1116,7 +1126,7 @@ window.__ModuleLoader__.load({
       const [state, setState] = React.useState({ loading: true, data: null, error: '' })
       const [iconEvidence, setIconEvidence] = React.useState({})
       const [metadataEvidence, setMetadataEvidence] = React.useState({})
-      const [downloadTotals, setDownloadTotals] = React.useState({})
+      const [downloadEvidence, setDownloadEvidence] = React.useState({})
       const [installedBundles, setInstalledBundles] = React.useState([])
       const [installStates, setInstallStates] = React.useState({})
 
@@ -1346,40 +1356,59 @@ window.__ModuleLoader__.load({
         return () => controller.abort()
       }, [visibleMetadataSignature])
 
-      const totalDownloadItems = visible
+      const downloadItems = visible
         .filter(plugin => plugin.packageName)
-        .map(plugin => ({ key: browsePluginKey(plugin), packageName: plugin.packageName }))
-      const totalDownloadSignature = totalDownloadItems.map(item => item.key + '|' + item.packageName).join(';')
+        .map(plugin => ({
+          key: browsePluginKey(plugin),
+          packageName: plugin.packageName,
+          ...(Number.isFinite(plugin.downloads30d) ? { downloads30d: plugin.downloads30d } : {}),
+        }))
+      const downloadSignature = [
+        revision,
+        ...downloadItems.map(item => [item.key, item.packageName, item.downloads30d ?? ''].join('|')),
+      ].join(';')
 
       React.useEffect(() => {
-        if (!totalDownloadItems.length) return undefined
-        const pending = totalDownloadItems.filter(item => downloadTotals[item.key] === undefined)
-        if (!pending.length) return undefined
+        if (!downloadItems.length) return undefined
         const controller = new AbortController()
-        const batches = []
-        for (let index = 0; index < pending.length; index += 8) batches.push(pending.slice(index, index + 8))
-        Promise.all(batches.map(items => rpc('download-totals', { items }, controller.signal))).then(values => {
+        setDownloadEvidence(current => {
+          const next = { ...current }
+          for (const item of downloadItems) next[item.key] = { ...(next[item.key] ?? {}), packageName: item.packageName, loading: true }
+          return next
+        })
+        rpc('download-stats', { items: downloadItems }, controller.signal).then(value => {
           if (controller.signal.aborted) return
-          setDownloadTotals(current => {
+          setDownloadEvidence(current => {
             const next = { ...current }
-            for (const value of values) {
-              for (const row of value?.plugins ?? []) {
-                if (!row?.key) continue
-                next[row.key] = Number.isFinite(row.downloadsTotal) ? row.downloadsTotal : null
+            const returned = new Set()
+            for (const row of value?.plugins ?? []) {
+              if (!row?.key) continue
+              returned.add(row.key)
+              next[row.key] = {
+                packageName: row.packageName,
+                loading: false,
+                complete: row.complete === true
+                  && Number.isFinite(row.downloads30d)
+                  && Number.isFinite(row.downloadsTotal),
+                ...(Number.isFinite(row.downloads30d) ? { downloads30d: row.downloads30d } : {}),
+                ...(Number.isFinite(row.downloadsTotal) ? { downloadsTotal: row.downloadsTotal } : {}),
               }
+            }
+            for (const item of downloadItems) {
+              if (!returned.has(item.key)) next[item.key] = { packageName: item.packageName, loading: false, complete: false }
             }
             return next
           })
         }, () => {
           if (controller.signal.aborted) return
-          setDownloadTotals(current => {
+          setDownloadEvidence(current => {
             const next = { ...current }
-            for (const item of pending) if (next[item.key] === undefined) next[item.key] = null
+            for (const item of downloadItems) next[item.key] = { packageName: item.packageName, loading: false, complete: false }
             return next
           })
         })
         return () => controller.abort()
-      }, [totalDownloadSignature])
+      }, [downloadSignature])
 
       const resultLabel = state.loading
         ? t('browseLoading')
@@ -1480,7 +1509,7 @@ window.__ModuleLoader__.load({
             { value: 'all', label: t('filterAllTags') },
             ...availableTags.map(tag => ({ value: tag, label: tag })),
           ], tagFilter !== 'all'),
-          compactFilter('compatibility', t('filterCompatibility'), h(IconCheck, { size: 14 }), compatibilityFilter, setCompatibilityFilter, [
+          compactFilter('compatibility', t('filterCompatibility'), h(IconShield, { size: 14 }), compatibilityFilter, setCompatibilityFilter, [
             { value: 'all', label: t('compatibilityAll') },
             { value: 'compatible', label: t('compatibilityCompatible') },
             { value: 'incompatible', label: t('compatibilityIncompatible') },
@@ -1524,10 +1553,14 @@ window.__ModuleLoader__.load({
                 compatibilityStatus === 'incompatible' ? 'incompatibleTitle' : 'compatibilityTitle',
                 { version: pluginMetadata.runtimeVersion ?? '?' },
               )
-              const downloadsTotal = downloadTotals[pluginKey]
+              const downloadStats = downloadEvidence[pluginKey]
+              const downloads30d = downloadStats?.complete
+                ? downloadStats.downloads30d
+                : Number.isFinite(plugin.downloads30d) ? plugin.downloads30d : undefined
+              const downloadsTotal = downloadStats?.complete ? downloadStats.downloadsTotal : undefined
               const downloadsLabel = plugin.packageName
-                ? (Number.isFinite(plugin.downloads30d) ? compactNumber(plugin.downloads30d) : '—') + ' / 30d'
-                  + ' | ' + (Number.isFinite(downloadsTotal) ? compactNumber(downloadsTotal) : downloadsTotal === null ? '—' : '…') + ' / total'
+                ? (Number.isFinite(downloads30d) ? compactNumber(downloads30d) : downloadStats?.loading ? '…' : '—') + ' / 30d'
+                  + ' | ' + (Number.isFinite(downloadsTotal) ? compactNumber(downloadsTotal) : downloadStats?.loading ? '…' : '—') + ' / total'
                 : ''
               const freshnessAt = plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt
               const freshnessAge = ageShort(freshnessAt)

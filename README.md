@@ -2,8 +2,8 @@
 
 This branch is the clean DSH `0.2.0` implementation line. It does **not** carry compatibility code or UI workarounds from DSH `0.1.x`.
 
-Current test version: `0.5.0-rc.12`  
-Current validation baseline: DSH `v0.2.0-rc.2` (compatibility checks read the actual running DSH version from `profileContext.installAnchor`, so `rc.3+` is not hardcoded).
+Current test version: `0.5.0-rc.13`  
+Current validation baseline: DSH `v0.2.0-rc.2`. Compatibility checks use the actual running DSH version from the active installation manifest rather than a hardcoded RC.
 
 ## Current milestone
 
@@ -23,9 +23,9 @@ Implemented in this milestone:
 - bounded responses, request timeouts, redirect validation, DNS pinning, and private-network blocking;
 - no duplicate `Installed` view;
 - live federated Browse search across enabled npm, GitHub, custom JSON, and corporate sources;
-- single-row compact icon-led source/release/freshness/tag/compatibility/page-size filters on desktop, with responsive wrapping below 900px, multi-source metadata, and 20/50/100 pagination;
+- compact single-row source/release/freshness/tag/compatibility/page-size filters on desktop, with responsive wrapping below 900px, multi-source metadata, and 20/50/100 pagination; compatibility uses the native DSH shield contour as its neutral filter icon;
 - combinable multi-sort criteria for relevance, stars, downloads, freshness, and name with per-criterion direction; when several are active they contribute equally through percentile-normalized composite ranking, so every selected criterion can affect the order; active criteria use a subtle native-style fill without priority badges;
-- npm 30-day download enrichment plus lazily resolved lifetime totals for visible npm packages (`30d | total`), plus GitHub stars when available; lifetime totals are summed in safe ≤540-day npm Downloads API windows because npm caps non-bulk queries at 18 months; GitHub-only entries intentionally have no npm download count;
+- npm 30-day download enrichment plus lazy paired `30d | total` stats for visible npm rows; lifetime totals are summed from the package creation date (or npm's 2015-01-10 data floor) in ≤540-day windows, and the UI never presents a partial lifetime sum as a real total; GitHub stars remain available independently, while GitHub-only entries intentionally have no npm download count;
 - package freshness distinguishes npm release time from GitHub repository push time, so GitHub metadata churn does not make every item look newly released;
 - best-effort package artwork discovery from the DSH top-level manifest `icon` field, returned to the Client as bounded data URLs with the same SVG/PNG/JPEG/WebP and 256 KiB policy as native DSH metadata;
 - popular/default Browse results when the query is empty;
@@ -34,7 +34,7 @@ Implemented in this milestone:
 - one-click Browse installation through the native DSH `remote.pluginManager` service: `inspect` → `installBundle`, installed-state synchronization via `listBundles` / `plugin-manager/changed`, and inline failure reporting;
 - icon-only Browse install states using the same local DSH-style glyph language as the rest of the page;
 - explicit `v<version>` package versions plus lazy manifest evidence for GitHub/npm rows;
-- compatibility evidence against the actual running DSH version read from the active installation manifest, following DSH peer semantics for `@deepseek-ai/dsh` and `@deepseek-ai/dsh-*`; Browse shows `Compatible`, `Incompatible`, or neutral `Not verified` as plain colored text, and can filter by compatibility;
+- compatibility evidence against the actual running DSH version, following DSH peer semantics for `@deepseek-ai/dsh` and `@deepseek-ai/dsh-*`; Browse shows `Compatible`, `Incompatible`, or neutral `Not verified` as plain colored text, and can filter by compatibility;
 - live Updates discovery from native installed bundles plus latest npm manifests, with per-package update through `remote.pluginManager.installBundle`;
 - no runtime import of Harness Client implementation packages;
 - Harness-provided React and DSH theme tokens.
@@ -61,7 +61,7 @@ Sources UI
   │    ├─ snapshot subscription
   │    └─ form.mutate(...) → Host Config.sources
   └─ ctx.connection.rpc.call
-       └─ /api/plugin-sources/{health,counts,browse,icons,metadata,download-totals}
+       └─ /api/plugin-sources/{health,counts,browse,icons,metadata,download-stats}
             └─ Host source adapters
                  ├─ npm
                  ├─ GitHub

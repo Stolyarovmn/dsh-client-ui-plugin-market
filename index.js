@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import semver from 'semver'
 import z from '@deepseek-ai/schemastery'
-import { browseSources, countSources, healthSources, resolveNpmDownloadTotals, resolvePluginIcons, resolvePluginMetadata, SOURCE_TYPES } from './source-core.js'
+import { browseSources, countSources, healthSources, resolveNpmDownloadStats, resolvePluginIcons, resolvePluginMetadata, SOURCE_TYPES } from './source-core.js'
 
 export const name = 'registry-aggregator'
 export const RPC_CHANNEL = '/api'
@@ -132,10 +132,10 @@ export function apply(ctx, config = {}) {
           }
           return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
         }
-        if (endpoint === 'download-totals') {
+        if (endpoint === 'download-stats') {
           const items = Array.isArray(payload?.items) ? payload.items.slice(0, 24) : []
           const value = {
-            plugins: await resolveNpmDownloadTotals(items, requestOptions),
+            plugins: await resolveNpmDownloadStats(items, requestOptions),
             generatedAt: new Date().toISOString(),
           }
           return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
@@ -191,8 +191,8 @@ export function apply(ctx, config = {}) {
       'registry-aggregator: plugin metadata route',
     )
     rpcCtx.effect(
-      () => rpcCtx.connection.fetch.register(route('download-totals')),
-      'registry-aggregator: npm download totals route',
+      () => rpcCtx.connection.fetch.register(route('download-stats')),
+      'registry-aggregator: npm download stats route',
     )
   })
 }

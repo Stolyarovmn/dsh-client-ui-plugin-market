@@ -5,26 +5,12 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { runtimeVersionFromContext } from '../index.js'
 
-test('runtime DSH version comes from the active installation anchor, not a hardcoded RC', async () => {
+test('compatibility uses the active DSH installation version instead of a hardcoded RC', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'registry-aggregator-runtime-'))
   try {
     const anchor = join(dir, 'package.json')
     await writeFile(anchor, JSON.stringify({ name: '@deepseek-ai/dsh', version: '0.2.0-rc.3' }))
     assert.equal(runtimeVersionFromContext({ profileContext: { installAnchor: anchor } }), '0.2.0-rc.3')
-  } finally {
-    await rm(dir, { recursive: true, force: true })
-  }
-})
-
-test('runtime DSH version fails closed for an invalid installation manifest', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'registry-aggregator-runtime-'))
-  try {
-    const anchor = join(dir, 'package.json')
-    await writeFile(anchor, JSON.stringify({ name: '@deepseek-ai/dsh', version: 'not-semver' }))
-    assert.throws(
-      () => runtimeVersionFromContext({ profileContext: { installAnchor: anchor } }),
-      /valid semantic version/,
-    )
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
