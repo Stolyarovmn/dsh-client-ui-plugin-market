@@ -1,10 +1,11 @@
+import { readFileSync } from 'node:fs'
+import semver from 'semver'
 import z from '@deepseek-ai/schemastery'
-import { browseSources, countSources, healthSources, resolvePluginIcons, resolvePluginMetadata, SOURCE_TYPES } from './source-core.js'
+import { browseSources, countSources, healthSources, resolveNpmDownloadTotals, resolvePluginIcons, resolvePluginMetadata, SOURCE_TYPES } from './source-core.js'
 
 export const name = 'registry-aggregator'
 export const RPC_CHANNEL = '/api'
 export const RPC_PREFIX = 'plugin-sources'
-export const TARGET_DSH_VERSION = '0.2.0-rc.2'
 
 const SourceTypeSchema = z.union(SOURCE_TYPES.map(type => z.const(type)))
 const SourceAuthSchema = z.object({
@@ -53,8 +54,18 @@ function limitRpcValue(value, maxBytes) {
   return value
 }
 
+export function runtimeVersionFromContext(ctx) {
+  const anchor = ctx?.profileContext?.installAnchor
+  if (typeof anchor !== 'string' || !anchor) throw new Error('DSH installation anchor is unavailable')
+  const manifest = JSON.parse(readFileSync(anchor, 'utf8'))
+  const version = typeof manifest?.version === 'string' ? manifest.version.trim() : ''
+  if (semver.valid(version) === null) throw new Error('DSH installation manifest has no valid semantic version')
+  return version
+}
+
 export function apply(ctx, config = {}) {
-  ctx.inject(['connection'], rpcCtx => {
+  ctx.inject(['connection', 'profileContext'], rpcCtx => {
+    const runtimeVersion = runtimeVersionFromContext(rpcCtx)
     const auth = new Map((config.auth ?? []).map(row => [row.sourceId, row.tokenEnv]))
     const privateSourceIds = new Set(config.privateSourceIds ?? [])
     const maxRpcBytes = config.maxRpcBytes ?? 4 * 1024 * 1024
@@ -115,8 +126,16 @@ export function apply(ctx, config = {}) {
         if (endpoint === 'metadata') {
           const items = Array.isArray(payload?.items) ? payload.items.slice(0, 24) : []
           const value = {
-            plugins: await resolvePluginMetadata(items, { ...requestOptions, runtimeVersion: TARGET_DSH_VERSION }),
-            runtimeVersion: TARGET_DSH_VERSION,
+            plugins: await resolvePluginMetadata(items, { ...requestOptions, runtimeVersion }),
+            runtimeVersion,
+            generatedAt: new Date().toISOString(),
+          }
+          return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
+        }
+        if (endpoint === 'download-totals') {
+          const items = Array.isArray(payload?.items) ? payload.items.slice(0, 24) : []
+          const value = {
+            plugins: await resolveNpmDownloadTotals(items, requestOptions),
             generatedAt: new Date().toISOString(),
           }
           return { ok: true, value: limitRpcValue(value, maxRpcBytes) }
@@ -170,6 +189,10 @@ export function apply(ctx, config = {}) {
     rpcCtx.effect(
       () => rpcCtx.connection.fetch.register(route('metadata')),
       'registry-aggregator: plugin metadata route',
+    )
+    rpcCtx.effect(
+      () => rpcCtx.connection.fetch.register(route('download-totals')),
+      'registry-aggregator: npm download totals route',
     )
   })
 }

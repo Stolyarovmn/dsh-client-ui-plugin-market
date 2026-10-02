@@ -73,7 +73,7 @@ window.__ModuleLoader__.load({
       compatibilityTitle: 'DSH {version} compatibility',
       incompatibleTitle: 'Not compatible with DSH {version}',
       filterCompatibility: 'Compatibility',
-      compatibilityAll: 'All compatibility',
+      compatibilityAll: 'All',
       compatibilityCompatible: 'Compatible only',
       compatibilityIncompatible: 'Incompatible',
       compatibilityUnverified: 'Not verified',
@@ -86,8 +86,10 @@ window.__ModuleLoader__.load({
       updateNone: 'Installed plugins are up to date',
       updateNoneBody: 'No newer package versions were found in the connected registries.',
       updateRefresh: 'Check for updates',
+      downloads30d: 'Downloads in the last 30 days',
+      downloadsTotal: 'Total npm downloads',
       filterSource: 'Source',
-      filterAllSources: 'All sources',
+      filterAllSources: 'All',
       filterSort: 'Sort',
       sortRelevance: 'Relevance',
       sortStars: 'Stars',
@@ -100,16 +102,16 @@ window.__ModuleLoader__.load({
       sortDesc: 'Descending',
       sortCombined: 'Combined equally with other active criteria',
       filterRelease: 'Release',
-      releaseAll: 'All releases',
+      releaseAll: 'All',
       releaseStable: 'Stable only',
       releasePrerelease: 'Pre-release only',
       filterFreshness: 'Updated',
-      freshnessAny: 'Any time',
+      freshnessAny: 'Any',
       freshness30: 'Last 30 days',
       freshness90: 'Last 90 days',
       freshness365: 'Last year',
       filterTag: 'Tag',
-      filterAllTags: 'All tags',
+      filterAllTags: 'All',
       pageSize: 'Per page',
       previousPage: 'Previous page',
       nextPage: 'Next page',
@@ -183,7 +185,7 @@ window.__ModuleLoader__.load({
       compatibilityTitle: 'DSH {version} 兼容性',
       incompatibleTitle: '与 DSH {version} 不兼容',
       filterCompatibility: '兼容性',
-      compatibilityAll: '全部兼容状态',
+      compatibilityAll: '全部',
       compatibilityCompatible: '仅兼容',
       compatibilityIncompatible: '不兼容',
       compatibilityUnverified: '未验证',
@@ -196,8 +198,10 @@ window.__ModuleLoader__.load({
       updateNone: '已安装插件均为最新版本',
       updateNoneBody: '在已连接的注册表中没有发现更高版本。',
       updateRefresh: '检查更新',
+      downloads30d: '最近 30 天下载量',
+      downloadsTotal: 'npm 总下载量',
       filterSource: '来源',
-      filterAllSources: '全部来源',
+      filterAllSources: '全部',
       filterSort: '排序',
       sortRelevance: '相关度',
       sortStars: 'Stars',
@@ -210,7 +214,7 @@ window.__ModuleLoader__.load({
       sortDesc: '降序',
       sortCombined: '与其他启用条件等权组合',
       filterRelease: '版本',
-      releaseAll: '全部版本',
+      releaseAll: '全部',
       releaseStable: '仅稳定版',
       releasePrerelease: '仅预发布版',
       filterFreshness: '更新时间',
@@ -219,7 +223,7 @@ window.__ModuleLoader__.load({
       freshness90: '最近 90 天',
       freshness365: '最近一年',
       filterTag: '标签',
-      filterAllTags: '全部标签',
+      filterAllTags: '全部',
       pageSize: '每页',
       previousPage: '上一页',
       nextPage: '下一页',
@@ -297,14 +301,20 @@ window.__ModuleLoader__.load({
       '.ra-empty strong{display:block;margin-bottom:3px;color:var(--dsw-alias-label-primary)}',
       '.ra-search{box-sizing:border-box;min-width:0;max-width:100%;width:100%;height:36px;padding:0 10px;border:.5px solid var(--dsw-alias-border-l4);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font:inherit}',
       '.ra-search::placeholder{color:var(--dsw-alias-label-caption)}',
-      '.ra-filter-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}',
-      '.ra-compact-filter{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 4px 0 7px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-tertiary)}',
+      '.ra-filter-row{display:flex;align-items:center;gap:5px;flex-wrap:nowrap;min-width:0;max-width:100%}',
+      '.ra-compact-filter{box-sizing:border-box;display:inline-flex;align-items:center;gap:3px;height:28px;padding:0 3px 0 6px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-sm);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-tertiary);min-width:0}',
       '.ra-compact-filter[data-active=true]{background:color-mix(in srgb,var(--dsw-alias-label-primary) 7%,var(--dsw-alias-bg-layer-1));color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l4)}',
-      '.ra-compact-filter-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 14px;width:14px;height:14px}',
-      '.ra-compact-filter select{height:27px;max-width:132px;padding:0 18px 0 2px;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-secondary);font:500 11px/1 inherit;color-scheme:light dark}',
+      '.ra-compact-filter-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 13px;width:13px;height:13px}',
+      '.ra-compact-filter select{box-sizing:border-box;width:100%;height:25px;min-width:0;padding:0 14px 0 1px;border:0;outline:0;background:transparent;color:var(--dsw-alias-label-secondary);font:500 11px/1 inherit;color-scheme:light dark}',
+      '.ra-compact-filter[data-kind=source]{width:92px}',
+      '.ra-compact-filter[data-kind=release]{width:92px}',
+      '.ra-compact-filter[data-kind=freshness]{width:72px}',
+      '.ra-compact-filter[data-kind=tag]{width:92px}',
+      '.ra-compact-filter[data-kind=compatibility]{width:94px}',
+      '.ra-compact-filter[data-kind=page]{width:58px}',
       '.ra-compact-filter select option,.ra-select option{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}',
-      '.ra-sort-row{display:inline-flex;align-items:center;gap:3px;padding:2px;border:.5px solid var(--dsw-alias-border-l3);border-radius:9px;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-bg-layer-2))}',
-      '.ra-sort-criterion{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:30px;height:26px;padding:0 6px;border:.5px solid transparent;border-radius:7px;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/1 inherit;cursor:pointer}',
+      '.ra-sort-row{display:inline-flex;align-items:center;gap:2px;padding:1px;border:.5px solid var(--dsw-alias-border-l3);border-radius:8px;background:var(--dsw-alias-bg-module-platform,var(--dsw-alias-bg-layer-2));flex:none}',
+      '.ra-sort-criterion{position:relative;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:2px;min-width:27px;height:24px;padding:0 5px;border:.5px solid transparent;border-radius:6px;background:transparent;color:var(--dsw-alias-label-tertiary);font:600 11px/1 inherit;cursor:pointer}',
       '.ra-sort-criterion:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-secondary)}',
       '.ra-sort-criterion[data-active=true]{border-color:var(--dsw-alias-border-l3);background:color-mix(in srgb,var(--dsw-alias-label-primary) 9%,var(--dsw-alias-bg-layer-2));color:var(--dsw-alias-label-primary)}',
       '.ra-sort-criterion:focus-visible{outline:var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px}',
@@ -349,7 +359,7 @@ window.__ModuleLoader__.load({
       '.ra-plugin-actions{display:flex;align-items:center;gap:6px;flex:none}',
       '.ra-install-error{flex:1 0 calc(100% - 54px);max-width:calc(100% - 54px);margin:-8px 0 0 54px;color:var(--dsw-alias-state-error-primary);font-size:11px;line-height:16px;white-space:normal}',
 
-      '@media(max-width:900px){.ra-source-grid{grid-template-columns:1fr}.ra-add-form{grid-template-columns:1fr 160px}.ra-add-form .ra-url-field{grid-column:1/-1}.ra-form-actions{grid-column:1/-1;justify-content:flex-end}}',
+      '@media(max-width:900px){.ra-source-grid{grid-template-columns:1fr}.ra-add-form{grid-template-columns:1fr 160px}.ra-add-form .ra-url-field{grid-column:1/-1}.ra-form-actions{grid-column:1/-1;justify-content:flex-end}.ra-filter-row{flex-wrap:wrap}}',
       '@media(max-width:560px){.ra-tabs{width:100%}.ra-tab{padding:0 8px}.ra-section-head{align-items:stretch;flex-direction:column}.ra-actions{justify-content:flex-end}.ra-add-form{grid-template-columns:1fr}.ra-add-form .ra-url-field,.ra-form-actions{grid-column:1}}',
     ].join('\n')
 
@@ -1106,6 +1116,7 @@ window.__ModuleLoader__.load({
       const [state, setState] = React.useState({ loading: true, data: null, error: '' })
       const [iconEvidence, setIconEvidence] = React.useState({})
       const [metadataEvidence, setMetadataEvidence] = React.useState({})
+      const [downloadTotals, setDownloadTotals] = React.useState({})
       const [installedBundles, setInstalledBundles] = React.useState([])
       const [installStates, setInstallStates] = React.useState({})
 
@@ -1335,6 +1346,41 @@ window.__ModuleLoader__.load({
         return () => controller.abort()
       }, [visibleMetadataSignature])
 
+      const totalDownloadItems = visible
+        .filter(plugin => plugin.packageName)
+        .map(plugin => ({ key: browsePluginKey(plugin), packageName: plugin.packageName }))
+      const totalDownloadSignature = totalDownloadItems.map(item => item.key + '|' + item.packageName).join(';')
+
+      React.useEffect(() => {
+        if (!totalDownloadItems.length) return undefined
+        const pending = totalDownloadItems.filter(item => downloadTotals[item.key] === undefined)
+        if (!pending.length) return undefined
+        const controller = new AbortController()
+        const batches = []
+        for (let index = 0; index < pending.length; index += 8) batches.push(pending.slice(index, index + 8))
+        Promise.all(batches.map(items => rpc('download-totals', { items }, controller.signal))).then(values => {
+          if (controller.signal.aborted) return
+          setDownloadTotals(current => {
+            const next = { ...current }
+            for (const value of values) {
+              for (const row of value?.plugins ?? []) {
+                if (!row?.key) continue
+                next[row.key] = Number.isFinite(row.downloadsTotal) ? row.downloadsTotal : null
+              }
+            }
+            return next
+          })
+        }, () => {
+          if (controller.signal.aborted) return
+          setDownloadTotals(current => {
+            const next = { ...current }
+            for (const item of pending) if (next[item.key] === undefined) next[item.key] = null
+            return next
+          })
+        })
+        return () => controller.abort()
+      }, [totalDownloadSignature])
+
       const resultLabel = state.loading
         ? t('browseLoading')
         : compatibilityPending
@@ -1343,8 +1389,9 @@ window.__ModuleLoader__.load({
             ? format(t, 'browseResults', { count: sorted.length })
             : t('browsePopular')
 
-      const compactFilter = (label, icon, value, onChange, options, active = false) => h('label', {
+      const compactFilter = (kind, label, icon, value, onChange, options, active = false) => h('label', {
         className: 'ra-compact-filter',
+        'data-kind': kind,
         'data-active': active || undefined,
         title: label,
       },
@@ -1414,26 +1461,26 @@ window.__ModuleLoader__.load({
           onChange: event => setQuery(event.target.value),
         }),
         h('div', { className: 'ra-filter-row' },
-          compactFilter(t('filterSource'), h(IconDatabase, { size: 14 }), sourceFilter, setSourceFilter, [
+          compactFilter('source', t('filterSource'), h(IconDatabase, { size: 14 }), sourceFilter, setSourceFilter, [
             { value: 'all', label: t('filterAllSources') },
             ...availableSources.map(source => ({ value: source.type, label: source.name })),
           ], sourceFilter !== 'all'),
-          compactFilter(t('filterRelease'), h(IconArchive, { size: 14 }), releaseFilter, setReleaseFilter, [
+          compactFilter('release', t('filterRelease'), h(IconArchive, { size: 14 }), releaseFilter, setReleaseFilter, [
             { value: 'all', label: t('releaseAll') },
             { value: 'stable', label: t('releaseStable') },
             { value: 'prerelease', label: t('releasePrerelease') },
           ], releaseFilter !== 'all'),
-          compactFilter(t('filterFreshness'), h(IconClock, { size: 14 }), freshness, setFreshness, [
+          compactFilter('freshness', t('filterFreshness'), h(IconClock, { size: 14 }), freshness, setFreshness, [
             { value: 'any', label: t('freshnessAny') },
             { value: '30', label: '30d' },
             { value: '90', label: '90d' },
             { value: '365', label: '1y' },
           ], freshness !== 'any'),
-          compactFilter(t('filterTag'), h(IconTag, { size: 14 }), tagFilter, setTagFilter, [
+          compactFilter('tag', t('filterTag'), h(IconTag, { size: 14 }), tagFilter, setTagFilter, [
             { value: 'all', label: t('filterAllTags') },
             ...availableTags.map(tag => ({ value: tag, label: tag })),
           ], tagFilter !== 'all'),
-          compactFilter(t('filterCompatibility'), h(IconCheck, { size: 14 }), compatibilityFilter, setCompatibilityFilter, [
+          compactFilter('compatibility', t('filterCompatibility'), h(IconCheck, { size: 14 }), compatibilityFilter, setCompatibilityFilter, [
             { value: 'all', label: t('compatibilityAll') },
             { value: 'compatible', label: t('compatibilityCompatible') },
             { value: 'incompatible', label: t('compatibilityIncompatible') },
@@ -1446,7 +1493,7 @@ window.__ModuleLoader__.load({
             sortCriterion('freshness', t('sortFreshness'), h(IconClock, { size: 13 })),
             sortCriterion('name', t('sortName'), h('span', null, 'A')),
           ),
-          compactFilter(t('pageSize'), h(IconList, { size: 14 }), String(pageSize), value => setPageSize(Number(value)), [
+          compactFilter('page', t('pageSize'), h(IconList, { size: 14 }), String(pageSize), value => setPageSize(Number(value)), [
             { value: '20', label: '20' },
             { value: '50', label: '50' },
             { value: '100', label: '100' },
@@ -1475,8 +1522,13 @@ window.__ModuleLoader__.load({
               const compatibilityTitle = format(
                 t,
                 compatibilityStatus === 'incompatible' ? 'incompatibleTitle' : 'compatibilityTitle',
-                { version: pluginMetadata.runtimeVersion ?? '0.2.0-rc.2' },
+                { version: pluginMetadata.runtimeVersion ?? '?' },
               )
+              const downloadsTotal = downloadTotals[pluginKey]
+              const downloadsLabel = plugin.packageName
+                ? (Number.isFinite(plugin.downloads30d) ? compactNumber(plugin.downloads30d) : '—') + ' / 30d'
+                  + ' | ' + (Number.isFinite(downloadsTotal) ? compactNumber(downloadsTotal) : downloadsTotal === null ? '—' : '…') + ' / total'
+                : ''
               const freshnessAt = plugin.releasedAt ?? plugin.repositoryUpdatedAt ?? plugin.updatedAt
               const freshnessAge = ageShort(freshnessAt)
               const freshnessLabel = freshnessAge
@@ -1503,8 +1555,11 @@ window.__ModuleLoader__.load({
                     Number.isFinite(plugin.stars) ? h('span', { className: 'ra-plugin-meta-item' },
                       h('span', { className: 'ra-star' }, '★'), compactNumber(plugin.stars),
                     ) : null,
-                    plugin.packageName ? h('span', { className: 'ra-plugin-meta-item', title: 'npm downloads / 30d' },
-                      h(IconDownload, { size: 12 }), Number.isFinite(plugin.downloads30d) ? compactNumber(plugin.downloads30d) + ' / 30d' : '— / 30d',
+                    plugin.packageName ? h('span', {
+                      className: 'ra-plugin-meta-item',
+                      title: t('downloads30d') + ' | ' + t('downloadsTotal'),
+                    },
+                      h(IconDownload, { size: 12 }), downloadsLabel,
                     ) : null,
                     freshnessLabel ? h('span', { className: 'ra-plugin-meta-item', title: freshnessAt },
                       h(IconClock, { size: 12 }), freshnessLabel,

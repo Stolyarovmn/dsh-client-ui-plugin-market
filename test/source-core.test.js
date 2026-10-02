@@ -8,6 +8,7 @@ import {
   normalizeSource,
   resolvePluginIcons,
   resolvePluginMetadata,
+  resolveNpmDownloadTotals,
 } from '../source-core.js'
 
 const publicResolver = async () => [{ address: '93.184.216.34', family: 4 }]
@@ -272,4 +273,36 @@ test('plugin metadata keeps non-confirmed compatibility neutral for the UI', asy
     { key: 'old-plugin', packageName: '@acme/old-plugin', version: '1.0.1' },
   ], { fetchImpl, resolveHost: publicResolver, runtimeVersion: '0.2.0-rc.2' })
   assert.equal(rows[0].compatibility, 'unsupported')
+})
+
+
+test('lazy npm lifetime downloads sum safe date chunks from package creation', async () => {
+  const packageName = '@acme/dsh-total-test'
+  const created = new Date(Date.now() - 620 * 86_400_000).toISOString()
+  const periods = []
+  const fetchImpl = async input => {
+    const url = new URL(input)
+    if (url.hostname === 'registry.npmjs.org') {
+      return Response.json({ name: packageName, time: { created } })
+    }
+    if (url.hostname === 'api.npmjs.org') {
+      const match = url.pathname.match(/\/downloads\/point\/(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})\//)
+      assert.ok(match)
+      periods.push([match[1], match[2]])
+      return Response.json({ downloads: 100, package: packageName })
+    }
+    throw new Error('unexpected URL ' + url)
+  }
+
+  const rows = await resolveNpmDownloadTotals([
+    { key: 'total-test', packageName },
+  ], { fetchImpl, resolveHost: publicResolver, concurrency: 1 })
+
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].downloadsTotal, periods.length * 100)
+  assert.ok(periods.length >= 2)
+  for (const [start, end] of periods) {
+    const days = Math.round((Date.parse(end + 'T00:00:00Z') - Date.parse(start + 'T00:00:00Z')) / 86_400_000)
+    assert.ok(days <= 539)
+  }
 })

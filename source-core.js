@@ -16,10 +16,14 @@ const RETRYABLE_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504])
 const BROWSE_CACHE_TTL_MS = 60_000
 const ICON_CACHE_TTL_MS = 30 * 60_000
 const METADATA_CACHE_TTL_MS = 10 * 60_000
+const DOWNLOAD_TOTAL_CACHE_TTL_MS = 24 * 60 * 60_000
+const NPM_DOWNLOAD_EARLIEST = '2015-01-10'
+const NPM_DOWNLOAD_CHUNK_DAYS = 540
 const MAX_ICON_BYTES = 256 * 1024
 const browseCache = new Map()
 const iconCache = new Map()
 const metadataCache = new Map()
+const downloadTotalCache = new Map()
 
 export const SOURCE_TYPES = Object.freeze(['npm', 'github', 'custom-json', 'corporate'])
 export const NPM_DISCOVERY_KEYWORDS = Object.freeze(['dsh-plugin', 'deepseek-harness', 'deepseek-harness-plugin', 'dsh-plugins'])
@@ -82,6 +86,48 @@ function cacheMetadata(key, value) {
   if (metadataCache.size <= 256) return
   const first = metadataCache.keys().next().value
   if (first !== undefined) metadataCache.delete(first)
+}
+
+function cachedDownloadTotal(key) {
+  const entry = downloadTotalCache.get(key)
+  if (!entry) return undefined
+  if (entry.expiresAt <= Date.now()) {
+    downloadTotalCache.delete(key)
+    return undefined
+  }
+  return entry.value
+}
+
+function cacheDownloadTotal(key, value) {
+  downloadTotalCache.set(key, { value, expiresAt: Date.now() + DOWNLOAD_TOTAL_CACHE_TTL_MS })
+  if (downloadTotalCache.size <= 256) return
+  const first = downloadTotalCache.keys().next().value
+  if (first !== undefined) downloadTotalCache.delete(first)
+}
+
+function isoDay(value) {
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : undefined
+}
+
+function addUtcDays(day, amount) {
+  const date = new Date(day + 'T00:00:00.000Z')
+  date.setUTCDate(date.getUTCDate() + amount)
+  return isoDay(date)
+}
+
+function previousUtcDay() {
+  const date = new Date()
+  date.setUTCDate(date.getUTCDate() - 1)
+  return isoDay(date)
+}
+
+function laterDay(left, right) {
+  return String(left) > String(right) ? left : right
+}
+
+function earlierDay(left, right) {
+  return String(left) < String(right) ? left : right
 }
 
 function laterDate(...values) {
@@ -690,6 +736,83 @@ function validPackageName(value) {
   return /^(?:@[a-z0-9][a-z0-9._~-]*\/[a-z0-9][a-z0-9._~-]*|[a-z0-9][a-z0-9._~-]*)$/iu.test(packageName)
     ? packageName
     : undefined
+}
+
+async function npmPackageMetadata(packageName, options) {
+  const valid = validPackageName(packageName)
+  if (!valid) return undefined
+  return fetchJson('https://registry.npmjs.org/' + encodeURIComponent(valid),
+    { id: 'npm-package-metadata', name: 'npm', type: 'npm', enabled: true }, {
+      ...options,
+      authToken: undefined,
+      allowPrivateNetwork: false,
+    })
+}
+
+async function npmLifetimeDownloads(packageName, options = {}) {
+  const valid = validPackageName(packageName)
+  if (!valid) return undefined
+  const end = previousUtcDay()
+  if (!end) return undefined
+  const cacheKey = valid + '|' + end
+  const cached = cachedDownloadTotal(cacheKey)
+  if (cached !== undefined) return cached
+
+  let created
+  try {
+    const metadata = await npmPackageMetadata(valid, options)
+    created = isoDay(metadata?.time?.created)
+  } catch {
+    created = undefined
+  }
+
+  let cursor = laterDay(created ?? NPM_DOWNLOAD_EARLIEST, NPM_DOWNLOAD_EARLIEST)
+  if (cursor > end) {
+    const empty = { downloadsTotal: 0, start: cursor, end }
+    cacheDownloadTotal(cacheKey, empty)
+    return empty
+  }
+
+  const source = { id: 'npm-downloads-total', name: 'npm downloads total', type: 'npm', enabled: true }
+  const requestOptions = { ...options, authToken: undefined, allowPrivateNetwork: false }
+  let total = 0
+  const encoded = encodeURIComponent(valid)
+  const start = cursor
+
+  while (cursor <= end) {
+    const chunkEnd = earlierDay(addUtcDays(cursor, NPM_DOWNLOAD_CHUNK_DAYS - 1), end)
+    const value = await fetchJson(
+      'https://api.npmjs.org/downloads/point/' + cursor + ':' + chunkEnd + '/' + encoded,
+      source,
+      requestOptions,
+    )
+    if (!Number.isFinite(value?.downloads)) throw new Error('npm downloads total returned no count')
+    total += value.downloads
+    cursor = addUtcDays(chunkEnd, 1)
+  }
+
+  const result = { downloadsTotal: total, start, end }
+  cacheDownloadTotal(cacheKey, result)
+  return result
+}
+
+export async function resolveNpmDownloadTotals(items, options = {}) {
+  const values = Array.isArray(items) ? items.slice(0, 24) : []
+  const unique = new Map()
+  for (const item of values) {
+    const key = text(item?.key)?.slice(0, 500)
+    const packageName = validPackageName(item?.packageName)
+    if (!key || !packageName || unique.has(key)) continue
+    unique.set(key, { key, packageName })
+  }
+  return mapConcurrent([...unique.values()], Math.min(options.concurrency ?? 3, 3), async item => {
+    try {
+      const total = await npmLifetimeDownloads(item.packageName, options)
+      return { key: item.key, packageName: item.packageName, ...(total ?? {}) }
+    } catch {
+      return { key: item.key, packageName: item.packageName }
+    }
+  })
 }
 
 async function npmManifest(item, options) {

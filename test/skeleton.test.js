@@ -45,6 +45,7 @@ test('source RPC is Host-owned and client uses the Connection service', () => {
   assert.match(host, /route\('browse'\)/)
   assert.match(host, /route\('icons'\)/)
   assert.match(host, /route\('metadata'\)/)
+  assert.match(host, /route\('download-totals'\)/)
   assert.match(client, /connection\.rpc\.call/)
   assert.match(client, /rpc\('browse'/)
 })
@@ -61,6 +62,8 @@ test('copies the DSH 0.2 native switch geometry and uses icon actions', () => {
 test('ships source marks, compact Browse filters, multi-sort, and pagination', () => {
   assert.match(client, /SOURCE_MARK_PATHS/)
   assert.match(client, /ra-compact-filter/)
+  assert.match(client, /ra-filter-row\{[^}]*flex-wrap:nowrap/)
+  assert.match(client, /data-kind=compatibility/)
   assert.match(client, /ra-sort-row/)
   assert.match(client, /const \[sorts, setSorts\] = React\.useState\(\[\]\)/)
   assert.match(client, /cycleSort/)
@@ -128,7 +131,9 @@ test('Browse uses icon-only install actions and explicit compatibility evidence'
   assert.match(client, /--dsw-alias-state-success-primary/)
   assert.match(client, /--dsw-alias-state-error-primary/)
   assert.match(client, /'v' \+ displayVersion/)
-  assert.match(host, /TARGET_DSH_VERSION = '0\.2\.0-rc\.2'/)
+  assert.doesNotMatch(host, /TARGET_DSH_VERSION/)
+  assert.match(host, /runtimeVersionFromContext/)
+  assert.match(host, /profileContext\.installAnchor/)
 })
 
 test('Updates tab checks installed bundles and updates through native Plugin Manager', () => {
@@ -153,4 +158,21 @@ test('Browse compatibility filter can isolate compatible, incompatible, and unve
 test('known-incompatible Browse and Updates actions are disabled before native Plugin Manager rejects them', () => {
   assert.match(client, /disabled: installed \|\| busy \|\| compatibilityStatus === 'incompatible'/)
   assert.match(client, /disabled: busy \|\| done \|\| incompatible/)
+})
+
+
+test('Browse lazily asks for lifetime npm downloads and renders 30d plus total', () => {
+  assert.match(client, /rpc\('download-totals'/)
+  assert.match(client, /downloadsTotal/)
+  assert.match(client, /\/ 30d'.*\/ total'/s)
+  assert.match(client, /totalDownloadItems = visible/)
+})
+
+test('compact Browse filters use short all/any labels and fixed widths', () => {
+  assert.match(client, /filterAllSources: 'All'/)
+  assert.match(client, /releaseAll: 'All'/)
+  assert.match(client, /freshnessAny: 'Any'/)
+  assert.match(client, /compatibilityAll: 'All'/)
+  assert.match(client, /data-kind=source/)
+  assert.match(client, /data-kind=page/)
 })
