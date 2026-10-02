@@ -95,7 +95,9 @@ test('Browse separates statistics from tags and uses the warning token for stars
   assert.match(client, /ra-plugin-tags/)
   assert.match(client, /ra-star/)
   assert.match(client, /--dsw-alias-state-warn-primary/)
-  assert.match(client, /plugin\.packageName \? h\('span'.*— \/ 30d/s)
+  assert.match(client, /const downloadsLabel = plugin\.packageName/)
+  assert.match(client, /compactNumber\(plugin\.downloads30d\).*\/ 30d/s)
+  assert.match(client, /compactNumber\(downloadsTotal\).*\/ total/s)
 })
 
 
@@ -133,7 +135,7 @@ test('Browse uses icon-only install actions and explicit compatibility evidence'
   assert.match(client, /'v' \+ displayVersion/)
   assert.doesNotMatch(host, /TARGET_DSH_VERSION/)
   assert.match(host, /runtimeVersionFromContext/)
-  assert.match(host, /profileContext\.installAnchor/)
+  assert.match(host, /profileContext\?\.installAnchor/)
 })
 
 test('Updates tab checks installed bundles and updates through native Plugin Manager', () => {
